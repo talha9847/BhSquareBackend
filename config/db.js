@@ -1,7 +1,7 @@
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize("postgres", "postgres", "GUuqA5evfKFZK12I", {
-  host: "db.yxrtvstnzpcqwlkzmxkt.supabase.co",
+const sequelize = new Sequelize("postgres", "postgres", process.env.DB_PASS, {
+  host: process.env.HOST,
   dialect: "postgres",
 });
 
