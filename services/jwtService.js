@@ -9,7 +9,6 @@ async function signJwt(email, role) {
       expiresIn: "30d",
     });
 
-    console.log(token);
 
     return token;
   } catch (error) {
