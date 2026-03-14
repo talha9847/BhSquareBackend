@@ -1,6 +1,7 @@
-const sequelize = require("sequelize");
+const sequelize = require("../config/db");
 
 const { Lead } = require("../models/leadModel");
+const { LeadDelay } = require("../models/leadDelayModel");
 
 async function addLead(data) {
   try {
@@ -55,4 +56,81 @@ async function getLeadsByStatus(status) {
   }
 }
 
-module.exports = { addLead, getPendingLeads, getLeadsByStatus };
+async function getPendingLeadsCount() {
+  try {
+    const count = await Lead.count({
+      where: {
+        status: "pending",
+      },
+    });
+
+    return count;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function delayLeadTransaction({ lead_id, next_visit_date, note }) {
+  const t = await sequelize.transaction();
+
+  try {
+    let delay = await LeadDelay.findOne({ where: { lead_id }, transaction: t });
+
+    if (delay) {
+      delay.next_visit_date = next_visit_date;
+      delay.note = note;
+      await delay.save({ transaction: t });
+    } else {
+      delay = await LeadDelay.create(
+        { lead_id, next_visit_date, note },
+        { transaction: t },
+      );
+    }
+
+    const [updatedRows] = await Lead.update(
+      { status: "delayed", site_visit_date: next_visit_date },
+      { where: { id: lead_id }, transaction: t },
+    );
+
+    if (updatedRows === 0) {
+      throw new Error("Lead not found or update failed");
+    }
+
+    await t.commit();
+    return delay;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
+async function delayToPending(lead_id) {
+  const t = await sequelize.transaction();
+
+  try {
+    const [updatedRows] = await Lead.update(
+      { status: "pending" },
+      { where: { id: lead_id, status: "delayed" }, transaction: t },
+    );
+
+    if (updatedRows === 0) {
+      throw new Error("Lead not found or not in delayed status");
+    }
+
+    await LeadDelay.destroy({ where: { lead_id }, transaction: t });
+
+    await t.commit();
+    return { success: true, message: "Lead converted to pending" };
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+module.exports = {
+  addLead,
+  getPendingLeads,
+  getLeadsByStatus,
+  getPendingLeadsCount,
+  delayLeadTransaction,
+  delayToPending,
+};
