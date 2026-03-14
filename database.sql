@@ -17,6 +17,7 @@ CREATE TABLE leads (
     address TEXT,
     notes TEXT,
     status VARCHAR(20) DEFAULT 'pending',  -- pending, converted, delayed, cancelled
+    installation_type VARCHAR(20) DEFAULT 'Residential', -- Residential, Commercial, Industrial
 
     panel_wattage NUMERIC(10,2),
     number_of_panels INTEGER,

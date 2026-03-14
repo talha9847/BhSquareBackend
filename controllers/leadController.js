@@ -11,6 +11,8 @@ async function addLead(req, res) {
       notes,
       panel_wattage,
       number_of_panels,
+      status,
+      installation_type,
     } = req.body;
 
     if (!customer_name) {
@@ -21,6 +23,13 @@ async function addLead(req, res) {
       return res.status(400).json({ message: "Contact number is required" });
     }
 
+    if (!source_id) {
+      return res.status(400).json({ message: "Source  is required" });
+    }
+    if (!address) {
+      return res.status(400).json({ message: "Address  is required" });
+    }
+
     const lead = await leadService.addLead({
       customer_name,
       contact_number,
@@ -28,14 +37,20 @@ async function addLead(req, res) {
       source_id,
       address,
       notes,
+      status,
       panel_wattage,
       number_of_panels,
+      installation_type,
     });
 
     return res.status(201).json({
       success: true,
       data: lead,
     });
+    // return res.status(201).json({
+    //   success: true,
+    //   message: "taht lkjdlkjc",
+    // });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -60,4 +75,30 @@ async function fetchPendingLeads(req, res) {
   }
 }
 
-module.exports = { addLead, fetchPendingLeads };
+async function fetchLeadsByStatus(req, res) {
+  try {
+    const { status } = req.query;
+    const allowedStatuses = ["pending", "converted", "delayed", "cancelled"];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed values: ${allowedStatuses.join(", ")}`,
+      });
+    }
+
+    const leads = await leadService.getLeadsByStatus(status);
+
+    return res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+module.exports = { addLead, fetchPendingLeads, fetchLeadsByStatus };

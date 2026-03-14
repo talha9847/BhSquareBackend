@@ -16,6 +16,8 @@ async function addLead(data) {
       source_id: data.source_id,
       address: data.address,
       notes: data.notes,
+      status: data.status,
+      installation_type: data.installation_type,
       panel_wattage: data.panel_wattage,
       number_of_panels: data.number_of_panels,
     });
@@ -41,4 +43,16 @@ async function getPendingLeads() {
   }
 }
 
-module.exports = { addLead, getPendingLeads };
+async function getLeadsByStatus(status) {
+  try {
+    const leads = await Lead.findAll({
+      where: { status },
+      order: [["created_at", "DESC"]], // optional: newest first
+    });
+    return leads;
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = { addLead, getPendingLeads, getLeadsByStatus };

@@ -47,7 +47,14 @@ const Lead = sequelize.define(
     total_capacity: {
       type: DataTypes.DECIMAL(10, 2),
     },
-
+    status: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
+    installation_type: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
