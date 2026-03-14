@@ -1,7 +1,11 @@
 const sequelize = require("../config/db");
-
+const { Op } = require("sequelize");
 const { Lead } = require("../models/leadModel");
 const { LeadDelay } = require("../models/leadDelayModel");
+const { Customer } = require("../models/customerModel");
+const { Stage } = require("../models/stegeModel");
+const { CustomerStage } = require("../models/customerStageModel");
+const { LeadCancellation } = require("../models/leadCancellationModel");
 
 async function addLead(data) {
   try {
@@ -110,7 +114,15 @@ async function delayToPending(lead_id) {
   try {
     const [updatedRows] = await Lead.update(
       { status: "pending" },
-      { where: { id: lead_id, status: "delayed" }, transaction: t },
+      {
+        where: {
+          id: lead_id,
+          status: {
+            [Op.in]: ["delayed", "cancelled"],
+          },
+        },
+        transaction: t,
+      },
     );
 
     if (updatedRows === 0) {
@@ -118,6 +130,7 @@ async function delayToPending(lead_id) {
     }
 
     await LeadDelay.destroy({ where: { lead_id }, transaction: t });
+    await LeadCancellation.destroy({ where: { lead_id }, transaction: t });
 
     await t.commit();
     return { success: true, message: "Lead converted to pending" };
@@ -126,6 +139,70 @@ async function delayToPending(lead_id) {
     throw error;
   }
 }
+
+async function convertToCustomer(lead_id) {
+  const t = await sequelize.transaction();
+
+  try {
+    const lead = await Lead.findByPk(lead_id, { transaction: t });
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    await lead.update({ status: "converted" }, { transaction: t });
+
+    const customer = await Customer.create(
+      { lead_id: lead.id },
+      { transaction: t },
+    );
+
+    const stages = await Stage.findAll({
+      order: [["default_order", "ASC"]],
+      transaction: t,
+    });
+
+    const customerStagesData = stages.map((stage, index) => ({
+      customer_id: customer.id,
+      stage_id: stage.id,
+      status: index === 0 ? "pending" : "not_used",
+    }));
+
+    await CustomerStage.bulkCreate(customerStagesData, { transaction: t });
+
+    await t.commit();
+
+    return customer;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
+async function cancelLead({ lead_id, reason }) {
+  const t = await sequelize.transaction();
+
+  try {
+    const lead = await Lead.findByPk(lead_id, { transaction: t });
+    if (!lead) throw new Error("Lead not found");
+
+    await Lead.update(
+      { status: "cancelled" },
+      { where: { id: lead_id }, transaction: t },
+    );
+
+    const cancellation = await LeadCancellation.create(
+      { lead_id, reason },
+      { transaction: t },
+    );
+
+    await t.commit();
+    return cancellation;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -133,4 +210,6 @@ module.exports = {
   getPendingLeadsCount,
   delayLeadTransaction,
   delayToPending,
+  convertToCustomer,
+  cancelLead,
 };

@@ -163,6 +163,59 @@ async function delayToPending(req, res) {
   }
 }
 
+async function convertToCustomer(req, res) {
+  try {
+    const { lead_id } = req.body;
+
+    if (!lead_id) {
+      return res.status(400).json({
+        success: false,
+        message: "lead_id is required",
+      });
+    }
+
+    const customer = await leadService.convertToCustomer(lead_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead converted to customer successfully",
+      data: customer,
+    });
+  } catch (error) {
+    console.error("Error converting lead:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function cancelLead(req, res) {
+  try {
+    const { lead_id, reason } = req.body;
+
+    if (!lead_id) {
+      return res.status(400).json({
+        success: false,
+        message: "lead_id is required",
+      });
+    }
+
+    const result = await leadService.cancelLead({ lead_id, reason });
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead cancelled successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -170,4 +223,6 @@ module.exports = {
   fetchPendingLeadsCount,
   delayLead,
   delayToPending,
+  convertToCustomer,
+  cancelLead,
 };

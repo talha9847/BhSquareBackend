@@ -9,5 +9,7 @@ router.get("/fetchLeadsByStatus", leadController.fetchLeadsByStatus);
 router.get("/fetchPendingLeadsCount", leadController.fetchPendingLeadsCount);
 router.post("/delayLead", leadController.delayLead);
 router.post("/delayToPending", leadController.delayToPending);
+router.post("/convertToCustomer", leadController.convertToCustomer);
+router.post("/cancelLead", leadController.cancelLead);
 
 module.exports = router;

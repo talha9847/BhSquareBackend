@@ -87,3 +87,11 @@ CREATE TABLE customer_stages (
     note TEXT,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE lead_cancellations (
+    id SERIAL PRIMARY KEY,
+    lead_id INTEGER UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
