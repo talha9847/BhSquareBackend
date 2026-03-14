@@ -203,6 +203,23 @@ async function cancelLead({ lead_id, reason }) {
   }
 }
 
+async function updateLead({ id, ...updateData }) {
+  try {
+    const [updatedRows] = await Lead.update(updateData, {
+      where: { id },
+    });
+
+    if (updatedRows === 0) {
+      throw new Error("Lead not found or no changes made");
+    }
+
+    const lead = await Lead.findByPk(id);
+    return lead;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -212,4 +229,5 @@ module.exports = {
   delayToPending,
   convertToCustomer,
   cancelLead,
+  updateLead,
 };

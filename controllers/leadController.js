@@ -216,6 +216,32 @@ async function cancelLead(req, res) {
   }
 }
 
+async function updateLead(req, res) {
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "id is required",
+      });
+    }
+
+    const lead = await leadService.updateLead(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead updated successfully",
+      data: lead,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -225,4 +251,5 @@ module.exports = {
   delayToPending,
   convertToCustomer,
   cancelLead,
+  updateLead,
 };
