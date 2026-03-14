@@ -75,7 +75,11 @@ VALUES
 
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
-    lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE
+    lead_id INTEGER UNIQUE NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending',
+    name_change VARCHAR(20) DEFAULT 'not_used'  -- not_used, required, changed, unchanged
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
 );
 
 

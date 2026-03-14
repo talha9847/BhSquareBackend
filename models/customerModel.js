@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
+const { Lead } = require("./leadModel");
 
 const Customer = sequelize.define(
   "Customer",
@@ -18,11 +19,21 @@ const Customer = sequelize.define(
       },
       onDelete: "CASCADE",
     },
+    status: {
+      type: DataTypes.STRING(20),
+      defaultValue: "pending", // overall workflow status
+    },
+    name_change: {
+      type: DataTypes.STRING(20),
+      defaultValue: "not_used", // not_used, required, changed, unchanged
+    },
   },
   {
     tableName: "customers",
     timestamps: false,
   },
 );
+
+Customer.belongsTo(Lead, { foreignKey: "lead_id", as: "lead" });
 
 module.exports = { Customer };

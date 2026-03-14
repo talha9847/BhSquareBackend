@@ -13,4 +13,19 @@ async function getSources() {
   }
 }
 
-module.exports = { getSources };
+async function addSource(source_name) {
+  try {
+    if (!source_name) {
+      throw new Error("Source name is required");
+    }
+
+    const source = await Source.create({
+      source_name,
+    });
+
+    return source;
+  } catch (error) {
+    throw error;
+  }
+}
+module.exports = { getSources, addSource };
