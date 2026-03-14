@@ -9,7 +9,7 @@ const sourceRoutes = require("./routes/sourceRoute");
 
 UserSeeder.startServer();
 app.use(express.json());
-app.use(cors({ origin: "https://bh-square-frontend.vercel.app/" }));
+app.use(cors({ origin: "https://bh-square-frontend.vercel.app" }));
 // app.use(cors({ origin: "http://localhost:5173" }));
 app.use("/api/users", userRoutes);
 app.use("/api/leads", leadRoutes);
