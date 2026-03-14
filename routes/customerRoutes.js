@@ -4,5 +4,9 @@ const express = require("express");
 const router = express.Router();
 
 router.get("/getCustomers", customerController.getCustomers);
+router.post(
+  "/updateCustomerNameChange",
+  customerController.updateCustomerNameChange,
+);
 
 module.exports = router;

@@ -99,3 +99,29 @@ CREATE TABLE lead_cancellations (
     reason TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+CREATE TABLE customer_documents (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+    consumer_number VARCHAR(50) UNIQUE NOT NULL,
+    geo_coordinate VARCHAR(100),
+    registration_number VARCHAR(50),
+    sub_division VARCHAR(50),
+    final_system_size VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE customer_document_files (
+    id SERIAL PRIMARY KEY,
+    document_id INTEGER REFERENCES customer_documents(id) ON DELETE CASCADE,
+    file_name VARCHAR(255) NOT NULL,
+    file_url TEXT NOT NULL,
+
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

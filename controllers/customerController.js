@@ -16,4 +16,32 @@ async function getCustomers(req, res) {
   }
 }
 
-module.exports = { getCustomers };
+async function updateCustomerNameChange(req, res) {
+  try {
+    const { id, name_change } = req.body;
+    if (!id || !name_change) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId and name_change are required",
+      });
+    }
+
+    const updatedCustomer = await customerService.updateCustomerNameChange(
+      id,
+      name_change,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: updatedCustomer,
+      message: "Customer name_change updated successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+module.exports = { getCustomers, updateCustomerNameChange };
