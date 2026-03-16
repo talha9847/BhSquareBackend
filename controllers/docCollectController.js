@@ -138,10 +138,38 @@ async function completeStageAndPrepareNext(req, res) {
   }
 }
 
+async function checkDocumentCollectionAccess(req, res) {
+  try {
+    const { customer_id } = req.params;
+
+    if (!customer_id) {
+      return res.status(400).json({
+        success: false,
+        message: "customer_id is required",
+      });
+    }
+
+    const customer =
+      await docCollectService.checkDocumentCollectionAccess(customer_id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Access granted",
+      data: customer,
+    });
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
   upsertCustomerDocument,
   uploadDocsToDrive,
   completeStageAndPrepareNext,
+  checkDocumentCollectionAccess,
 };

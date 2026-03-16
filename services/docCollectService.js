@@ -8,6 +8,7 @@ const path = require("path");
 const { CustomerStage } = require("../models/customerStageModel");
 const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const sequelize = require("../config/db");
+const { Op } = require("sequelize");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -281,6 +282,28 @@ async function completeStageAndPrepareNext(customerId) {
   }
 }
 
+async function checkDocumentCollectionAccess(customer_id) {
+  if (!customer_id) {
+    throw new Error("customer_id is required");
+  }
+
+  const customer = await Customer.findOne({
+    where: {
+      id: customer_id,
+      status: "pending",
+      name_change: {
+        [Op.in]: ["unchanged", "changed"],
+      },
+    },
+  });
+
+  if (!customer) {
+    throw new Error("Document collection not allowed for this customer");
+  }
+
+  return customer;
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
@@ -288,4 +311,5 @@ module.exports = {
   uploadBulkFiles,
   checkCustomerReady,
   completeStageAndPrepareNext,
+  checkDocumentCollectionAccess,
 };

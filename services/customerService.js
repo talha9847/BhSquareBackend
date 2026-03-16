@@ -5,6 +5,8 @@ const { CustomerStage } = require("../models/customerStageModel");
 
 async function getCustomersWithLeadData() {
   try {
+    const sequelize = require("../config/db");
+
     const customers = await Customer.findAll({
       include: [
         {
@@ -19,8 +21,21 @@ async function getCustomersWithLeadData() {
           ],
         },
       ],
-      order: [["created_at", "DESC"]],
+      order: [
+        [
+          sequelize.literal(`
+        CASE 
+          WHEN "Customer"."status" = 'pending' THEN 0
+          WHEN "Customer"."status" = 'done' THEN 1
+          ELSE 2
+        END
+      `),
+          "ASC",
+        ],
+        [sequelize.col("lead.created_at"), "DESC"],
+      ],
     });
+
     return customers;
   } catch (error) {
     throw error;
