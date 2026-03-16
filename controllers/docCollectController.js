@@ -120,10 +120,28 @@ async function uploadDocsToDrive(req, res) {
     });
   }
 }
+async function completeStageAndPrepareNext(req, res) {
+  try {
+    const { customer_id } = req.body;
+    if (!customer_id)
+      return res
+        .status(400)
+        .json({ success: false, message: "customer_id required" });
+
+    const result =
+      await docCollectService.completeStageAndPrepareNext(customer_id);
+
+    return res.status(201).json({ success: true, data: result });
+  } catch (error) {
+    console.error("❌ Error completing stage:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
 
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
   upsertCustomerDocument,
   uploadDocsToDrive,
+  completeStageAndPrepareNext,
 };

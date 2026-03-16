@@ -20,4 +20,9 @@ router.post(
   docCollectRoutes.uploadDocsToDrive,
 );
 
+router.post(
+  "/completeStageAndPrepareNext",
+  docCollectRoutes.completeStageAndPrepareNext,
+);
+
 module.exports = router;

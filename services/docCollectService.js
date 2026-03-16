@@ -5,6 +5,9 @@ const { CustomerDocumentFile } = require("../models/customerDocumentFileModel");
 const { google } = require("googleapis");
 const { Readable } = require("stream");
 const path = require("path");
+const { CustomerStage } = require("../models/customerStageModel");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const sequelize = require("../config/db");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -224,10 +227,65 @@ async function checkCustomerReady(customerId) {
   };
 }
 
+async function completeStageAndPrepareNext(customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    const customer = await Customer.findByPk(customerId, { transaction: t });
+    if (!customer) throw new Error("Customer not found");
+
+    await Customer.update(
+      { status: "done" },
+      { where: { id: customerId }, transaction: t },
+    );
+
+    await CustomerStage.update(
+      { status: "done", updated_at: new Date() },
+      { where: { customer_id: customerId, stage_id: 3 }, transaction: t },
+    );
+
+    await CustomerStage.update(
+      { status: "pending", updated_at: new Date() },
+      { where: { customer_id: customerId, stage_id: 4 }, transaction: t },
+    );
+
+    const lead = await Lead.findByPk(customer.lead_id, { transaction: t });
+    if (!lead) throw new Error("Lead not found");
+
+    const panelQty = lead.number_of_panels || 0;
+
+    const existingRegistration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!existingRegistration) {
+      await CustomerRegistration.create(
+        {
+          customer_id: customerId,
+          panel_qty: panelQty,
+          application_number: null,
+          agreement_date: null,
+          inverter_qty: null,
+        },
+        { transaction: t },
+      );
+    }
+
+    await t.commit();
+
+    return await Customer.findByPk(customerId);
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
   upsertCustomerDocument,
   uploadBulkFiles,
   checkCustomerReady,
+  completeStageAndPrepareNext,
 };
