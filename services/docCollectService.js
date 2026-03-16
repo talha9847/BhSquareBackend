@@ -1,5 +1,122 @@
 const { Customer } = require("../models/customerModel");
 const { Lead } = require("../models/leadModel");
+const { CustomerDocument } = require("../models/customerDocumentModel");
+const { google } = require("googleapis");
+const { Readable } = require("stream");
+const path = require("path");
+
+// Replace the old Service Account Auth with this:
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground", // or your redirect URI
+);
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN, // Use the token you got from Playground
+});
+
+const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+async function getOrCreateCustomerFolder(folderName, parentFolderId) {
+  const existing = await drive.files.list({
+    q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: "files(id, name)",
+  });
+
+  if (existing.data.files.length > 0) {
+    console.log(
+      `📂 Folder exists: ${folderName} (ID: ${existing.data.files[0].id})`,
+    );
+    return existing.data.files[0].id;
+  }
+
+  // Create it if it doesn't exist
+  console.log(`📁 Creating new folder: ${folderName}`);
+  const folder = await drive.files.create({
+    requestBody: {
+      name: folderName,
+      mimeType: "application/vnd.google-apps.folder",
+      parents: [parentFolderId],
+    },
+    fields: "id",
+  });
+
+  return folder.data.id;
+}
+
+async function findFileInFolder(fileName, folderId) {
+  const res = await drive.files.list({
+    q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+    fields: "files(id, name)",
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+
+  return res.data.files.length ? res.data.files[0] : null;
+}
+
+// 2. Updated Upload function
+async function uploadBulkFiles(files, customerName, contactNumber) {
+  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+  console.log(contactNumber);
+  // Format the name as requested
+  const folderName = `${customerName}_${contactNumber}`;
+
+  try {
+    // Get or create the specific customer folder
+    const customerFolderId = await getOrCreateCustomerFolder(
+      folderName,
+      rootFolderId,
+    );
+
+    const uploadPromises = files.map(async (file) => {
+      const fileName = file.fieldname;
+
+      const existingFile = await findFileInFolder(fileName, customerFolderId);
+
+      let response;
+
+      if (existingFile) {
+        // Replace existing file
+        response = await drive.files.update({
+          fileId: existingFile.id,
+          media: {
+            mimeType: file.mimetype || "application/octet-stream",
+            body: Readable.from(file.buffer),
+          },
+          supportsAllDrives: true,
+          fields: "id, webViewLink",
+        });
+      } else {
+        // Upload new file
+        response = await drive.files.create({
+          requestBody: {
+            name: fileName,
+            parents: [customerFolderId],
+          },
+          media: {
+            mimeType: file.mimetype || "application/octet-stream",
+            body: Readable.from(file.buffer),
+          },
+          supportsAllDrives: true,
+          fields: "id, webViewLink",
+        });
+      }
+
+      return {
+        name: fileName,
+        url: response.data.webViewLink,
+        fileId: response.data.id,
+      };
+    });
+
+    return await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error("❌ Google Drive Error:", error.message);
+    throw error;
+  }
+}
 
 async function getLeadDetailFromCustomerId(customer_id) {
   try {
@@ -28,4 +145,44 @@ async function getLeadDetailFromCustomerId(customer_id) {
   }
 }
 
-module.exports = { getLeadDetailFromCustomerId };
+async function getCustomerDocumentByCustomerId(customer_id) {
+  try {
+    if (!customer_id) throw new Error("customer_id is required");
+
+    const document = await CustomerDocument.findOne({
+      where: { customer_id },
+    });
+
+    // Returns the document if found, else null
+    return document || null;
+  } catch (error) {
+    console.error("Error fetching customer document:", error.message);
+    throw error;
+  }
+}
+
+async function upsertCustomerDocument(customer_id, data) {
+  try {
+    if (!customer_id) throw new Error("customer_id is required");
+
+    let document = await CustomerDocument.findOne({ where: { customer_id } });
+    console.log(document + "is null", data);
+    if (document) {
+      await document.update(data);
+    } else {
+      document = await CustomerDocument.create({ customer_id, ...data });
+    }
+
+    return document;
+  } catch (error) {
+    console.error("Error in upsertCustomerDocument:", error.message);
+    throw error;
+  }
+}
+
+module.exports = {
+  getLeadDetailFromCustomerId,
+  getCustomerDocumentByCustomerId,
+  upsertCustomerDocument,
+  uploadBulkFiles,
+};

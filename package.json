@@ -20,11 +20,15 @@
   },
   "homepage": "https://github.com/talha9847/BhSquareBackend#readme",
   "dependencies": {
+    "apis": "^0.1.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "google": "^2.1.0",
+    "googleapis": "^171.4.0",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
     "pg": "^8.20.0",
     "sequelize": "^6.37.8"
   },

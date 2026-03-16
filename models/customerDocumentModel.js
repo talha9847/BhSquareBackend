@@ -27,9 +27,6 @@ const CustomerDocument = sequelize.define(
     sub_division: {
       type: DataTypes.STRING(50),
     },
-    final_system_size: {
-      type: DataTypes.STRING(50),
-    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
