@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-const { CustomerDocument } = require("./customerDocument.model");
+const { CustomerDocument } = require("./customerDocumentModel");
 
 const CustomerDocumentFile = sequelize.define(
   "CustomerDocumentFile",

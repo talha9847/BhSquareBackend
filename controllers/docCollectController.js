@@ -18,7 +18,11 @@ async function getLeadDetailFromCustomerId(req, res) {
         .json({ success: false, message: "Lead not found for this customer" });
     }
 
-    return res.status(200).json({ success: true, data: lead });
+    const status = await docCollectService.checkCustomerReady(customer_id);
+
+    return res
+      .status(200)
+      .json({ success: true, data: lead, readyForNextStage: status });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -80,7 +84,8 @@ async function upsertCustomerDocument(req, res) {
 
 async function uploadDocsToDrive(req, res) {
   try {
-    const { customerId,customerName,contactNumber } = req.body;
+    const { customerId, docId, customerName, contactNumber } = req.body;
+    console.log(docId);
     const files = req.files;
 
     if (!files || files.length === 0) {
@@ -90,12 +95,21 @@ async function uploadDocsToDrive(req, res) {
       });
     }
 
-    const uploaded = await docCollectService.uploadBulkFiles(files,customerName,contactNumber);
+    const uploaded = await docCollectService.uploadBulkFiles(
+      files,
+      customerName,
+      contactNumber,
+      docId,
+    );
+
+    const status = await docCollectService.checkCustomerReady(customerId);
+
     // const uploaded = await docCollectService.checkUserExists("harsh877698@outlook.com");
 
     return res.status(200).json({
       success: true,
       files: uploaded,
+      readyForNextStage: status,
     });
   } catch (error) {
     console.log(error);

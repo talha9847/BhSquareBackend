@@ -1,6 +1,7 @@
 const { Customer } = require("../models/customerModel");
 const { Lead } = require("../models/leadModel");
 const { CustomerDocument } = require("../models/customerDocumentModel");
+const { CustomerDocumentFile } = require("../models/customerDocumentFileModel");
 const { google } = require("googleapis");
 const { Readable } = require("stream");
 const path = require("path");
@@ -57,10 +58,8 @@ async function findFileInFolder(fileName, folderId) {
 }
 
 // 2. Updated Upload function
-async function uploadBulkFiles(files, customerName, contactNumber) {
+async function uploadBulkFiles(files, customerName, contactNumber, docId) {
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-  console.log(contactNumber);
-  // Format the name as requested
   const folderName = `${customerName}_${contactNumber}`;
 
   try {
@@ -73,6 +72,7 @@ async function uploadBulkFiles(files, customerName, contactNumber) {
     const uploadPromises = files.map(async (file) => {
       const fileName = file.fieldname;
 
+      // Check if file already exists in Google Drive
       const existingFile = await findFileInFolder(fileName, customerFolderId);
 
       let response;
@@ -104,13 +104,29 @@ async function uploadBulkFiles(files, customerName, contactNumber) {
         });
       }
 
+      const fileUrl = response.data.webViewLink;
+
+      // Save or update in DB using upsert to avoid duplicates
+      await CustomerDocumentFile.upsert(
+        {
+          document_id: docId,
+          file_name: fileName,
+          file_url: fileUrl,
+          uploaded_at: new Date(),
+          updated_at: new Date(),
+        },
+        {
+          conflictFields: ["document_id", "file_name"], // ← Important!
+        },
+      );
       return {
         name: fileName,
-        url: response.data.webViewLink,
+        url: fileUrl,
         fileId: response.data.id,
       };
     });
 
+    // Wait for all uploads + DB saves to finish
     return await Promise.all(uploadPromises);
   } catch (error) {
     console.error("❌ Google Drive Error:", error.message);
@@ -180,9 +196,38 @@ async function upsertCustomerDocument(customer_id, data) {
   }
 }
 
+async function checkCustomerReady(customerId) {
+  const customerDocument = await CustomerDocument.findOne({
+    where: { customer_id: customerId },
+    include: { model: CustomerDocumentFile, as: "files", attributes: ["id"] },
+  });
+
+  if (!customerDocument) {
+    return {
+      status: false,
+      message: "No document record found for this customer.",
+    };
+  }
+
+  const uploadedCount = customerDocument.files.length;
+
+  if (uploadedCount >= 4) {
+    return {
+      status: true,
+      message: `Customer has ${uploadedCount} documents. Ready for next stage.`,
+    };
+  }
+
+  return {
+    status: false,
+    message: `Customer has only ${uploadedCount} documents. Minimum 4 required.`,
+  };
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
   upsertCustomerDocument,
   uploadBulkFiles,
+  checkCustomerReady,
 };
