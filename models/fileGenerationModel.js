@@ -74,6 +74,9 @@ const FileGeneration = sequelize.define(
     inverter_brand: {
       type: DataTypes.STRING(100),
     },
+    inverter_quantity: {
+      type: DataTypes.INTEGER,
+    },
     inverter_capacity: {
       type: DataTypes.DECIMAL(10, 2),
     },
@@ -90,9 +93,7 @@ const FileGeneration = sequelize.define(
   {
     tableName: "file_generation",
     timestamps: false,
-  }
+  },
 );
-
-
 
 module.exports = { FileGeneration };

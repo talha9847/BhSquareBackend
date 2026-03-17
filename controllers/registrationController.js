@@ -65,6 +65,10 @@ async function registration(req, res) {
 async function markRegistrationAsDone(req, res) {
   try {
     const { registrationId, customerId, leadId, data } = req.body;
+
+    console.log(data);
+
+
     const result = await registrationService.markRegistrationAsDone(
       registrationId,
       customerId,
@@ -110,7 +114,11 @@ async function getFileGeneration(req, res) {
     const d = result.data;
 
     // Load template from project root
-    const templatePath = path.join(__dirname, "..", "solar_template_FINAL.docx");
+    const templatePath = path.join(
+      __dirname,
+      "..",
+      "solar_template_FINAL.docx",
+    );
     const content = fs.readFileSync(templatePath, "binary");
     const zip = new PizZip(content);
 
@@ -141,6 +149,7 @@ async function getFileGeneration(req, res) {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       "Content-Disposition": `attachment; filename="agreement_${d.cs_no || registrationId}.docx"`,
     });
+    res.status(200);
     return res.send(buffer);
   } catch (error) {
     console.error("❌ Controller Error:", error);

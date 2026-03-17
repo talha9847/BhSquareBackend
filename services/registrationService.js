@@ -5,6 +5,23 @@ const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { PanelSerial } = require("../models/panelSerialModel");
 const { FileGeneration } = require("../models/fileGenerationModel");
 const { CustomerDocument } = require("../models/customerDocumentModel");
+
+
+
+const { google } = require("googleapis");
+
+// Replace the old Service Account Auth with this:
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground", // or your redirect URI
+);
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN, // Use the token you got from Playground
+});
+
+const drive = google.drive({ version: "v3", auth: oauth2Client });
 async function getCustomersWithSummary() {
   try {
     const customers = await Customer.findAll({
@@ -158,6 +175,44 @@ async function createCustomerRegistrationWithPanels(
   }
 }
 
+async function renameCustomerFolder(
+  oldFolderName,
+  newFolderName,
+  parentFolderId,
+) {
+  try {
+    // 1. Find the existing folder ID
+    const searchResult = await drive.files.list({
+      q: `name='${oldFolderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: "files(id, name)",
+    });
+
+    if (searchResult.data.files.length === 0) {
+      console.warn(
+        `⚠️ Folder "${oldFolderName}" not found. Nothing to rename.`,
+      );
+      return null;
+    }
+
+    const folderId = searchResult.data.files[0].id;
+
+    // 2. Update the folder name
+    const updatedFolder = await drive.files.update({
+      fileId: folderId,
+      requestBody: {
+        name: newFolderName,
+      },
+      fields: "id, name",
+    });
+
+    console.log(`✅ Folder renamed to: ${updatedFolder.data.name}`);
+    return updatedFolder.data.id;
+  } catch (error) {
+    console.error("Error renaming folder:", error.message);
+    throw error;
+  }
+}
+
 async function markRegistrationAsDone(
   registrationId,
   customerId,
@@ -187,11 +242,19 @@ async function markRegistrationAsDone(
 
     // ✅ fetch required data
     const lead = await Lead.findByPk(leadId, { transaction: t });
-
+    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+    const oldFolderName = `${lead.customer_name}_${lead.contact_number}`;
+    const newFolderName = `${cs_no} ${lead.customer_name}`;
     const customerDocs = await CustomerDocument.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
+    const folderId = await renameCustomerFolder(
+      oldFolderName,
+      newFolderName,
+      rootFolderId,
+    );
+    //here i want to change the gDrive folder name which is lead.customername_lead.contact_number to  "cs_no lead.customer_name"
 
     // ✅ check existing
     const existingFile = await FileGeneration.findOne({
