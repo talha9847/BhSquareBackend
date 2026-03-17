@@ -29,5 +29,9 @@ router.get(
   "/checkDocumentCollectionAccess/:customer_id",
   docCollectController.checkDocumentCollectionAccess,
 );
+router.get(
+  "/checkDocAccess/:customer_id",
+  docCollectController.checkDocAccess,
+);
 
 module.exports = router;
