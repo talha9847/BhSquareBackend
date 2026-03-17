@@ -147,3 +147,33 @@ CREATE TABLE panel_serials (
     serial_number VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+
+
+
+CREATE TABLE file_generation (
+    id SERIAL PRIMARY KEY,
+    registration_id INTEGER NOT NULL UNIQUE REFERENCES customer_registration(id) ON DELETE CASCADE,
+    cs_no VARCHAR(50),
+    beneficiary_name VARCHAR(255),
+    beneficiary_address TEXT,
+    consumer_contact VARCHAR(50),
+    application_number VARCHAR(50),
+    consumer_number VARCHAR(50),
+    registration_date DATE,
+    agreement_date DATE,
+    geo_location VARCHAR(255),
+    subdivision VARCHAR(255),
+    panel_brand VARCHAR(100),
+    panel_capacity NUMERIC(10,2),
+    panel_quantity INTEGER,
+    system_capacity NUMERIC(10,2),
+    inverter_brand VARCHAR(100),
+    inverter_capacity NUMERIC(10,2),
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    file_path TEXT
+)
+
+

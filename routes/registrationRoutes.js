@@ -11,4 +11,5 @@ router.post(
   "/markRegistrationAsDone",
   registrationController.markRegistrationAsDone,
 );
+router.post("/getFileGeneration", registrationController.getFileGeneration);
 module.exports = router;

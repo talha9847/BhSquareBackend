@@ -6,7 +6,7 @@ const { CustomerRegistration } = require("./customerRegistrationModel");
 const { PanelSerial } = require("./panelSerialModel");
 const { CustomerDocument } = require("./customerDocumentModel");
 const { CustomerDocumentFile } = require("./customerDocumentFileModel");
-
+const { FileGeneration } = require("./fileGenerationModel"); // ✅ Import FileGeneration
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -47,6 +47,16 @@ CustomerDocumentFile.belongsTo(CustomerDocument, {
   foreignKey: "document_id",
   as: "document",
 });
+// Associations
+FileGeneration.belongsTo(CustomerRegistration, {
+  foreignKey: "registration_id",
+  as: "registration",
+});
+
+CustomerRegistration.hasOne(FileGeneration, {
+  foreignKey: "registration_id",
+  as: "file_generation",
+});
 
 // ----------------------
 // Export all models
@@ -57,4 +67,5 @@ module.exports = {
   PanelSerial,
   CustomerDocument,
   CustomerDocumentFile,
+  FileGeneration,
 };

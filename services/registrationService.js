@@ -3,6 +3,8 @@ const { Lead } = require("../models/leadModel");
 const { Customer } = require("../models/customerModel");
 const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { PanelSerial } = require("../models/panelSerialModel");
+const { FileGeneration } = require("../models/fileGenerationModel");
+const { CustomerDocument } = require("../models/customerDocumentModel");
 async function getCustomersWithSummary() {
   try {
     const customers = await Customer.findAll({
@@ -156,9 +158,17 @@ async function createCustomerRegistrationWithPanels(
   }
 }
 
-async function markRegistrationAsDone(registrationId) {
+async function markRegistrationAsDone(
+  registrationId,
+  customerId,
+  leadId,
+  data,
+) {
   const t = await sequelize.transaction();
+
   try {
+    const { cs_no, panel_brand, inverter_brand, inverter_capacity } = data;
+
     const registration = await CustomerRegistration.findOne({
       where: { id: registrationId },
       transaction: t,
@@ -175,7 +185,57 @@ async function markRegistrationAsDone(registrationId) {
       return { success: false, message: `Status is not 'approved'` };
     }
 
+    // ✅ fetch required data
+    const lead = await Lead.findByPk(leadId, { transaction: t });
+
+    const customerDocs = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // ✅ check existing
+    const existingFile = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+      transaction: t,
+    });
+
+    if (!existingFile) {
+      await FileGeneration.create(
+        {
+          registration_id: registrationId,
+
+          // 🔹 from body
+          cs_no,
+          panel_brand,
+          inverter_brand,
+          inverter_capacity: inverter_capacity
+            ? parseFloat(inverter_capacity)
+            : null,
+
+          // 🔹 from customer_documents
+          consumer_number: customerDocs?.consumer_number || null,
+          geo_location: customerDocs?.geo_coordinate || null,
+          subdivision: customerDocs?.sub_division || null,
+
+          // 🔹 from lead
+          beneficiary_name: lead?.customer_name || null,
+          beneficiary_address: lead?.address || null,
+          consumer_contact: lead?.contact_number || null,
+          panel_quantity: lead?.number_of_panels || null,
+          panel_capacity: lead?.panel_wattage || null,
+          system_capacity: lead?.total_capacity || null,
+
+          // 🔹 from registration
+          application_number: registration?.application_number || null,
+          registration_date: registration?.registration_date || null,
+          agreement_date: registration?.agreement_date || null,
+        },
+        { transaction: t },
+      );
+    }
+
     await t.commit();
+
     return {
       success: true,
       registration_id: registration.id,
@@ -188,9 +248,33 @@ async function markRegistrationAsDone(registrationId) {
   }
 }
 
+async function getFileGenerationData(registrationId) {
+  try {
+    const fileData = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+    });
+
+    if (!fileData) {
+      return {
+        success: false,
+        message: "File generation data not found",
+      };
+    }
+
+    return {
+      success: true,
+      data: fileData,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching file generation data:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCustomersWithSummary,
   getNumberOfPanelsByLeadId,
   createCustomerRegistrationWithPanels,
   markRegistrationAsDone,
+  getFileGenerationData,
 };
