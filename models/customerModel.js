@@ -34,6 +34,5 @@ const Customer = sequelize.define(
   },
 );
 
-Customer.belongsTo(Lead, { foreignKey: "lead_id", as: "lead" });
 
 module.exports = { Customer };

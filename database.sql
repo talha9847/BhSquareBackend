@@ -125,3 +125,25 @@ CREATE TABLE customer_document_files (
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+CREATE TABLE customer_registration (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER UNIQUE REFERENCES customers(id),
+    application_number VARCHAR(50) UNIQUE,
+    registration_date DATE     -- ✅ new column
+    agreement_date DATE,
+    inverter_qty INTEGER,
+    panel_qty INTEGER,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+);
+
+
+CREATE TABLE panel_serials (
+    id SERIAL PRIMARY KEY,
+    registration_id INTEGER REFERENCES customer_registration(id) ON DELETE CASCADE,
+    serial_number VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

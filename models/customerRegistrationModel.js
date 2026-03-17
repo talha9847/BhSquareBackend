@@ -18,6 +18,9 @@ const CustomerRegistration = sequelize.define(
     application_number: {
       type: DataTypes.STRING(50),
     },
+    registration_date: {
+      type: DataTypes.DATEONLY,
+    },
     agreement_date: {
       type: DataTypes.DATEONLY,
     },
@@ -26,6 +29,10 @@ const CustomerRegistration = sequelize.define(
     },
     panel_qty: {
       type: DataTypes.INTEGER,
+    },
+    status: {
+      type: DataTypes.STRING(20),
+      defaultValue: "pending", // overall workflow status
     },
     created_at: {
       type: DataTypes.DATE,
@@ -37,15 +44,5 @@ const CustomerRegistration = sequelize.define(
     timestamps: false,
   },
 );
-
-// Associations
-CustomerRegistration.hasMany(PanelSerial, {
-  foreignKey: "registration_id",
-  as: "panels",
-});
-PanelSerial.belongsTo(CustomerRegistration, {
-  foreignKey: "registration_id",
-  as: "registration",
-});
 
 module.exports = { CustomerRegistration };

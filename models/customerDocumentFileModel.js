@@ -37,14 +37,6 @@ const CustomerDocumentFile = sequelize.define(
   },
 );
 
-// Associations
-CustomerDocument.hasMany(CustomerDocumentFile, {
-  foreignKey: "document_id",
-  as: "files",
-});
-CustomerDocumentFile.belongsTo(CustomerDocument, {
-  foreignKey: "document_id",
-  as: "document",
-});
+
 
 module.exports = { CustomerDocumentFile };

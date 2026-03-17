@@ -130,7 +130,9 @@ async function completeStageAndPrepareNext(req, res) {
 
     const result =
       await docCollectService.completeStageAndPrepareNext(customer_id);
-
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
     return res.status(201).json({ success: true, data: result });
   } catch (error) {
     console.error("❌ Error completing stage:", error);

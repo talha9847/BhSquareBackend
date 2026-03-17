@@ -229,6 +229,14 @@ async function checkCustomerReady(customerId) {
 }
 
 async function completeStageAndPrepareNext(customerId) {
+  const readiness = await checkCustomerReady(customerId);
+
+  if (!readiness.status) {
+    return {
+      success: false,
+      message: readiness.message,
+    };
+  }
   const t = await sequelize.transaction();
 
   try {
@@ -274,8 +282,10 @@ async function completeStageAndPrepareNext(customerId) {
     }
 
     await t.commit();
-
-    return await Customer.findByPk(customerId);
+    return {
+      success: true,
+      message: "Stage completed and next stage prepared",
+    };
   } catch (error) {
     await t.rollback();
     throw error;
