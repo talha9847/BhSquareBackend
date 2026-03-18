@@ -68,7 +68,6 @@ async function markRegistrationAsDone(req, res) {
 
     console.log(data);
 
-
     const result = await registrationService.markRegistrationAsDone(
       registrationId,
       customerId,
@@ -112,7 +111,6 @@ async function getFileGeneration(req, res) {
       return res.status(404).json(result);
     }
     const d = result.data;
-
     // Load template from project root
     const templatePath = path.join(
       __dirname,
@@ -137,10 +135,23 @@ async function getFileGeneration(req, res) {
       REGISTRATION_DATE: d.registration_date || "",
       SUBDIVISION: d.subdivision || "",
       PANEL_BRAND: d.panel_brand || "",
-      PANEL_CAPACITY: String(d.panel_capacity || ""),
-      SYSTEM_CAPACITY: String(d.system_capacity || ""),
+      PANEL_CAPACITY:
+        d.panel_capacity != null ? Math.floor(d.panel_capacity).toString() : "",
+      PANEL_QUANTITY: d.panel_quantity != null ? String(d.panel_quantity) : "",
+      SYSTEM_CAPACITY:
+        d.system_capacity != null ? (d.system_capacity / 1000).toFixed(2) : "",
       INVERTER_BRAND: d.inverter_brand || "",
-      INVERTER_CAPACITY: String(d.inverter_capacity || ""),
+      INVERTER_CAPACITY:
+        d.inverter_capacity != null
+          ? Number(d.inverter_capacity).toFixed(2)
+          : "",
+
+      TOTAL_CAPACITY:
+        d.inverter_quantity != null && d.inverter_capacity != null
+          ? (d.inverter_quantity * Number(d.inverter_capacity)).toFixed(2)
+          : "",
+
+      INVERTER_QUANTITY: d.inverter_quantity ?? "",
     });
 
     const buffer = doc.getZip().generate({ type: "nodebuffer" });
