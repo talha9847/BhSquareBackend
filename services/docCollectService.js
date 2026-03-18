@@ -215,7 +215,7 @@ async function checkCustomerReady(customerId) {
 
   const uploadedCount = customerDocument.files.length;
 
-  if (uploadedCount >= 4) {
+  if (uploadedCount >= 2) {
     return {
       status: true,
       message: `Customer has ${uploadedCount} documents. Ready for next stage.`,

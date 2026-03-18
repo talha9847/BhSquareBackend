@@ -9,7 +9,8 @@ const sourceRoutes = require("./routes/sourceRoute");
 const customerRoutes = require("./routes/customerRoutes");
 const docCollectRoutes = require("./routes/docCollectRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
-require("./models/associationModel")
+const nameChangeRoutes = require("./routes/nameChangeRoute");
+require("./models/associationModel");
 UserSeeder.startServer();
 app.use(express.json());
 app.use(cors({ origin: "https://bh-square-frontend.vercel.app" }));
@@ -20,6 +21,7 @@ app.use("/api/sources", sourceRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/docs", docCollectRoutes);
 app.use("/api/registrations", registrationRoutes);
+app.use("/api/namechange", nameChangeRoutes);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");

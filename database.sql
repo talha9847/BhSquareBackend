@@ -177,3 +177,15 @@ CREATE TABLE file_generation (
 )
 
 
+
+
+CREATE TABLE name_change (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    document_name VARCHAR(255) NOT NULL,
+    document_url VARCHAR(500),
+    
+    UNIQUE (customer_id, document_name)
+);
+
+
