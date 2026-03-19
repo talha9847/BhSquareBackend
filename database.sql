@@ -189,3 +189,27 @@ CREATE TABLE name_change (
 );
 
 
+CREATE TABLE kit_ready (
+    id SERIAL PRIMARY KEY,
+    
+    customer_id INT REFERENCES customers(id),
+    
+    -- Loan processing status:
+    -- 'pending'         → not yet evaluated
+    -- 'required'        → loan is needed
+    -- 'completed'       → loan process finished
+    -- 'not_applicable'  → loan not needed
+    loan_status VARCHAR(20) CHECK (
+        loan_status IN ('pending', 'required', 'completed', 'not_applicable')
+    ),
+    
+    -- Overall record status:
+    -- 'pending' → work in progress
+    -- 'done'    → fully completed
+    status VARCHAR(10) DEFAULT 'pending' CHECK (
+        status IN ('pending', 'done')
+    )
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+);

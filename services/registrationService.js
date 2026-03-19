@@ -5,9 +5,7 @@ const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { PanelSerial } = require("../models/panelSerialModel");
 const { FileGeneration } = require("../models/fileGenerationModel");
 const { CustomerDocument } = require("../models/customerDocumentModel");
-
-
-
+const { KitReady } = require("../models/kitReadyModel");
 const { google } = require("googleapis");
 
 // Replace the old Service Account Auth with this:
@@ -249,6 +247,22 @@ async function markRegistrationAsDone(
       where: { customer_id: customerId },
       transaction: t,
     });
+
+    const existingKit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!existingKit) {
+      await KitReady.create(
+        {
+          customer_id: customerId,
+          loan_status: "pending",
+          status: "pending",
+        },
+        { transaction: t },
+      );
+    }
     const folderId = await renameCustomerFolder(
       oldFolderName,
       newFolderName,

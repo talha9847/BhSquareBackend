@@ -7,6 +7,7 @@ const { PanelSerial } = require("./panelSerialModel");
 const { CustomerDocument } = require("./customerDocumentModel");
 const { CustomerDocumentFile } = require("./customerDocumentFileModel");
 const { FileGeneration } = require("./fileGenerationModel"); // ✅ Import FileGeneration
+const { KitReady } = require("../models/kitReadyModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -57,7 +58,15 @@ CustomerRegistration.hasOne(FileGeneration, {
   foreignKey: "registration_id",
   as: "file_generation",
 });
+KitReady.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
 
+Customer.hasOne(KitReady, {
+  foreignKey: "customer_id",
+  as: "kit_ready",
+});
 // ----------------------
 // Export all models
 module.exports = {
