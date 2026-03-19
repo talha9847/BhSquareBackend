@@ -213,3 +213,29 @@ CREATE TABLE kit_ready (
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 );
+
+
+
+
+CREATE TABLE customer_loan (
+    id SERIAL PRIMARY KEY,
+    customer_id INT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    bank_name VARCHAR(100) NOT NULL,
+    is_applied BOOLEAN DEFAULT FALSE,
+    estimated NUMERIC(12,2),
+    loan_amount NUMERIC(12,2),
+    interest_rate NUMERIC(5,2),
+    bank_remarks TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE loan_docs (
+    id SERIAL PRIMARY KEY,
+    loan_id INT NOT NULL REFERENCES customer_loan(id) ON DELETE CASCADE,
+    doc_name VARCHAR(255) NOT NULL,
+    url TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT loan_doc_unique UNIQUE (loan_id, doc_name)
+);

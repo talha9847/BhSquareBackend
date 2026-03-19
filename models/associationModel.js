@@ -8,6 +8,8 @@ const { CustomerDocument } = require("./customerDocumentModel");
 const { CustomerDocumentFile } = require("./customerDocumentFileModel");
 const { FileGeneration } = require("./fileGenerationModel"); // ✅ Import FileGeneration
 const { KitReady } = require("../models/kitReadyModel");
+const { Loan } = require("../models/loanModel");
+const { LoanDoc } = require("../models/loanDocModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -67,6 +69,16 @@ Customer.hasOne(KitReady, {
   foreignKey: "customer_id",
   as: "kit_ready",
 });
+
+// Associations
+Loan.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
+Customer.hasMany(Loan, { foreignKey: "customer_id", as: "loans" });
+
+// Associations
+LoanDoc.belongsTo(Loan, { foreignKey: "loan_id", as: "loan" });
+Loan.hasMany(LoanDoc, { foreignKey: "loan_id", as: "documents" });
+
+
 // ----------------------
 // Export all models
 module.exports = {
@@ -77,4 +89,6 @@ module.exports = {
   CustomerDocument,
   CustomerDocumentFile,
   FileGeneration,
+  Loan,
+  LoanDoc,
 };
