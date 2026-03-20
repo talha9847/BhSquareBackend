@@ -83,7 +83,7 @@ async function markRegistrationAsDone(req, res) {
 
     return res.status(200).json({
       message: `Registration status updated to '${result.new_status}'`,
-      registration_id: result.registration_id,
+      // registration_id: result.registration_id,
     });
   } catch (error) {
     console.error("❌ Error marking registration as done:", error);
@@ -134,13 +134,13 @@ async function getFileGeneration(req, res) {
       AGREEMENT_DATE: d.agreement_date || "",
       REGISTRATION_DATE: d.registration_date || "",
       SUBDIVISION: d.subdivision || "",
-      PANEL_BRAND: d.panel_brand || "",
+      PANEL_BRAND: d.panelBrand?.name || "",
+      INVERTER_BRAND: d.inverterBrand?.name || "",
       PANEL_CAPACITY:
         d.panel_capacity != null ? Math.floor(d.panel_capacity).toString() : "",
       PANEL_QUANTITY: d.panel_quantity != null ? String(d.panel_quantity) : "",
       SYSTEM_CAPACITY:
         d.system_capacity != null ? (d.system_capacity / 1000).toFixed(2) : "",
-      INVERTER_BRAND: d.inverter_brand || "",
       INVERTER_CAPACITY:
         d.inverter_capacity != null
           ? Number(d.inverter_capacity).toFixed(2)

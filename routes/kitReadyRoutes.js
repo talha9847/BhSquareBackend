@@ -7,5 +7,8 @@ router.get(
   kitReadyController.fetchKitReadyCustomers,
 );
 router.post("/updateLoan", kitReadyController.updateLoan);
+router.post("/createInventory", kitReadyController.createInventory);
+router.get("/getAllBrands", kitReadyController.getAllBrands);
+router.get("/getAllInventory", kitReadyController.getAllInventory);
 
 module.exports = router;

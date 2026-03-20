@@ -6,6 +6,7 @@ const { PanelSerial } = require("../models/panelSerialModel");
 const { FileGeneration } = require("../models/fileGenerationModel");
 const { CustomerDocument } = require("../models/customerDocumentModel");
 const { KitReady } = require("../models/kitReadyModel");
+const { Brand } = require("../models/brandModel");
 const { google } = require("googleapis");
 
 // Replace the old Service Account Auth with this:
@@ -220,7 +221,8 @@ async function markRegistrationAsDone(
   const t = await sequelize.transaction();
 
   try {
-    const { cs_no, panel_brand, inverter_brand, inverter_capacity } = data;
+    const { cs_no, panel_brand_id, inverter_brand_id, inverter_capacity } =
+      data;
 
     const registration = await CustomerRegistration.findOne({
       where: { id: registrationId },
@@ -283,8 +285,8 @@ async function markRegistrationAsDone(
 
           // 🔹 from body
           cs_no,
-          panel_brand,
-          inverter_brand,
+          panel_brand_id,
+          inverter_brand_id,
           inverter_capacity: inverter_capacity
             ? parseFloat(inverter_capacity)
             : null,
@@ -329,6 +331,19 @@ async function getFileGenerationData(registrationId) {
   try {
     const fileData = await FileGeneration.findOne({
       where: { registration_id: registrationId },
+
+      include: [
+        {
+          model: Brand,
+          as: "panelBrand",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Brand,
+          as: "inverterBrand",
+          attributes: ["id", "name"],
+        },
+      ],
     });
 
     if (!fileData) {
@@ -354,4 +369,5 @@ module.exports = {
   createCustomerRegistrationWithPanels,
   markRegistrationAsDone,
   getFileGenerationData,
+
 };

@@ -10,6 +10,8 @@ const { FileGeneration } = require("./fileGenerationModel"); // ✅ Import FileG
 const { KitReady } = require("../models/kitReadyModel");
 const { Loan } = require("../models/loanModel");
 const { LoanDoc } = require("../models/loanDocModel");
+const { Brand } = require("../models/brandModel");
+const { Inventory } = require("../models/inventoryModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -78,7 +80,20 @@ Customer.hasMany(Loan, { foreignKey: "customer_id", as: "loans" });
 LoanDoc.belongsTo(Loan, { foreignKey: "loan_id", as: "loan" });
 Loan.hasMany(LoanDoc, { foreignKey: "loan_id", as: "documents" });
 
+FileGeneration.belongsTo(Brand, {
+  foreignKey: "panel_brand_id",
+  as: "panelBrand",
+});
 
+FileGeneration.belongsTo(Brand, {
+  foreignKey: "inverter_brand_id",
+  as: "inverterBrand",
+});
+
+Inventory.belongsTo(Brand, {
+  foreignKey: "brand_id",
+  as: "brand",
+});
 // ----------------------
 // Export all models
 module.exports = {
@@ -91,4 +106,6 @@ module.exports = {
   FileGeneration,
   Loan,
   LoanDoc,
+  Brand,
+  Inventory,
 };

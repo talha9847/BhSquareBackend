@@ -239,3 +239,10 @@ CREATE TABLE loan_docs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT loan_doc_unique UNIQUE (loan_id, doc_name)
 );
+
+
+CREATE TABLE brands (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

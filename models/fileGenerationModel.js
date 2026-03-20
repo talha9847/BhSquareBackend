@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const { CustomerRegistration } = require("./customerRegistrationModel");
+const { Brand } = require("../models/brandModel");
 
 const FileGeneration = sequelize.define(
   "FileGeneration",
@@ -56,10 +57,18 @@ const FileGeneration = sequelize.define(
     subdivision: {
       type: DataTypes.STRING(255),
     },
-
-    panel_brand: {
-      type: DataTypes.STRING(100),
+    panel_brand_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: Brand,
+        key: "id",
+      },
+      allowNull: true,
     },
+
+    // panel_brand: {
+    //   type: DataTypes.STRING(100),
+    // },
     panel_capacity: {
       type: DataTypes.DECIMAL(10, 2),
     },
@@ -71,9 +80,17 @@ const FileGeneration = sequelize.define(
       type: DataTypes.DECIMAL(10, 2),
     },
 
-    inverter_brand: {
-      type: DataTypes.STRING(100),
+    inverter_brand_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: Brand,
+        key: "id",
+      },
+      allowNull: true,
     },
+    // inverter_brand: {
+    //   type: DataTypes.STRING(100),
+    // },
     inverter_quantity: {
       type: DataTypes.INTEGER,
     },

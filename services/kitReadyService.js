@@ -1,9 +1,11 @@
 const { KitReady } = require("../models/kitReadyModel");
+const { Brand } = require("../models/brandModel");
 const { Customer } = require("../models/customerModel");
 const { Lead } = require("../models/leadModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const sequelize = require("../config/db");
 const { Loan } = require("../models/loanModel");
+const { Inventory } = require("../models/inventoryModel");
 
 async function getKitReadyCustomers() {
   try {
@@ -103,4 +105,79 @@ async function updateLoanStatus(loanRequired, customerId) {
   }
 }
 
-module.exports = { getKitReadyCustomers, updateLoanStatus };
+async function getAllBrands() {
+  try {
+    const brands = await Brand.findAll({
+      attributes: ["id", "name"], // only return id & name
+      order: [["name", "ASC"]], // optional sorting
+    });
+
+    return brands;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function addInventory(data) {
+  const { name, brand_id, qty } = data;
+
+  try {
+    if (!name) {
+      throw new Error("Inventory name is required");
+    }
+
+    if (brand_id) {
+      const brand = await Brand.findByPk(brand_id);
+      if (!brand) {
+        throw new Error("Invalid brand_id");
+      }
+    }
+
+    const inventory = await Inventory.create({
+      name,
+      brand_id: brand_id || null,
+      qty: qty || 0,
+    });
+
+    return inventory;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getAllInventory() {
+  try {
+    const inventory = await Inventory.findAll({
+      include: [
+        {
+          model: Brand,
+          as: "brand",
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    const formatted = inventory.map((item) => ({
+      id: item.id,
+      name: item.name,
+      brand_id: item.brand_id,
+      brand_name: item.brand?.name || null, // ✅ flattened
+      qty: item.qty,
+      created_at: item.created_at,
+    }));
+
+    return formatted;
+  } catch (error) {
+    console.error("❌ Error fetching inventory:", error);
+    throw error;
+  }
+}
+
+module.exports = {
+  getKitReadyCustomers,
+  updateLoanStatus,
+  getAllBrands,
+  addInventory,
+  getAllInventory,
+};
