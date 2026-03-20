@@ -6,6 +6,9 @@ const { FileGeneration } = require("../models/fileGenerationModel");
 const { Lead } = require("../models/leadModel");
 const { Loan } = require("../models/loanModel");
 const { LoanDoc } = require("../models/loanDocModel");
+const { CustomerStage } = require("../models/customerStageModel");
+const { KitReady } = require("../models/kitReadyModel");
+const sequelize = require("../config/db");
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -206,9 +209,92 @@ async function updateLoanByCustomerId(customerId, updateData) {
   }
 }
 
+async function approveLoanByCustomerId(customerId) {
+  try {
+    // 1️⃣ Check if loan exists
+    const loan = await Loan.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!loan) {
+      return null;
+    }
+
+    await Loan.update(
+      { is_approved: true },
+      { where: { customer_id: customerId } },
+    );
+
+    const updatedLoan = await Loan.findOne({
+      where: { customer_id: customerId },
+    });
+
+    return updatedLoan;
+  } catch (error) {
+    console.error("Error approving loan:", error);
+    throw error;
+  }
+}
+
+async function completeLoanAndMoveToKitReady(customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    await CustomerStage.update(
+      { status: "done" },
+      {
+        where: {
+          customer_id: customerId,
+          stage_id: 5,
+        },
+        transaction: t,
+      },
+    );
+
+    await CustomerStage.update(
+      { status: "pending" },
+      {
+        where: {
+          customer_id: customerId,
+          stage_id: 6,
+        },
+        transaction: t,
+      },
+    );
+
+    await Loan.update(
+      { status: "done" },
+      {
+        where: {
+          customer_id: customerId,
+        },
+        transaction: t,
+      },
+    );
+
+    await KitReady.update(
+      { loan_status: "completed" },
+      {
+        where: {
+          customer_id: customerId,
+        },
+        transaction: t,
+      },
+    );
+
+    await t.commit();
+    return true;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   uploadLoanDocs,
   findCustomerName,
   byCustomerId,
   updateLoanByCustomerId,
+  approveLoanByCustomerId,
+  completeLoanAndMoveToKitReady,
 };

@@ -13,4 +13,12 @@ router.get(
   loanController.getLoanByCustomerId,
 );
 router.put("/updateLoan/:customerId", loanController.updateLoan);
+
+router.patch("/approveLoan/:customerId", loanController.approveLoan);
+
+router.put(
+  "/completeLoanAndMoveToKitReady/:customerId",
+  loanController.completeLoanAndMoveToKitReady,
+);
+
 module.exports = router;

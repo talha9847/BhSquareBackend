@@ -1,5 +1,5 @@
 const { DataTypes } = require("sequelize");
-const sequelize  = require("../config/db"); // adjust path to your sequelize instance
+const sequelize = require("../config/db"); // adjust path to your sequelize instance
 const { Customer } = require("./customerModel"); // make sure this exists
 
 const Loan = sequelize.define(
@@ -37,6 +37,9 @@ const Loan = sequelize.define(
     },
     bank_remarks: {
       type: DataTypes.TEXT,
+    },
+    status: {
+      type: DataTypes.STRING,
     },
     is_approved: {
       type: DataTypes.BOOLEAN,

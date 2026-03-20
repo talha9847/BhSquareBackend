@@ -81,7 +81,6 @@ async function getLoanByCustomerId(req, res) {
   }
 }
 
-
 async function updateLoan(req, res) {
   try {
     const { customerId } = req.params;
@@ -120,4 +119,89 @@ async function updateLoan(req, res) {
   }
 }
 
-module.exports = { uploadLoanDocuments, getLoanByCustomerId ,updateLoan};
+async function approveLoan(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const updatedLoan = await loanService.approveLoanByCustomerId(customerId);
+
+    if (!updatedLoan) {
+      return res.status(404).json({
+        success: false,
+        message: "Loan not found for this customer",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Loan approved successfully",
+      data: updatedLoan,
+    });
+  } catch (error) {
+    console.error("Error in approveLoan controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function completeLoanAndMoveToKitReady(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    // 🔹 Validate customerId
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    if (isNaN(customerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid customerId",
+      });
+    }
+
+    // 🔹 Call service
+    const result = await loanService.completeLoanAndMoveToKitReady(customerId);
+
+    // 🔹 If something failed logically
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Operation failed or customer not found",
+      });
+    }
+
+    // 🔹 Success response
+    return res.status(200).json({
+      success: true,
+      message: "Loan completed and moved to Kit Ready stage successfully",
+    });
+  } catch (error) {
+    console.error("Error in completeLoanAndMoveToKitReady controller:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+module.exports = {
+  uploadLoanDocuments,
+  getLoanByCustomerId,
+  updateLoan,
+  approveLoan,
+  completeLoanAndMoveToKitReady,
+};
