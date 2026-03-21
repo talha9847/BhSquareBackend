@@ -174,10 +174,110 @@ async function getAllInventory() {
   }
 }
 
+async function addBrand(data) {
+  try {
+    const { name } = data;
+
+    if (!name) {
+      throw new Error("Brand name is required");
+    }
+
+    const existing = await Brand.findOne({
+      where: { name },
+    });
+
+    if (existing) {
+      throw new Error("Brand already exists");
+    }
+
+    const brand = await Brand.create({
+      name: name.trim(),
+    });
+
+    return brand;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateBrand(id, data) {
+  try {
+    const { name } = data;
+
+    if (!id) {
+      throw new Error("Brand id is required");
+    }
+
+    if (!name) {
+      throw new Error("Brand name is required");
+    }
+
+    const brand = await Brand.findByPk(id);
+
+    if (!brand) {
+      throw new Error("Brand not found");
+    }
+
+    const existing = await Brand.findOne({
+      where: sequelize.where(
+        sequelize.fn("LOWER", sequelize.col("name")),
+        name.toLowerCase(),
+      ),
+    });
+
+    if (existing && existing.id !== Number(id)) {
+      throw new Error("Brand already exists");
+    }
+
+    await brand.update({
+      name: name.trim().toUpperCase(),
+    });
+
+    return brand;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function deleteBrand(id) {
+  try {
+    // 🔹 Validate
+    if (!id) {
+      throw new Error("Brand id is required");
+    }
+
+    // 🔹 Check brand exists
+    const brand = await Brand.findByPk(id);
+
+    if (!brand) {
+      throw new Error("Brand not found");
+    }
+
+    // 🔹 Check if brand is used in inventory
+    const isUsed = await Inventory.findOne({
+      where: { brand_id: id },
+    });
+
+    if (isUsed) {
+      throw new Error("Cannot delete brand. It is used in inventory.");
+    }
+
+    // 🔹 Delete brand
+    await brand.destroy();
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
   getAllBrands,
   addInventory,
   getAllInventory,
+  addBrand,
+  updateBrand,
+  deleteBrand,
 };
