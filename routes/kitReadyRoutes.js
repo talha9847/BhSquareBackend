@@ -13,5 +13,6 @@ router.get("/getAllInventory", kitReadyController.getAllInventory);
 router.post("/createBrand", kitReadyController.createBrand);
 router.put("/updateBrand/:id", kitReadyController.updateBrand);
 router.delete("/deleteBrand/:id", kitReadyController.deleteBrand);
+router.put("/updateInventory/:id", kitReadyController.updateInventory);
 
 module.exports = router;

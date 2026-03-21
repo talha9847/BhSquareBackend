@@ -60,7 +60,6 @@ async function getAllBrands(req, res) {
 
 async function createInventory(req, res) {
   try {
-    console.log(req.body);
     const inventory = await kitReadyService.addInventory(req.body);
 
     return res.status(201).json({
@@ -77,7 +76,6 @@ async function createInventory(req, res) {
 
 async function getAllInventory(req, res) {
   try {
-    console.log("i dam mdklj");
     const data = await kitReadyService.getAllInventory();
 
     return res.status(200).json({
@@ -145,6 +143,28 @@ async function deleteBrand(req, res) {
     });
   }
 }
+
+async function updateInventory(req, res) {
+  try {
+    const { id } = req.params;
+
+    const updatedInventory = await kitReadyService.updateInventory(
+      id,
+      req.body,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Inventory updated successfully",
+      data: updatedInventory,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -154,4 +174,5 @@ module.exports = {
   createBrand,
   updateBrand,
   deleteBrand,
+  updateInventory,
 };

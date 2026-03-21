@@ -271,6 +271,72 @@ async function deleteBrand(id) {
   }
 }
 
+async function updateInventory(id, data) {
+  try {
+    const { name, brand_id, qty } = data;
+
+    // 🔹 Validate
+    if (!id) {
+      throw new Error("Inventory id is required");
+    }
+
+    if (!name) {
+      throw new Error("Inventory name is required");
+    }
+
+    if (qty === undefined || qty === null) {
+      throw new Error("Quantity is required");
+    }
+
+    const inventory = await Inventory.findByPk(id);
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    const numericQty = Number(qty);
+
+    if (isNaN(numericQty)) {
+      throw new Error("Quantity must be a valid number");
+    }
+
+    const updatedQty = inventory.qty + numericQty;
+    if (updatedQty < 0) {
+      throw new Error("Insufficient stock");
+    }
+
+    await inventory.update({
+      name: name.trim().toUpperCase(),
+      brand_id: brand_id || null,
+      qty: updatedQty,
+    });
+
+    return inventory;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function deleteInventory(id) {
+  try {
+    if (!id) {
+      throw new Error("Inventory id is required");
+    }
+
+    const inventory = await Inventory.findByPk(id);
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    await inventory.destroy();
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -280,4 +346,6 @@ module.exports = {
   addBrand,
   updateBrand,
   deleteBrand,
+  updateInventory,
+  deleteInventory,
 };
