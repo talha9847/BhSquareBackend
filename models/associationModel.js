@@ -12,6 +12,7 @@ const { Loan } = require("../models/loanModel");
 const { LoanDoc } = require("../models/loanDocModel");
 const { Brand } = require("../models/brandModel");
 const { Inventory } = require("../models/inventoryModel");
+const { KitItems } = require("../models/kitItemsModels");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -94,6 +95,27 @@ Inventory.belongsTo(Brand, {
   foreignKey: "brand_id",
   as: "brand",
 });
+
+KitReady.hasMany(KitItems, {
+  foreignKey: "kit_id",
+  as: "items",
+});
+
+// Each item belongs to one kit
+KitItems.belongsTo(KitReady, {
+  foreignKey: "kit_id",
+  as: "kit",
+});
+
+Inventory.hasMany(KitItems, {
+  foreignKey: "inventory_id",
+  as: "kitItems",
+});
+
+KitItems.belongsTo(Inventory, {
+  foreignKey: "inventory_id",
+  as: "inventory",
+});
 // ----------------------
 // Export all models
 module.exports = {
@@ -108,4 +130,5 @@ module.exports = {
   LoanDoc,
   Brand,
   Inventory,
+  KitItems,
 };

@@ -14,5 +14,14 @@ router.post("/createBrand", kitReadyController.createBrand);
 router.put("/updateBrand/:id", kitReadyController.updateBrand);
 router.delete("/deleteBrand/:id", kitReadyController.deleteBrand);
 router.put("/updateInventory/:id", kitReadyController.updateInventory);
+router.post("/addKitItems", kitReadyController.addKitItems);
+
+router.get("/fetchKitItems/:customerId", kitReadyController.fetchKitItems);
+router.get(
+  "/fetchAvailableProducts/:customerId",
+  kitReadyController.fetchAvailableProducts,
+);
+
+router.post("/addItem", kitReadyController.addItem);
 
 module.exports = router;

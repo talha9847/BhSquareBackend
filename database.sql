@@ -246,3 +246,21 @@ CREATE TABLE brands (
   name VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE kit_items (
+    id SERIAL PRIMARY KEY,
+
+    kit_id INTEGER NOT NULL REFERENCES kit_ready(id) ON DELETE CASCADE,
+    inventory_id INTEGER NOT NULL REFERENCES inventory_table(id) ON DELETE CASCADE,
+
+    qty INTEGER NOT NULL CHECK (qty > 0),
+
+    status VARCHAR(20) DEFAULT 'pending' CHECK (
+        status IN ('pending', 'allocated')
+    ),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE (kit_id, inventory_id)
+);
