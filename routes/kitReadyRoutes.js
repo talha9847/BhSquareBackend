@@ -23,5 +23,6 @@ router.get(
 );
 
 router.post("/addItem", kitReadyController.addItem);
+router.post("/allocateItem", kitReadyController.allocateItem);
 
 module.exports = router;

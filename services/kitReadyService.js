@@ -495,8 +495,6 @@ async function addItemToKit({ kit_id, inventory_id }) {
     throw new Error("Inventory item not found");
   }
 
-
-
   // 🔹 Prevent duplicate (even though DB has unique constraint)
   const existingItem = await KitItems.findOne({
     where: { kit_id, inventory_id },
@@ -523,6 +521,47 @@ async function addItemToKit({ kit_id, inventory_id }) {
   };
 }
 
+async function allocateKitItem({ kit_item_id, qty }) {
+  const t = await sequelize.transaction();
+
+  try {
+    const kitItem = await KitItems.findByPk(kit_item_id, { transaction: t });
+
+    if (!kitItem) {
+      throw new Error("Kit item not found");
+    }
+
+    const inventory = await Inventory.findByPk(kitItem.inventory_id, {
+      transaction: t,
+    });
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    if (inventory.qty < qty) {
+      throw new Error("Insufficient stock");
+    }
+
+    await Inventory.update(
+      { qty: inventory.qty - qty },
+      { where: { id: inventory.id }, transaction: t },
+    );
+
+    await KitItems.update(
+      { qty, status: "allocated" },
+      { where: { id: kit_item_id }, transaction: t },
+    );
+
+    await t.commit();
+
+    return { success: true, message: "Allocated successfully" };
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -538,4 +577,5 @@ module.exports = {
   getKitItemsByCustomer,
   getAvailableProductsForKit,
   addItemToKit,
+  allocateKitItem,
 };

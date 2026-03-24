@@ -258,6 +258,27 @@ async function addItem(req, res) {
   }
 }
 
+async function allocateItem(req, res) {
+  try {
+    const { kit_item_id, qty } = req.body;
+
+    const result = await kitReadyService.allocateKitItem({
+      kit_item_id,
+      qty,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -272,4 +293,5 @@ module.exports = {
   fetchKitItems,
   fetchAvailableProducts,
   addItem,
+  allocateItem,
 };
