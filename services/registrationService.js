@@ -53,13 +53,13 @@ async function getCustomersWithSummary() {
             "status",
           ],
           required: true, // only include customers who have a registration
-          include: [
-            {
-              model: PanelSerial,
-              as: "panels", // make sure association alias is correct in your model
-              attributes: ["id", "serial_number", "created_at"],
-            },
-          ],
+          // include: [
+          //   {
+          //     model: PanelSerial,
+          //     as: "panels", // make sure association alias is correct in your model
+          //     attributes: ["id", "serial_number", "created_at"],
+          //   },
+          // ],
         },
       ],
 
@@ -143,27 +143,27 @@ async function createCustomerRegistrationWithPanels(
     }
 
     // Step 2: Handle panel serials
-    if (
-      registrationData.panel_serials &&
-      registrationData.panel_serials.length > 0
-    ) {
-      // Delete existing panels if any
-      await PanelSerial.destroy({
-        where: { registration_id: registration.id },
-        transaction: t,
-      });
+    // if (
+    //   registrationData.panel_serials &&
+    //   registrationData.panel_serials.length > 0
+    // ) {
+    //   // Delete existing panels if any
+    //   await PanelSerial.destroy({
+    //     where: { registration_id: registration.id },
+    //     transaction: t,
+    //   });
 
-      // Prepare new panel rows
-      const panelRows = registrationData.panel_serials.map((panel) => ({
-        registration_id: registration.id,
-        serial_number: panel.value,
-        status: "active",
-        created_at: new Date(),
-      }));
+    //   // Prepare new panel rows
+    //   const panelRows = registrationData.panel_serials.map((panel) => ({
+    //     registration_id: registration.id,
+    //     serial_number: panel.value,
+    //     status: "active",
+    //     created_at: new Date(),
+    //   }));
 
-      // Bulk insert
-      await PanelSerial.bulkCreate(panelRows, { transaction: t });
-    }
+    //   // Bulk insert
+    //   await PanelSerial.bulkCreate(panelRows, { transaction: t });
+    // }
 
     await t.commit();
     return { success: true, registration_id: registration.id };
@@ -369,5 +369,4 @@ module.exports = {
   createCustomerRegistrationWithPanels,
   markRegistrationAsDone,
   getFileGenerationData,
-
 };

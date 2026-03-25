@@ -264,3 +264,29 @@ CREATE TABLE kit_items (
 
     UNIQUE (kit_id, inventory_id)
 );
+
+
+
+
+
+TRUNCATE TABLE
+users,
+leads,
+lead_sources,
+lead_delays,
+stages,
+customers,
+customer_stages,
+lead_cancellations,
+customer_documents,
+customer_document_files,
+customer_registration,
+panel_serials,
+file_generation,
+name_change,
+kit_ready,
+customer_loan,
+loan_docs,
+brands,
+kit_items
+RESTART IDENTITY CASCADE;
