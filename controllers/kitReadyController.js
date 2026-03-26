@@ -1,3 +1,5 @@
+const { InverterSerial } = require("../models/inverterSerialModel");
+const { PanelSerial } = require("../models/panelSerialModel");
 const kitReadyService = require("../services/kitReadyService");
 
 async function fetchKitReadyCustomers(req, res) {
@@ -279,6 +281,80 @@ async function allocateItem(req, res) {
   }
 }
 
+async function getPanelAndInventer(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result =
+      await kitReadyService.getPanelAndInverterByCustomerId(customerId);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function addCustomerSerials(req, res) {
+  try {
+    const { customerId, panelSerials, inverterSerials } = req.body;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    // ✅ Check if customer already has any panel or inverter serials
+    const existingPanels = await PanelSerial.count({
+      where: { customer_id: customerId },
+    });
+    const existingInverters = await InverterSerial.count({
+      where: { customer_id: customerId },
+    });
+
+    if (existingPanels > 0 || existingInverters > 0) {
+      return res.status(201).json({
+        success: true,
+        message: "Serials already exist for this customer",
+        data: {
+          panel_count: existingPanels,
+          inverter_count: existingInverters,
+        },
+      });
+    }
+
+    // Call service to insert serials and create dispatch
+    const result = await kitReadyService.addSerialsAndDispatch(
+      customerId,
+      panelSerials || [],
+      inverterSerials || [],
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Serials added and dispatch created successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error in addCustomerSerials controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+module.exports = {
+  addCustomerSerials,
+};
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -294,4 +370,6 @@ module.exports = {
   fetchAvailableProducts,
   addItem,
   allocateItem,
+  getPanelAndInventer,
+  addCustomerSerials,
 };

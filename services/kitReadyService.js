@@ -7,7 +7,12 @@ const sequelize = require("../config/db");
 const { Loan } = require("../models/loanModel");
 const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const { FileGeneration } = require("../models/fileGenerationModel");
 const { Op } = require("sequelize");
+const { PanelSerial } = require("../models/panelSerialModel");
+const { InverterSerial } = require("../models/inverterSerialModel");
+const { Dispatch } = require("../models/dispatchModel");
 
 async function getKitReadyCustomers() {
   try {
@@ -562,6 +567,118 @@ async function allocateKitItem({ kit_item_id, qty }) {
   }
 }
 
+async function getPanelAndInverterByCustomerId(customerId) {
+  try {
+    // Step 1: get registration id
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      attributes: ["id"],
+    });
+
+    if (!registration) {
+      return { panel_qty: 0, inverter_qty: 0, kit_status: null };
+    }
+
+    // Step 2: get panel/inverter from file_generation
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registration.id },
+      attributes: ["panel_quantity", "inverter_quantity"],
+    });
+
+    // Step 3: get kit_ready status
+    const kitReady = await KitReady.findOne({
+      where: { customer_id: customerId },
+      attributes: ["status"],
+    });
+
+    return {
+      panel_qty: fileGen?.panel_quantity || 0,
+      inverter_qty: fileGen?.inverter_quantity || 0,
+      kit_status: kitReady?.status || null,
+    };
+  } catch (error) { 
+    console.error("Error fetching panel/inverter/kit status:", error);
+    throw error;
+  }
+}
+
+async function addSerialsAndDispatch(
+  customerId,
+  panelSerials,
+  inverterSerials,
+) {
+  const t = await sequelize.transaction();
+
+  try {
+    // Prepare panel data
+    const panelData = panelSerials.map((serial) => ({
+      customer_id: customerId,
+      serial_number: serial.trim(),
+      created_at: new Date(),
+    }));
+
+    // Prepare inverter data
+    const inverterData = inverterSerials.map((serial) => ({
+      customer_id: customerId,
+      serial_number: serial.trim(),
+      created_at: new Date(),
+    }));
+
+    // Bulk insert panels
+    if (panelData.length > 0) {
+      await PanelSerial.bulkCreate(panelData, { transaction: t });
+    }
+
+    // Bulk insert inverters
+    if (inverterData.length > 0) {
+      await InverterSerial.bulkCreate(inverterData, { transaction: t });
+    }
+
+    // Update customer stages
+    await CustomerStage.update(
+      { status: "done", updated_at: new Date() },
+      { where: { customer_id: customerId, stage_id: 6 }, transaction: t },
+    );
+
+    await CustomerStage.update(
+      { status: "pending", updated_at: new Date() },
+      { where: { customer_id: customerId, stage_id: 7 }, transaction: t },
+    );
+
+    // Insert dispatch record with defaults
+    await Dispatch.create(
+      {
+        customer_id: customerId,
+        delivered: false,
+        status: "pending",
+        created_at: new Date(),
+        updated_at: new Date(),
+      },
+      { transaction: t },
+    );
+
+    await KitReady.update(
+      { status: "done" },
+      { where: { customer_id: customerId }, transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      panel_count: panelData.length,
+      inverter_count: inverterData.length,
+      dispatch_created: true,
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error(
+      "Error inserting serials / updating stages / creating dispatch:",
+      error,
+    );
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -578,4 +695,6 @@ module.exports = {
   getAvailableProductsForKit,
   addItemToKit,
   allocateKitItem,
+  getPanelAndInverterByCustomerId,
+  addSerialsAndDispatch,
 };

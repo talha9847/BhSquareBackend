@@ -1,8 +1,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const PanelSerial = sequelize.define(
-  "PanelSerial",
+const InverterSerial = sequelize.define(
+  "InverterSerial",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -23,9 +23,9 @@ const PanelSerial = sequelize.define(
     },
   },
   {
-    tableName: "panel_serials",
+    tableName: "inverter_serials",
     timestamps: false,
   },
 );
 
-module.exports = { PanelSerial };
+module.exports = { InverterSerial };

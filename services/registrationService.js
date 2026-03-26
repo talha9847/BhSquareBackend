@@ -221,8 +221,13 @@ async function markRegistrationAsDone(
   const t = await sequelize.transaction();
 
   try {
-    const { cs_no, panel_brand_id, inverter_brand_id, inverter_capacity } =
-      data;
+    const {
+      cs_no,
+      panel_brand_id,
+      inverter_brand_id,
+      inverter_capacity,
+      inverter_qty,
+    } = data;
 
     const registration = await CustomerRegistration.findOne({
       where: { id: registrationId },
@@ -290,7 +295,7 @@ async function markRegistrationAsDone(
           inverter_capacity: inverter_capacity
             ? parseFloat(inverter_capacity)
             : null,
-
+          inverter_quantity:   inverter_qty,
           // 🔹 from customer_documents
           consumer_number: customerDocs?.consumer_number || null,
           geo_location: customerDocs?.geo_coordinate || null,

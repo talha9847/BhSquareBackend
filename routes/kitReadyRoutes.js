@@ -24,5 +24,10 @@ router.get(
 
 router.post("/addItem", kitReadyController.addItem);
 router.post("/allocateItem", kitReadyController.allocateItem);
+router.get(
+  "/getPanelAndInventer/:customerId",
+  kitReadyController.getPanelAndInventer,
+);
+router.post("/addCustomerSerials", kitReadyController.addCustomerSerials);
 
 module.exports = router;

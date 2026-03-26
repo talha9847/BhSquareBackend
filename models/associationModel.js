@@ -13,6 +13,8 @@ const { LoanDoc } = require("../models/loanDocModel");
 const { Brand } = require("../models/brandModel");
 const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
+const { InverterSerial } = require("./inverterSerialModel");
+const { Dispatch } = require("./dispatchModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -33,13 +35,23 @@ CustomerRegistration.belongsTo(Customer, {
 // ----------------------
 // CustomerRegistration → PanelSerial
 // One Registration has many Panels
-CustomerRegistration.hasMany(PanelSerial, {
-  foreignKey: "registration_id",
+Customer.hasMany(PanelSerial, {
+  foreignKey: "customer_id",
   as: "panels",
 });
-PanelSerial.belongsTo(CustomerRegistration, {
-  foreignKey: "registration_id",
-  as: "registration",
+PanelSerial.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customers",
+});
+
+Customer.hasMany(InverterSerial, {
+  foreignKey: "customer_id",
+  as: "inverters",
+});
+
+InverterSerial.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customers",
 });
 
 // ----------------------
@@ -116,6 +128,11 @@ KitItems.belongsTo(Inventory, {
   foreignKey: "inventory_id",
   as: "inventory",
 });
+
+// Dispatch -> Customer
+Dispatch.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
+
+// Customer -> Lead
 // ----------------------
 // Export all models
 module.exports = {
@@ -131,4 +148,6 @@ module.exports = {
   Brand,
   Inventory,
   KitItems,
+  InverterSerial,
+  Dispatch,
 };
