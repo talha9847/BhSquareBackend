@@ -283,7 +283,37 @@ CREATE TABLE kit_items (
 );
 
 
+CREATE TABLE fabricator (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
+
+
+CREATE TABLE fabrication (
+    id SERIAL PRIMARY KEY,
+
+    customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+    fabricator_id INTEGER REFERENCES fabricator(id) ON DELETE SET NULL,
+
+    unused_pipes INTEGER DEFAULT 0 CHECK (unused_pipes >= 0),
+
+    status VARCHAR(20) DEFAULT 'pending',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE wiring (
+    id SERIAL PRIMARY KEY,
+    customer_id INTEGER  UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 
 TRUNCATE TABLE

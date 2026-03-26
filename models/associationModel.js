@@ -15,6 +15,9 @@ const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { InverterSerial } = require("./inverterSerialModel");
 const { Dispatch } = require("./dispatchModel");
+const { Fabrication } = require("./fabricationModel");
+const { Fabricator } = require("./fabricatorModel");
+const { Wiring } = require("./wiringModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -132,6 +135,29 @@ KitItems.belongsTo(Inventory, {
 // Dispatch -> Customer
 Dispatch.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
 
+Fabrication.belongsTo(Customer, { foreignKey: "customer_id", as: "customer" });
+Customer.hasMany(Fabrication, {
+  foreignKey: "customer_id",
+  as: "fabrications",
+});
+
+// Fabrication → Fabricator
+Fabrication.belongsTo(Fabricator, {
+  foreignKey: "fabricator_id",
+  as: "fabricator",
+});
+Fabricator.hasMany(Fabrication, {
+  foreignKey: "fabricator_id",
+  as: "fabrications",
+});
+
+// Wiring → Customer
+Wiring.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customerForWiring",
+});
+Customer.hasMany(Wiring, { foreignKey: "customer_id", as: "wiringRecords" });
+
 // Customer -> Lead
 // ----------------------
 // Export all models
@@ -150,4 +176,7 @@ module.exports = {
   KitItems,
   InverterSerial,
   Dispatch,
+  Fabrication,
+  Fabricator,
+  Wiring,
 };

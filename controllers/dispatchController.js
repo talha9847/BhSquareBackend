@@ -50,4 +50,112 @@ async function updateDispatch(req, res) {
   }
 }
 
-module.exports = { fetchDispatches, updateDispatch };
+async function createFabricator(req, res) {
+  try {
+    const { name } = req.body;
+    const fabricator = await dispatchService.addFabricator({ name });
+    return res.status(201).json({
+      success: true,
+      data: fabricator,
+    });
+  } catch (error) {
+    console.error("Error creating fabricator:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create fabricator",
+    });
+  }
+}
+
+async function fetchFabricators(req, res) {
+  try {
+    const fabricators = await dispatchService.getAllFabricators();
+    return res.status(200).json({
+      success: true,
+      data: fabricators,
+    });
+  } catch (error) {
+    console.error("Error fetching fabricators:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function updateFabricator(req, res) {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    const fabricator = await dispatchService.updateFabricator(id, { name });
+    return res.status(200).json({
+      success: true,
+      data: fabricator,
+    });
+  } catch (error) {
+    console.error("Error updating fabricator:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update fabricator",
+    });
+  }
+}
+
+async function fetchFabrications(req, res) {
+  try {
+    const fabrications = await dispatchService.getAllFabrications();
+
+    return res.status(200).json({
+      success: true,
+      data: fabrications,
+    });
+  } catch (error) {
+    console.error("Error fetching fabrications:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function updateFabrication(req, res) {
+  try {
+    const { customer_id, fabricator_id, unused_pipes } = req.body;
+
+    if (!customer_id || !fabricator_id) {
+      return res.status(400).json({
+        success: false,
+        message: "customer_id or fabricator_id is required",
+      });
+    }
+
+    const result = await dispatchService.updateFabricationByCustomerId({
+      customer_id,
+      fabricator_id,
+      unused_pipes,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Error in updateFabrication controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+module.exports = {
+  fetchDispatches,
+  updateDispatch,
+  createFabricator,
+  fetchFabricators,
+  updateFabricator,
+  fetchFabrications,
+  updateFabrication,
+};

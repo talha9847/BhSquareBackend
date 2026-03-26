@@ -3,6 +3,10 @@ const { Customer } = require("../models/customerModel");
 const { Lead } = require("../models/leadModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const sequelize = require("../config/db");
+const { Fabricator } = require("../models/fabricatorModel");
+const { Fabrication } = require("../models/fabricationModel");
+const { Wiring } = require("../models/wiringModel");
+const { Inventory } = require("../models/inventoryModel");
 
 async function getAllDispatches() {
   try {
@@ -99,6 +103,19 @@ async function updateDispatchByCustomerId({
       },
     );
 
+    const [fabrication, created] = await Fabrication.findOrCreate({
+      where: { customer_id },
+      defaults: { customer_id, status: "pending", unused_pipes: 0 },
+      transaction: t,
+    });
+
+    if (!created) {
+      console.log(
+        "Fabrication record already exists for customer:",
+        customer_id,
+      );
+    }
+
     // Commit transaction
     await t.commit();
 
@@ -113,4 +130,184 @@ async function updateDispatchByCustomerId({
   }
 }
 
-module.exports = { getAllDispatches, updateDispatchByCustomerId };
+async function getAllFabricators() {
+  try {
+    const fabricators = await Fabricator.findAll({
+      order: [["created_at", "DESC"]],
+    });
+    return fabricators;
+  } catch (error) {
+    console.error("Error fetching fabricators:", error);
+    throw error;
+  }
+}
+
+async function addFabricator({ name }) {
+  try {
+    const [fabricator, created] = await Fabricator.findOrCreate({
+      where: { name },
+      defaults: { name },
+    });
+
+    if (!created) {
+      console.log("Fabricator already exists:", name);
+    }
+
+    return fabricator;
+  } catch (error) {
+    console.error("Error creating fabricator:", error);
+    throw error;
+  }
+}
+
+async function updateFabricator(id, { name }) {
+  const t = await sequelize.transaction();
+  try {
+    const fabricator = await Fabricator.findByPk(id, { transaction: t });
+    if (!fabricator) {
+      throw new Error("Fabricator not found");
+    }
+
+    fabricator.name = name ?? fabricator.name;
+
+    await fabricator.save({ transaction: t });
+    await t.commit();
+
+    return fabricator;
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating fabricator:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all fabrication records with customer & fabricator info
+ */
+async function getAllFabrications() {
+  try {
+    const fabrications = await Fabrication.findAll({
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+        {
+          model: Fabricator,
+          as: "fabricator",
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    // Map to desired output
+    const result = fabrications.map((f) => ({
+      id: f.id,
+      customer_id: f.customer_id,
+      customer_name: f.customer?.lead?.customer_name || null,
+      contact_number: f.customer?.lead?.contact_number || null,
+      address: f.customer?.lead?.address || null,
+      fabricator_id: f.fabricator_id,
+      fabricator_name: f.fabricator?.name || null,
+      status: f.status,
+      unused_pipes: f.unused_pipes,
+      created_at: f.created_at,
+      updated_at: f.updated_at,
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching fabrications:", error);
+    throw error;
+  }
+}
+
+async function updateFabricationByCustomerId({
+  customer_id,
+  fabricator_id,
+  unused_pipes,
+}) {
+  const t = await sequelize.transaction();
+  try {
+    // 1. Find fabrication record by customer_id
+    let fabrication = await Fabrication.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!fabrication) {
+      throw new Error("Fabrication record not found for this customer");
+    }
+
+    // 2. Update fabrication fields and set status to 'done'
+    fabrication.fabricator_id = fabricator_id ?? fabrication.fabricator_id;
+    fabrication.unused_pipes = unused_pipes ?? fabrication.unused_pipes;
+    fabrication.status = "done"; // always set to done
+    await fabrication.save({ transaction: t });
+
+    // 3. Create wiring record for the customer
+    await Wiring.create(
+      {
+        customer_id, // link wiring to this customer
+        status: "pending", // default status
+      },
+      { transaction: t },
+    );
+
+    // 4. Update customer stages (stage_id 8 → done, 9 → pending)
+    await CustomerStage.update(
+      { status: "done" },
+      { where: { customer_id, stage_id: 8 }, transaction: t },
+    );
+
+    await CustomerStage.update(
+      { status: "pending" },
+      { where: { customer_id, stage_id: 9 }, transaction: t },
+    );
+
+    // 5. Update inventory quantity for id = 5
+    if (unused_pipes && unused_pipes > 0) {
+      const inventoryItem = await Inventory.findByPk(5, { transaction: t });
+      if (inventoryItem) {
+        const currentQty = Number(inventoryItem.qty) || 0;
+        inventoryItem.qty = currentQty + Number(unused_pipes);
+        await inventoryItem.save({ transaction: t });
+      }
+    }
+
+    // 6. Commit transaction
+    await t.commit();
+
+    return {
+      message:
+        "Fabrication updated, wiring record created, and inventory updated successfully",
+      data: fabrication,
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error(
+      "Error updating fabrication, creating wiring, or updating inventory:",
+      error,
+    );
+    throw error;
+  }
+}
+
+module.exports = {
+  getAllDispatches,
+  updateDispatchByCustomerId,
+  getAllFabricators,
+  addFabricator,
+  updateFabricator,
+  getAllFabrications,
+  updateFabricationByCustomerId,
+};
