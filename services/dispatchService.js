@@ -231,15 +231,10 @@ async function getAllFabrications() {
   }
 }
 
-async function updateFabricationByCustomerId({
-  customer_id,
-  fabricator_id,
-  unused_pipes,
-}) {
+async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
   const t = await sequelize.transaction();
   try {
-    // 1. Find fabrication record by customer_id
-    let fabrication = await Fabrication.findOne({
+    const fabrication = await Fabrication.findOne({
       where: { customer_id },
       transaction: t,
     });
@@ -248,57 +243,86 @@ async function updateFabricationByCustomerId({
       throw new Error("Fabrication record not found for this customer");
     }
 
-    // 2. Update fabrication fields and set status to 'done'
-    fabrication.fabricator_id = fabricator_id ?? fabrication.fabricator_id;
-    fabrication.unused_pipes = unused_pipes ?? fabrication.unused_pipes;
-    fabrication.status = "done"; // always set to done
-    await fabrication.save({ transaction: t });
+    // 2️⃣ Only proceed if a fabricator is assigned
+    if (fabrication.fabricator_id && Number(fabrication.fabricator_id) > 0) {
+      // Update unused_pipes if provided
+      if (unused_pipes && Number(unused_pipes) > 0) {
+        fabrication.unused_pipes = Number(unused_pipes);
 
-    // 3. Create wiring record for the customer
-    await Wiring.create(
-      {
-        customer_id, // link wiring to this customer
-        status: "pending", // default status
-      },
-      { transaction: t },
-    );
-
-    // 4. Update customer stages (stage_id 8 → done, 9 → pending)
-    await CustomerStage.update(
-      { status: "done" },
-      { where: { customer_id, stage_id: 8 }, transaction: t },
-    );
-
-    await CustomerStage.update(
-      { status: "pending" },
-      { where: { customer_id, stage_id: 9 }, transaction: t },
-    );
-
-    // 5. Update inventory quantity for id = 5
-    if (unused_pipes && unused_pipes > 0) {
-      const inventoryItem = await Inventory.findByPk(5, { transaction: t });
-      if (inventoryItem) {
-        const currentQty = Number(inventoryItem.qty) || 0;
-        inventoryItem.qty = currentQty + Number(unused_pipes);
-        await inventoryItem.save({ transaction: t });
+        // Example: Update inventory (replace 5 with actual inventory_id)
+        const inventoryItem = await Inventory.findByPk(5, { transaction: t });
+        if (inventoryItem) {
+          inventoryItem.qty =
+            (Number(inventoryItem.qty) || 0) + Number(unused_pipes);
+          await inventoryItem.save({ transaction: t });
+        }
       }
+
+      // 3️⃣ Always set fabrication status to 'done'
+      fabrication.status = "done";
+      await fabrication.save({ transaction: t });
+
+      // 4️⃣ Create wiring record for this customer
+      await Wiring.create(
+        { customer_id, status: "pending" },
+        { transaction: t },
+      );
+
+      // 5️⃣ Update customer stages
+      await CustomerStage.update(
+        { status: "done" },
+        { where: { customer_id, stage_id: 8 }, transaction: t },
+      );
+      await CustomerStage.update(
+        { status: "pending" },
+        { where: { customer_id, stage_id: 9 }, transaction: t },
+      );
+
+      // 6️⃣ Commit transaction
+      await t.commit();
+
+      return {
+        message:
+          "Fabrication updated, wiring record created, and inventory updated successfully",
+        data: fabrication,
+      };
+    } else {
+      throw new Error("Assign Fabricator");
+    }
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating fabrication or inventory:", error);
+    throw error;
+  }
+}
+
+async function assignFabricatorByCustomerId({ customer_id, fabricator_id }) {
+  const t = await sequelize.transaction();
+  try {
+    // 1️⃣ Find the fabrication record by customer_id
+    const fabrication = await Fabrication.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!fabrication) {
+      throw new Error("Fabrication record not found for this customer");
     }
 
-    // 6. Commit transaction
+    fabrication.fabricator_id = fabricator_id;
+    await fabrication.save({ transaction: t });
+
     await t.commit();
 
     return {
-      message:
-        "Fabrication updated, wiring record created, and inventory updated successfully",
+      success: true,
+      message: `Fabricator assigned successfully for customer_id ${customer_id}`,
       data: fabrication,
     };
   } catch (error) {
     await t.rollback();
-    console.error(
-      "Error updating fabrication, creating wiring, or updating inventory:",
-      error,
-    );
-    throw error;
+    console.error("Error assigning fabricator:", error);
+    return { success: false, message: error.message };
   }
 }
 
@@ -310,4 +334,5 @@ module.exports = {
   updateFabricator,
   getAllFabrications,
   updateFabricationByCustomerId,
+  assignFabricatorByCustomerId,
 };

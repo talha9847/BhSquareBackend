@@ -173,6 +173,67 @@ async function getAllWireInventory() {
   }
 }
 
+async function updateWireInventoryById(id, updateData) {
+  const t = await sequelize.transaction();
+  try {
+    const wire = await WireInventory.findByPk(id, { transaction: t });
+    if (!wire) {
+      await t.rollback();
+      return { success: false, message: "Wire inventory not found" };
+    }
+
+    const { brand_name, wire_type, color, gauge, stock } = updateData;
+
+    // Validate required fields
+    if (
+      !brand_name ||
+      !wire_type ||
+      !color ||
+      gauge === undefined ||
+      stock === undefined
+    ) {
+      await t.rollback();
+      return {
+        success: false,
+        message:
+          "All fields (brand_name, wire_type, color, gauge, stock) are required",
+      };
+    }
+
+    // Convert numeric fields
+    const gaugeNum = parseFloat(gauge);
+    const stockNum = parseInt(stock, 10);
+
+    if (isNaN(gaugeNum) || isNaN(stockNum)) {
+      await t.rollback();
+      return {
+        success: false,
+        message: "Gauge must be a number and stock must be an integer",
+      };
+    }
+
+    // Update fields
+    wire.brand_name = brand_name;
+    wire.wire_type = wire_type;
+    wire.color = color;
+    wire.gauge = gaugeNum;
+    wire.stock = stockNum;
+
+    await wire.save({ transaction: t });
+    await t.commit();
+
+    return {
+      success: true,
+      data: wire,
+      message: "Wire inventory updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating wire inventory:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -180,4 +241,5 @@ module.exports = {
   getWiringCustomerDetails,
   addWireInventory,
   getAllWireInventory,
+  updateWireInventoryById,
 };

@@ -142,6 +142,42 @@ async function fetchAllWireInventory(req, res) {
     });
   }
 }
+
+async function updateWireInventory(req, res) {
+  try {
+    const { id } = req.params;
+    const { brand_name, wire_type, color, gauge, stock } = req.body;
+
+    // Call the service to update
+    const result = await wireInventoryService.updateWireInventoryById(id, {
+      brand_name,
+      wire_type,
+      color,
+      gauge,
+      stock,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("Error updating wire inventory:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update wire inventory",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,

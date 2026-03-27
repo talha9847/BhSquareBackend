@@ -121,9 +121,10 @@ async function fetchFabrications(req, res) {
 
 async function updateFabrication(req, res) {
   try {
-    const { customer_id, fabricator_id, unused_pipes } = req.body;
+    console.log(req.body);
+    const { customer_id, unused_pipes } = req.body;
 
-    if (!customer_id || !fabricator_id) {
+    if (!customer_id) {
       return res.status(400).json({
         success: false,
         message: "customer_id or fabricator_id is required",
@@ -132,7 +133,6 @@ async function updateFabrication(req, res) {
 
     const result = await dispatchService.updateFabricationByCustomerId({
       customer_id,
-      fabricator_id,
       unused_pipes,
     });
 
@@ -150,6 +150,36 @@ async function updateFabrication(req, res) {
   }
 }
 
+async function updateFabricatorViaId(req, res) {
+  try {
+    const { customer_id, fabricator_id } = req.body;
+
+    if (!customer_id || !fabricator_id) {
+      return res.status(400).json({
+        success: false,
+        message: "customer_id and fabricator_id are required",
+      });
+    }
+
+    const result = await dispatchService.assignFabricatorByCustomerId({
+      customer_id,
+      fabricator_id,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error in updateFabricator controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to assign fabricator",
+    });
+  }
+}
+
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -158,4 +188,5 @@ module.exports = {
   updateFabricator,
   fetchFabrications,
   updateFabrication,
+  updateFabricatorViaId,
 };
