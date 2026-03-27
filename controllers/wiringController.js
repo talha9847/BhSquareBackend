@@ -1,3 +1,4 @@
+const { FLOAT } = require("sequelize");
 const wiringService = require("../services/wiringService");
 
 async function createTechnician(req, res) {
@@ -72,15 +73,30 @@ async function fetchWiringCustomerDetails(req, res) {
   }
 }
 
-async function updateWiring(req, res) {
+async function createWireInventory(req, res) {
   try {
-    const { id } = req.params; // wiring_id from URL
-    const wiringData = req.body; // ac_wire_red, ac_wire_black, etc.
+    const { brand_name, wire_type, color, gauge, stock } = req.body;
 
-    const result = await wiringService.updateWiringAndDecrementInventory(
-      id,
-      wiringData,
-    );
+    if (!brand_name || !wire_type || !color || !gauge || !stock) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields (brand, type, color, gauge, qty) are required",
+      });
+    }
+    if (isNaN(gauge) || isNaN(stock)) {
+      return res.status(400).json({
+        success: false,
+        message: "Gauge and qty must be numbers",
+      });
+    }
+
+    const result = await wiringService.addWireInventory({
+      brand_name,
+      wire_type,
+      color,
+      gauge: Number(gauge),
+      stock: Number(stock),
+    });
 
     if (!result.success) {
       return res.status(400).json({
@@ -89,23 +105,48 @@ async function updateWiring(req, res) {
       });
     }
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
+      data: result.data,
       message: result.message,
     });
   } catch (error) {
-    console.error("Error in updateWiring controller:", error);
+    console.error("Error creating wire inventory:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to update wiring",
+      message: error.message || "Failed to create wire inventory",
     });
   }
 }
 
+async function fetchAllWireInventory(req, res) {
+  try {
+    const result = await wiringService.getAllWireInventory();
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Error fetching wire inventory:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch wire inventory",
+    });
+  }
+}
 module.exports = {
   updateTechnician,
   fetchTechnicians,
   createTechnician,
   fetchWiringCustomerDetails,
-  updateWiring,
+  createWireInventory,
+  fetchAllWireInventory,
 };

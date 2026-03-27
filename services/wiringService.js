@@ -4,6 +4,7 @@ const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { Lead } = require("../models/leadModel");
 const { Technician } = require("../models/technicianModel");
+const { WireInventory } = require("../models/wireInventoryModel");
 const { Wiring } = require("../models/wiringModel");
 
 async function getAllTechnicians() {
@@ -111,61 +112,64 @@ async function getWiringCustomerDetails() {
   }
 }
 
-async function updateWiringAndDecrementInventory(wiringId, wiringData) {
+async function addWireInventory({
+  brand_name,
+  wire_type,
+  color,
+  gauge,
+  stock,
+}) {
   const t = await sequelize.transaction();
   try {
-    // 1️⃣ Fetch the wiring record
-    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
-    if (!wiring) throw new Error("Wiring record not found");
-
-    // 2️⃣ Map wiring fields to inventory IDs
-    const inventoryMap = {
-      ac_wire_red: 13, // Replace with actual inventory_id
-      ac_wire_black: 14,
-      dc_wire_red: 15,
-      dc_wire_black: 16,
-      conduit_pipe: 17,
-      la_wire: 18,
-      earthing: 19,
-    };
-
-    // 3️⃣ Check inventory availability and decrement
-    for (const [key, value] of Object.entries(inventoryMap)) {
-      const qtyToDeduct = parseInt(wiringData[key] || 0, 10);
-      if (qtyToDeduct > 0) {
-        const item = await Inventory.findByPk(value, { transaction: t });
-        if (!item) throw new Error(`Inventory item ${key} not found`);
-        if (item.quantity < qtyToDeduct) {
-          throw new Error(`Not enough inventory for ${key}`);
-        }
-        item.quantity -= qtyToDeduct;
-        await item.save({ transaction: t });
-      }
-    }
-
-    // 4️⃣ Update wiring table with provided quantities
-    Object.keys(inventoryMap).forEach((key) => {
-      if (wiringData[key] !== undefined) wiring[key] = wiringData[key];
+    // Check if the record already exists
+    const existingWire = await WireInventory.findOne({
+      where: { brand_name, wire_type, color, gauge },
+      transaction: t,
     });
 
-    if (wiringData.technician_id) {
-      wiring.technician_id = wiringData.technician_id;
+    if (existingWire) {
+      await t.rollback();
+      return {
+        success: false,
+        message: "Wire inventory already exists with this combination",
+      };
     }
 
-    // ✅ Update inventory_status to 'done'
-    wiring.inventory_status = "done";
+    // Create new wire inventory record
+    const newWire = await WireInventory.create(
+      { brand_name, wire_type, color, gauge, stock },
+      { transaction: t },
+    );
 
-    await wiring.save({ transaction: t });
     await t.commit();
-
     return {
       success: true,
-      message: "Wiring updated and inventory decremented",
+      data: newWire,
+      message: "Wire added to inventory",
     };
   } catch (error) {
     await t.rollback();
-    console.error("Error updating wiring and inventory:", error);
+    console.error("Error adding wire inventory:", error);
     return { success: false, message: error.message };
+  }
+}
+
+async function getAllWireInventory() {
+  try {
+    const wires = await WireInventory.findAll({
+      order: [["created_at", "DESC"]],
+    });
+
+    return {
+      success: true,
+      data: wires,
+    };
+  } catch (error) {
+    console.error("Error fetching wire inventory:", error);
+    return {
+      success: false,
+      message: error.message,
+    };
   }
 }
 
@@ -174,5 +178,6 @@ module.exports = {
   addTechnician,
   getAllTechnicians,
   getWiringCustomerDetails,
-  updateWiringAndDecrementInventory,
+  addWireInventory,
+  getAllWireInventory,
 };

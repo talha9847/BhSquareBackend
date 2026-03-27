@@ -311,13 +311,6 @@ CREATE TABLE wiring (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
     technician_id INTEGER REFERENCES technician(id) ON DELETE CASCADE,
-    ac_red INTEGER,
-    ac_black INTEGER,
-    dc_red INTEGER,
-    dc_black INTEGER,
-    la INTEGER,
-    earthing INTEGER,
-    conduit_pipe INTEGER,
     status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -333,6 +326,19 @@ CREATE TABLE technician (
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+CREATE TABLE wire_inventory (
+    id SERIAL PRIMARY KEY,
+    brand_name VARCHAR(100) NOT NULL,
+    wire_type VARCHAR(50) NOT NULL,
+    color VARCHAR(50) NOT NULL,
+    gauge NUMERIC(5,2) NOT NULL,   -- e.g. 1.5, 2.5, 4.00
+    stock INTEGER DEFAULT 0,    -- current quantity in inventory
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT unique_wire UNIQUE (brand_name, wire_type, color, gauge)
+)
 
 
 TRUNCATE TABLE
