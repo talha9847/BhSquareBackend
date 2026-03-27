@@ -24,6 +24,10 @@ const Wiring = sequelize.define(
       type: DataTypes.STRING(20),
       defaultValue: "pending",
     },
+    inventory_status: {
+      type: DataTypes.STRING(20),
+      defaultValue: "pending",
+    },
 
     created_at: {
       type: DataTypes.DATE,

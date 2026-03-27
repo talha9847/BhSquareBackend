@@ -323,6 +323,8 @@ CREATE TABLE wiring (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE wiring
+ADD COLUMN inventory_status VARCHAR(20) DEFAULT 'pending';
 
 
 
