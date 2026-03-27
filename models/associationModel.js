@@ -18,6 +18,7 @@ const { Dispatch } = require("./dispatchModel");
 const { Fabrication } = require("./fabricationModel");
 const { Fabricator } = require("./fabricatorModel");
 const { Wiring } = require("./wiringModel");
+const { Technician } = require("./technicianModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -151,12 +152,18 @@ Fabricator.hasMany(Fabrication, {
   as: "fabrications",
 });
 
-// Wiring → Customer
 Wiring.belongsTo(Customer, {
   foreignKey: "customer_id",
-  as: "customerForWiring",
+  as: "customerForWiring", // used in include
 });
-Customer.hasMany(Wiring, { foreignKey: "customer_id", as: "wiringRecords" });
+
+// Customer → Wiring (also with alias)
+Customer.hasMany(Wiring, {
+  foreignKey: "customer_id",
+  as: "wiringRecords", // alias for Customer -> all wirings
+});
+
+Wiring.belongsTo(Technician, { foreignKey: "technician_id", as: "technician" });
 
 // Customer -> Lead
 // ----------------------
@@ -179,4 +186,5 @@ module.exports = {
   Fabrication,
   Fabricator,
   Wiring,
+  Technician,
 };

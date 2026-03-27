@@ -309,10 +309,27 @@ CREATE TABLE fabrication (
 
 CREATE TABLE wiring (
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER  UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+    customer_id INTEGER UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+    technician_id INTEGER REFERENCES technician(id) ON DELETE CASCADE,
+    ac_red INTEGER,
+    ac_black INTEGER,
+    dc_red INTEGER,
+    dc_black INTEGER,
+    la INTEGER,
+    earthing INTEGER,
+    conduit_pipe INTEGER,
     status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+CREATE TABLE technician (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 
