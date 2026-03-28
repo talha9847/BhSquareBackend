@@ -11,5 +11,8 @@ router.put("/updateFabricator/:id", dispatchController.updateFabricator);
 router.get("/fetchFabrications", dispatchController.fetchFabrications);
 router.put("/updateFabrication/", dispatchController.updateFabrication);
 router.put("/updateFabricatorViaId/", dispatchController.updateFabricatorViaId);
+router.post("/createDriver", dispatchController.createDriver);
+router.get("/fetchDrivers", dispatchController.fetchDrivers);
+router.put("/updateDriver/:id", dispatchController.updateDriver);
 
 module.exports = router;

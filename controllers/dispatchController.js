@@ -180,6 +180,84 @@ async function updateFabricatorViaId(req, res) {
   }
 }
 
+// controllers/driverController.js
+
+// 🔹 CREATE DRIVER
+async function createDriver(req, res) {
+  try {
+    const { name, mobile } = req.body;
+
+    if (!name || !mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and mobile are required",
+      });
+    }
+    let newName = name.toUpperCase();
+
+    const result = await dispatchService.addDriver({ name: newName, mobile });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error("Error creating driver:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create driver",
+    });
+  }
+}
+
+// 🔹 FETCH ALL DRIVERS
+async function fetchDrivers(req, res) {
+  try {
+    const result = await dispatchService.getAllDrivers();
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching drivers:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+// 🔹 UPDATE DRIVER
+async function updateDriver(req, res) {
+  try {
+    const { id } = req.params;
+    const { name, mobile } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Driver id is required",
+      });
+    }
+
+    const result = await dispatchService.updateDriver(id, {
+      name,
+      mobile,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating driver:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update driver",
+    });
+  }
+}
+
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -189,4 +267,7 @@ module.exports = {
   fetchFabrications,
   updateFabrication,
   updateFabricatorViaId,
+  createDriver,
+  fetchDrivers,
+  updateDriver,
 };

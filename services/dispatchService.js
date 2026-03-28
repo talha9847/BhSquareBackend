@@ -7,6 +7,8 @@ const { Fabricator } = require("../models/fabricatorModel");
 const { Fabrication } = require("../models/fabricationModel");
 const { Wiring } = require("../models/wiringModel");
 const { Inventory } = require("../models/inventoryModel");
+const { Car } = require("../models/carModel");
+const { Driver } = require("../models/driverModel");
 
 async function getAllDispatches() {
   try {
@@ -326,6 +328,174 @@ async function assignFabricatorByCustomerId({ customer_id, fabricator_id }) {
   }
 }
 
+// 🔹 CREATE
+async function addCar({ name, number }) {
+  try {
+    const [car, created] = await Car.findOrCreate({
+      where: { number },
+      defaults: { name, number },
+    });
+
+    if (!created) {
+      return {
+        success: false,
+        message: "Car with this number already exists",
+      };
+    }
+
+    return {
+      success: true,
+      data: car,
+      message: "Car created successfully",
+    };
+  } catch (error) {
+    console.error("Error creating car:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 🔹 FETCH ALL
+async function getAllCars() {
+  try {
+    const cars = await Car.findAll({
+      order: [["created_at", "DESC"]],
+    });
+
+    return {
+      success: true,
+      data: cars,
+    };
+  } catch (error) {
+    console.error("Error fetching cars:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 🔹 UPDATE
+async function updateCar(id, { name, number }) {
+  const t = await sequelize.transaction();
+  try {
+    const car = await Car.findByPk(id, { transaction: t });
+
+    if (!car) {
+      throw new Error("Car not found");
+    }
+
+    // Check duplicate number
+    if (number) {
+      const existing = await Car.findOne({
+        where: { number },
+        transaction: t,
+      });
+
+      if (existing && existing.id !== car.id) {
+        throw new Error("Car number already exists");
+      }
+    }
+
+    // Update fields
+    car.name = name ?? car.name;
+    car.number = number ?? car.number;
+
+    await car.save({ transaction: t });
+    await t.commit();
+
+    return {
+      success: true,
+      data: car,
+      message: "Car updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating car:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 🔹 CREATE
+async function addDriver({ name, mobile }) {
+  try {
+    const [driver, created] = await Driver.findOrCreate({
+      where: { mobile },
+      defaults: { name, mobile },
+    });
+
+    if (!created) {
+      return {
+        success: false,
+        message: "Driver with this mobile already exists",
+      };
+    }
+
+    return {
+      success: true,
+      data: driver,
+      message: "Driver created successfully",
+    };
+  } catch (error) {
+    console.error("Error creating driver:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 🔹 FETCH ALL
+async function getAllDrivers() {
+  try {
+    const drivers = await Driver.findAll({
+      order: [["created_at", "DESC"]],
+    });
+
+    return {
+      success: true,
+      data: drivers,
+    };
+  } catch (error) {
+    console.error("Error fetching drivers:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 🔹 UPDATE
+async function updateDriver(id, { name, mobile }) {
+  const t = await sequelize.transaction();
+  try {
+    const driver = await Driver.findByPk(id, { transaction: t });
+
+    if (!driver) {
+      throw new Error("Driver not found");
+    }
+
+    // Check duplicate mobile
+    if (mobile) {
+      const existing = await Driver.findOne({
+        where: { mobile },
+        transaction: t,
+      });
+
+      if (existing && existing.id !== driver.id) {
+        throw new Error("Mobile number already exists");
+      }
+    }
+
+    // Update fields
+    driver.name = name ?? driver.name;
+    driver.mobile = mobile ?? driver.mobile;
+
+    await driver.save({ transaction: t });
+    await t.commit();
+
+    return {
+      success: true,
+      data: driver,
+      message: "Driver updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating driver:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   getAllDispatches,
   updateDispatchByCustomerId,
@@ -335,4 +505,10 @@ module.exports = {
   getAllFabrications,
   updateFabricationByCustomerId,
   assignFabricatorByCustomerId,
+  addCar,
+  getAllCars,
+  updateCar,
+  addDriver,
+  getAllDrivers,
+  updateDriver,
 };
