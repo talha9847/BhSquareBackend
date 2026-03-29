@@ -166,7 +166,8 @@ CREATE TABLE dispatch (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
+alter table dispatch add column driver_id int REFERENCES drivers(id) on DELETE CASCADE
+alter table dispatch add column car_id int REFERENCES cars(id) on DELETE CASCADE
 
 
 

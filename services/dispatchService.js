@@ -26,18 +26,35 @@ async function getAllDispatches() {
             },
           ],
         },
+        {
+          model: Driver,
+          as: "driver",
+          attributes: ["name"],
+        },
+        {
+          model: Car,
+          as: "car",
+          attributes: ["name", "number"],
+        },
       ],
       order: [["created_at", "DESC"]],
     });
 
     const result = dispatches.map((d) => ({
       id: d.id,
-      customer_id: d.customer_id, // ✅ added here
+      customer_id: d.customer_id,
+
+      // ✅ NEW
+      driver_id: d.driver_id || null,
+      car_id: d.car_id || null,
+
       customer_name: d.customer?.lead?.customer_name || null,
       address: d.customer?.lead?.address || null,
       contact: d.customer?.lead?.contact_number || null,
-      driver_name: d.driver_name || null,
-      vehicle: d.vehicle || null,
+
+      driver_name: d.driver?.name || null,
+      vehicle: d.car ? `${d.car.name} (${d.car.number})` : null,
+
       status: d.status || null,
       date: d.created_at
         ? new Date(d.created_at).toLocaleDateString("en-GB", {
@@ -57,8 +74,8 @@ async function getAllDispatches() {
 
 async function updateDispatchByCustomerId({
   customer_id,
-  driver_name,
-  vehicle,
+  driver_id,
+  car_id,
   status,
 }) {
   const t = await sequelize.transaction();
@@ -75,8 +92,8 @@ async function updateDispatchByCustomerId({
     }
 
     // 2. Update dispatch fields
-    dispatch.driver_name = driver_name ?? dispatch.driver_name;
-    dispatch.vehicle = vehicle ?? dispatch.vehicle;
+    dispatch.driver_id = driver_id ?? dispatch.driver_id;
+    dispatch.car_id = car_id ?? dispatch.car_id;
     dispatch.status = status ?? dispatch.status;
 
     await dispatch.save({ transaction: t });

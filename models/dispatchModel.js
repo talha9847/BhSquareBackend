@@ -13,6 +13,17 @@ const Dispatch = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+
+    // ✅ NEW FIELDS
+    driver_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    car_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
     driver_name: {
       type: DataTypes.STRING(255),
     },

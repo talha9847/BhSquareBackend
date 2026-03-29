@@ -19,7 +19,7 @@ async function fetchDispatches(req, res) {
 
 async function updateDispatch(req, res) {
   try {
-    const { customer_id, driver_name, vehicle, status } = req.body;
+    const { customer_id, driver_id, car_id, status } = req.body;
 
     // Validation
     if (!customer_id) {
@@ -31,8 +31,8 @@ async function updateDispatch(req, res) {
 
     const result = await dispatchService.updateDispatchByCustomerId({
       customer_id,
-      driver_name,
-      vehicle,
+      driver_id,
+      car_id,
       status,
     });
 
@@ -258,6 +258,86 @@ async function updateDriver(req, res) {
   }
 }
 
+async function createCar(req, res) {
+  try {
+    const { name, number } = req.body;
+
+    if (!name || !number) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and number are required",
+      });
+    }
+
+    let newName = name.toUpperCase();
+    let newNumber = number.toUpperCase();
+
+    const result = await dispatchService.addCar({
+      name: newName,
+      number: newNumber,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error("Error creating car:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to create car",
+    });
+  }
+}
+
+// 🔹 FETCH ALL CARS
+async function fetchCars(req, res) {
+  try {
+    const result = await dispatchService.getAllCars();
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching cars:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+// 🔹 UPDATE CAR
+async function updateCar(req, res) {
+  try {
+    const { id } = req.params;
+    const { name, number } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Car id is required",
+      });
+    }
+
+    const result = await dispatchService.updateCar(id, {
+      name,
+      number,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating car:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update car",
+    });
+  }
+}
+
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -270,4 +350,7 @@ module.exports = {
   createDriver,
   fetchDrivers,
   updateDriver,
+  createCar,
+  fetchCars,
+  updateCar,
 };

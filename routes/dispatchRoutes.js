@@ -12,7 +12,10 @@ router.get("/fetchFabrications", dispatchController.fetchFabrications);
 router.put("/updateFabrication/", dispatchController.updateFabrication);
 router.put("/updateFabricatorViaId/", dispatchController.updateFabricatorViaId);
 router.post("/createDriver", dispatchController.createDriver);
+router.post("/createCar", dispatchController.createCar);
 router.get("/fetchDrivers", dispatchController.fetchDrivers);
+router.get("/fetchCars", dispatchController.fetchCars);
 router.put("/updateDriver/:id", dispatchController.updateDriver);
+router.put("/updateCar/:id", dispatchController.updateCar);
 
 module.exports = router;

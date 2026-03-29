@@ -19,6 +19,8 @@ const { Fabrication } = require("./fabricationModel");
 const { Fabricator } = require("./fabricatorModel");
 const { Wiring } = require("./wiringModel");
 const { Technician } = require("./technicianModel");
+const { Car } = require("./carModel");
+const { Driver } = require("./driverModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -165,6 +167,32 @@ Customer.hasMany(Wiring, {
 
 Wiring.belongsTo(Technician, { foreignKey: "technician_id", as: "technician" });
 
+// 🔹 Dispatch → Driver
+Dispatch.belongsTo(Driver, {
+  foreignKey: "driver_id",
+  as: "driver",
+  onDelete: "CASCADE",
+});
+
+// 🔹 Driver → Dispatch
+Driver.hasMany(Dispatch, {
+  foreignKey: "driver_id",
+  as: "dispatches",
+});
+
+// 🔹 Dispatch → Car
+Dispatch.belongsTo(Car, {
+  foreignKey: "car_id",
+  as: "car",
+  onDelete: "CASCADE",
+});
+
+// 🔹 Car → Dispatch
+Car.hasMany(Dispatch, {
+  foreignKey: "car_id",
+  as: "dispatches",
+});
+
 // Customer -> Lead
 // ----------------------
 // Export all models
@@ -187,4 +215,6 @@ module.exports = {
   Fabricator,
   Wiring,
   Technician,
+  Driver,
+  Car,
 };
