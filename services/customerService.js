@@ -2,6 +2,7 @@ const { Customer } = require("../models/customerModel");
 const sequelize = require("../config/db");
 const { Lead } = require("../models/leadModel");
 const { CustomerStage } = require("../models/customerStageModel");
+const { Stage } = require("../models/stegeModel");
 
 async function getCustomersWithLeadData() {
   try {
@@ -59,7 +60,7 @@ async function updateCustomerNameChange(customer_id, name_change) {
 
     if (name_change === "required" || name_change === "unchanged") {
       await CustomerStage.update(
-        { status: "done", updated_at: new Date() },
+        { status: "done", completed_at: new Date() },
         { where: { customer_id, stage_id: 1 }, transaction: t },
       );
 
@@ -79,4 +80,44 @@ async function updateCustomerNameChange(customer_id, name_change) {
   }
 }
 
-module.exports = { getCustomersWithLeadData, updateCustomerNameChange };
+async function getCustomerStages(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // Fetch all customer stages with their master stage info
+    const stages = await CustomerStage.findAll({
+      where: { customer_id: customerId },
+      include: [
+        {
+          model: Stage,
+          as: "stage",
+          attributes: ["id", "stage_name"], // stage master info
+        },
+      ],
+      order: [["stage_id", "ASC"]],
+    });
+
+    // Map to desired format
+    const result = stages.map((s) => ({
+      id: s.stage_id,
+      name: s.stage?.stage_name || "Unknown",
+      status: s.status,
+      started_at: s.started_at,
+      completed_at: s.completed_at,
+      note: s.note || "",
+    }));
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Error fetching customer stages:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+module.exports = {
+  getCustomersWithLeadData,
+  updateCustomerNameChange,
+  getCustomerStages,
+};

@@ -71,7 +71,9 @@ INSERT INTO stages (id, stage_name, default_order, description) VALUES
 (8, 'Fabrication', 8, 'Fabrication stage'),
 (9, 'Wiring', 9, 'Wiring stage'),
 (10, 'File Upload', 10, 'File upload stage'),
-(11, 'Inspection', 11, 'Inspection stage');
+(11, 'Inspection', 11, 'Inspection stage'),
+(12, 'Reedeem', 12, 'Reedem stage'),
+(13,'Disbursal',13, 'Disbursal Stage');
 
 
 
@@ -91,6 +93,8 @@ CREATE TABLE customer_stages (
     stage_id INTEGER REFERENCES stages(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'not_used', -- pending, done, not_used
     note TEXT,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

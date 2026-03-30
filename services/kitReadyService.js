@@ -596,7 +596,7 @@ async function getPanelAndInverterByCustomerId(customerId) {
       inverter_qty: fileGen?.inverter_quantity || 0,
       kit_status: kitReady?.status || null,
     };
-  } catch (error) { 
+  } catch (error) {
     console.error("Error fetching panel/inverter/kit status:", error);
     throw error;
   }
@@ -636,7 +636,7 @@ async function addSerialsAndDispatch(
 
     // Update customer stages
     await CustomerStage.update(
-      { status: "done", updated_at: new Date() },
+      { status: "done", completed_at: new Date() },
       { where: { customer_id: customerId, stage_id: 6 }, transaction: t },
     );
 

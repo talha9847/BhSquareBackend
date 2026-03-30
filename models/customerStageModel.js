@@ -35,6 +35,14 @@ const CustomerStage = sequelize.define(
     note: {
       type: DataTypes.TEXT,
     },
+    started_at: {
+      type: DataTypes.DATE,
+      allowNull: true, // will be set when stage starts
+    },
+    completed_at: {
+      type: DataTypes.DATE,
+      allowNull: true, // will be set when stage completes
+    },
     updated_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

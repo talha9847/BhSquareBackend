@@ -8,5 +8,6 @@ router.post(
   "/updateCustomerNameChange",
   customerController.updateCustomerNameChange,
 );
+router.get("/fetchCustomerStages/:id", customerController.fetchCustomerStages);
 
 module.exports = router;

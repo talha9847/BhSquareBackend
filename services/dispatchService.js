@@ -100,7 +100,7 @@ async function updateDispatchByCustomerId({
 
     // 3. Update stage 7 → done
     await CustomerStage.update(
-      { status: "done" },
+      { status: "done", completed_at: new Date() },
       {
         where: {
           customer_id,
@@ -289,7 +289,7 @@ async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
 
       // 5️⃣ Update customer stages
       await CustomerStage.update(
-        { status: "done" },
+        { status: "done", completed_at: new Date() },
         { where: { customer_id, stage_id: 8 }, transaction: t },
       );
       await CustomerStage.update(

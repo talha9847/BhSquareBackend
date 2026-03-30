@@ -268,7 +268,7 @@ async function completeLoanAndMoveToKitReady(customerId) {
 
   try {
     await CustomerStage.update(
-      { status: "done" },
+      { status: "done", completed_at: new Date() },
       {
         where: {
           customer_id: customerId,

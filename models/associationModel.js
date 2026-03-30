@@ -24,6 +24,8 @@ const { Driver } = require("./driverModel");
 const { WiringItem } = require("./wiringItemModel");
 const { WireInventory } = require("./wireInventoryModel");
 const { WiringDocs } = require("./wiringDocModel");
+const { CustomerStage } = require("./customerStageModel");
+const { Stage } = require("./stegeModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -228,6 +230,17 @@ Wiring.hasMany(WiringDocs, {
   foreignKey: "wiring_id",
   as: "docs",
 });
+
+CustomerStage.belongsTo(Stage, {
+  foreignKey: "stage_id",
+  as: "stage", // this is the alias you will use in includes
+});
+
+// Optional: Stage has many customer stages
+Stage.hasMany(CustomerStage, {
+  foreignKey: "stage_id",
+  as: "customer_stages",
+});
 // Customer -> Lead
 // ----------------------
 // Export all models
@@ -254,4 +267,6 @@ module.exports = {
   Car,
   WireInventory,
   WiringItem,
+  CustomerStage,
+  Stage,
 };

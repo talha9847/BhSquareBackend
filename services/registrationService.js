@@ -8,6 +8,7 @@ const { CustomerDocument } = require("../models/customerDocumentModel");
 const { KitReady } = require("../models/kitReadyModel");
 const { Brand } = require("../models/brandModel");
 const { google } = require("googleapis");
+const { CustomerStage } = require("../models/customerStageModel");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -241,6 +242,17 @@ async function markRegistrationAsDone(
     if (registration.status === "approved") {
       registration.status = "done";
       await registration.save({ transaction: t });
+
+      await CustomerStage.update(
+        { status: "done", completed_at: new Date() },
+        {
+          where: {
+            customer_id: customerId,
+            stage_id: 4,
+          },
+          transaction: t,
+        },
+      );
     } else {
       return { success: false, message: `Status is not 'approved'` };
     }
@@ -295,7 +307,7 @@ async function markRegistrationAsDone(
           inverter_capacity: inverter_capacity
             ? parseFloat(inverter_capacity)
             : null,
-          inverter_quantity:   inverter_qty,
+          inverter_quantity: inverter_qty,
           // 🔹 from customer_documents
           consumer_number: customerDocs?.consumer_number || null,
           geo_location: customerDocs?.geo_coordinate || null,

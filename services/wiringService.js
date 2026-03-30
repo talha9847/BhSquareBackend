@@ -573,7 +573,6 @@ async function uploadWiringDocsWithCS(files, wiringId, customerId) {
       };
     });
 
-    
     await updateWiringStageIfDocsComplete(wiringId);
 
     return await Promise.all(uploadPromises);
@@ -615,7 +614,7 @@ async function updateWiringStageIfDocsComplete(wiringId) {
 
     // 🔹 Step 3: Update customer stages
     await CustomerStage.update(
-      { status: "done" },
+      { status: "done", completed_at: new Date() },
       {
         where: {
           customer_id: customerId,

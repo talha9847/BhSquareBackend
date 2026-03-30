@@ -37,10 +37,12 @@ const LoanDoc = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["loan_id", "doc_name"], // unique constraint
+        fields: ["loan_id", "doc_name"], // ensures unique document per loan
       },
     ],
   },
 );
+
+// Associations
 
 module.exports = { LoanDoc };
