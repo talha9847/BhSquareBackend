@@ -299,6 +299,37 @@ async function updateTechni(req, res) {
   }
 }
 
+async function updateInventoryStatus(req, res) {
+  try {
+    const { wiringId } = req.params;
+
+    if (!wiringId) {
+      return res.status(400).json({
+        success: false,
+        message: "wiringId is required in params",
+      });
+    }
+
+    const result = await wiringService.updateWiringInventoryStatus(
+      wiringId,
+      "done",
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating inventory status:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update inventory status",
+    });
+  }
+}
+
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -311,4 +342,5 @@ module.exports = {
   createWiringItem,
   fetchIssuedWires,
   updateTechni,
+  updateInventoryStatus,
 };

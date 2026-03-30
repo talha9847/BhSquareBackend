@@ -22,4 +22,9 @@ router.put("/updateWireInventory/:id", wiringController.updateWireInventory);
 router.post("/createWiringItem", wiringController.createWiringItem);
 router.put("/updateTechni/:wiringId", wiringController.updateTechni);
 router.get("/fetchIssuedWires/:id", wiringController.fetchIssuedWires);
+router.put(
+  "/updateInventoryStatus/:wiringId",
+  wiringController.updateInventoryStatus,
+);
+
 module.exports = router;

@@ -431,6 +431,43 @@ async function updateWiringTechnician(wiringId, technicianId) {
   }
 }
 
+async function updateWiringInventoryStatus(wiringId, newStatus) {
+  const t = await sequelize.transaction();
+  try {
+    if (!wiringId) {
+      throw new Error("wiringId is required");
+    }
+
+    const validStatuses = ["pending", "done"]; // adjust as needed
+    if (!validStatuses.includes(newStatus)) {
+      throw new Error(
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      );
+    }
+
+    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
+    if (!wiring) {
+      await t.rollback();
+      return { success: false, message: "Wiring record not found" };
+    }
+
+    wiring.inventory_status = newStatus;
+    await wiring.save({ transaction: t });
+    await t.commit();
+
+    return {
+      success: true,
+      data: wiring,
+      message: "Inventory status updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating wiring inventory_status:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -443,4 +480,5 @@ module.exports = {
   addWiringItem,
   getIssuedWiresByWiringId,
   updateWiringTechnician,
+  updateWiringInventoryStatus,
 };
