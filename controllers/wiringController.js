@@ -149,7 +149,7 @@ async function updateWireInventory(req, res) {
     const { brand_name, wire_type, color, gauge, stock } = req.body;
 
     // Call the service to update
-    const result = await wireInventoryService.updateWireInventoryById(id, {
+    const result = await wiringService.updateWireInventoryById(id, {
       brand_name,
       wire_type,
       color,
@@ -178,6 +178,127 @@ async function updateWireInventory(req, res) {
   }
 }
 
+// controllers/wiringController.js
+
+async function getAvailableWireInventory(req, res) {
+  try {
+    const { id } = req.params;
+    console.log(id);
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "wiring_id is required",
+      });
+    }
+
+    const result = await wiringService.getAvailableWireInventoryForWiring(id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching available wire inventory:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function createWiringItem(req, res) {
+  try {
+    const { wiring_id, wire_inventory_id, qty } = req.body;
+
+    // Validate request
+    if (!wiring_id || !wire_inventory_id || !qty) {
+      return res.status(400).json({
+        success: false,
+        message: "wiring_id, wire_inventory_id and qty are required",
+      });
+    }
+
+    // Call service
+    const result = await wiringService.addWiringItem({
+      wiring_id,
+      wire_inventory_id,
+      qty,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error("Error creating wiring item:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to add wiring item",
+    });
+  }
+}
+
+async function fetchIssuedWires(req, res) {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "id is required",
+      });
+    }
+    const result = await wiringService.getIssuedWiresByWiringId(id);
+    if (!result.success) return res.status(400).json(result);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// 🔹 UPDATE TECHNICIAN
+async function updateTechni(req, res) {
+  try {
+    const { wiringId } = req.params;
+    const { technician_id } = req.body;
+
+    if (!wiringId) {
+      return res.status(400).json({
+        success: false,
+        message: "Wiring ID is required",
+      });
+    }
+
+    if (!technician_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Technician ID is required",
+      });
+    }
+
+    const result = await wiringService.updateWiringTechnician(
+      wiringId,
+      technician_id,
+    );
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error updating technician:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update technician",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -185,4 +306,9 @@ module.exports = {
   fetchWiringCustomerDetails,
   createWireInventory,
   fetchAllWireInventory,
+  updateWireInventory,
+  getAvailableWireInventory,
+  createWiringItem,
+  fetchIssuedWires,
+  updateTechni,
 };

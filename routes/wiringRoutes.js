@@ -13,5 +13,13 @@ router.get(
 
 router.post("/createWireInventory", wiringController.createWireInventory);
 router.get("/fetchAllWireInventory", wiringController.fetchAllWireInventory);
+router.get(
+  "/getAvailableWireInventory/:id",
+  wiringController.getAvailableWireInventory,
+);
 
+router.put("/updateWireInventory/:id", wiringController.updateWireInventory);
+router.post("/createWiringItem", wiringController.createWiringItem);
+router.put("/updateTechni/:wiringId", wiringController.updateTechni);
+router.get("/fetchIssuedWires/:id", wiringController.fetchIssuedWires);
 module.exports = router;

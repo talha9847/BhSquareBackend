@@ -21,6 +21,8 @@ const { Wiring } = require("./wiringModel");
 const { Technician } = require("./technicianModel");
 const { Car } = require("./carModel");
 const { Driver } = require("./driverModel");
+const { WiringItem } = require("./wiringItemModel");
+const { WireInventory } = require("./wireInventoryModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -193,6 +195,28 @@ Car.hasMany(Dispatch, {
   as: "dispatches",
 });
 
+// WiringItem → Wiring
+WiringItem.belongsTo(WireInventory, {
+  foreignKey: "wire_inventory_id",
+  as: "wire", // ✅ this alias must be used in the include
+  onDelete: "CASCADE",
+});
+WireInventory.hasMany(WiringItem, {
+  foreignKey: "wire_inventory_id",
+  as: "wiring_items",
+});
+
+// --- Wiring → WiringItem
+WiringItem.belongsTo(Wiring, {
+  foreignKey: "wiring_id",
+  as: "wiring",
+  onDelete: "CASCADE",
+});
+Wiring.hasMany(WiringItem, {
+  foreignKey: "wiring_id",
+  as: "items",
+});
+
 // Customer -> Lead
 // ----------------------
 // Export all models
@@ -217,4 +241,6 @@ module.exports = {
   Technician,
   Driver,
   Car,
+  WireInventory,
+  WiringItem,
 };

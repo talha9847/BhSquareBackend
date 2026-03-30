@@ -360,6 +360,15 @@ CREATE TABLE cars (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE wiring_items (
+    id SERIAL PRIMARY KEY,
+    wiring_id INTEGER REFERENCES wiring(id) ON DELETE CASCADE,
+    wire_inventory_id INTEGER REFERENCES wire_inventory(id) ON DELETE CASCADE,
+    qty INTEGER NOT NULL CHECK (qty > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (wiring_id, wire_inventory_id)
+)
 
 
 

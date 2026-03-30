@@ -5,6 +5,7 @@ const { KitItems } = require("../models/kitItemsModels");
 const { Lead } = require("../models/leadModel");
 const { Technician } = require("../models/technicianModel");
 const { WireInventory } = require("../models/wireInventoryModel");
+const { WiringItem } = require("../models/wiringItemModel");
 const { Wiring } = require("../models/wiringModel");
 
 async function getAllTechnicians() {
@@ -181,8 +182,8 @@ async function updateWireInventoryById(id, updateData) {
       await t.rollback();
       return { success: false, message: "Wire inventory not found" };
     }
-
     const { brand_name, wire_type, color, gauge, stock } = updateData;
+    console.log(stock);
 
     // Validate required fields
     if (
@@ -234,6 +235,202 @@ async function updateWireInventoryById(id, updateData) {
   }
 }
 
+const { Op } = require("sequelize");
+async function getAvailableWireInventoryForWiring(wiring_id) {
+  try {
+    // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
+    const assignedItems = await WiringItem.findAll({
+      where: { wiring_id },
+      attributes: ["wire_inventory_id"],
+    });
+
+    const assignedIds = assignedItems.map((item) => item.wire_inventory_id);
+
+    // 2️⃣ Fetch all WireInventory not assigned to this wiring
+    const availableWires = await WireInventory.findAll({
+      where: {
+        id: {
+          [Op.notIn]: assignedIds.length ? assignedIds : [0],
+        },
+      },
+      order: [["created_at", "DESC"]],
+    });
+
+    return {
+      success: true,
+      data: availableWires,
+    };
+  } catch (error) {
+    console.error("Error fetching available wire inventory:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+async function addWiringItem({ wiring_id, wire_inventory_id, qty }) {
+  const t = await sequelize.transaction();
+
+  try {
+    // 🔹 Validate input
+    if (!wiring_id || !wire_inventory_id || !qty) {
+      throw new Error("wiring_id, wire_inventory_id and qty are required");
+    }
+
+    const qtyNum = Number(qty);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      throw new Error("Quantity must be a positive number");
+    }
+
+    // 🔹 Check if already exists (unique constraint)
+    const existing = await WiringItem.findOne({
+      where: { wiring_id, wire_inventory_id },
+      transaction: t,
+    });
+
+    if (existing) {
+      throw new Error("This wire already added to this wiring");
+    }
+
+    const inventory = await WireInventory.findByPk(wire_inventory_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!inventory) {
+      throw new Error("Wire inventory not found");
+    }
+
+    // 🔹 Check stock
+    if (inventory.stock < qtyNum) {
+      throw new Error("Insufficient stock");
+    }
+
+    // 🔹 Deduct stock
+    if (inventory.stock - qtyNum < 0) {
+      throw new Error("Stock cannot go below zero");
+    }
+    inventory.stock = inventory.stock - qtyNum;
+
+    await inventory.save({ transaction: t });
+
+    // 🔹 Create wiring item
+    const item = await WiringItem.create(
+      {
+        wiring_id,
+        wire_inventory_id,
+        qty: qtyNum,
+      },
+      { transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      success: true,
+      data: item,
+      message: "Wiring item added & stock deducted successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error adding wiring item:", error);
+
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+}
+async function getIssuedWiresByWiringId(wiring_id) {
+  try {
+    if (!wiring_id) {
+      throw new Error("wiring_id is required");
+    }
+
+    // Fetch the wiring itself
+    const wiring = await Wiring.findByPk(wiring_id, {
+      attributes: ["technician_id", "inventory_status"],
+    });
+
+    if (!wiring) {
+      return { success: false, message: "Wiring not found" };
+    }
+
+    // Fetch all wiring items
+    const issuedItems = await WiringItem.findAll({
+      where: { wiring_id },
+      include: [
+        {
+          model: WireInventory,
+          as: "wire",
+          attributes: ["id", "brand_name", "wire_type", "color", "gauge"],
+        },
+      ],
+      order: [["created_at", "ASC"]],
+    });
+
+    // Map wiring items
+    const items = issuedItems.map((item) => ({
+      id: item.id,
+      wiring_id: item.wiring_id,
+      wire_inventory_id: item.wire_inventory_id,
+      qty: item.qty,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      brand_name: item.wire?.brand_name || null,
+      wire_type: item.wire?.wire_type || null,
+      color: item.wire?.color || null,
+      gauge: item.wire?.gauge || null,
+    }));
+
+    // Separate extra data
+    const extraData = {
+      technician_id: wiring.technician_id,
+      inventory_status: wiring.inventory_status,
+    };
+
+    return { success: true, data: items, extraData };
+  } catch (error) {
+    console.error("Error fetching issued wires:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+async function updateWiringTechnician(wiringId, technicianId) {
+  const t = await sequelize.transaction();
+  try {
+    // 1️⃣ Fetch wiring record
+    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
+    if (!wiring) {
+      await t.rollback();
+      return { success: false, message: "Wiring record not found" };
+    }
+
+    // 2️⃣ Optional: validate technician exists
+    if (technicianId) {
+      const tech = await Technician.findByPk(technicianId, { transaction: t });
+      if (!tech) {
+        await t.rollback();
+        return { success: false, message: "Technician not found" };
+      }
+    }
+
+    // 3️⃣ Update technician_id field
+    wiring.technician_id = technicianId;
+    await wiring.save({ transaction: t });
+
+    await t.commit();
+
+    return {
+      success: true,
+      data: wiring,
+      message: "Technician updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating technician:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -242,4 +439,8 @@ module.exports = {
   addWireInventory,
   getAllWireInventory,
   updateWireInventoryById,
+  getAvailableWireInventoryForWiring,
+  addWiringItem,
+  getIssuedWiresByWiringId,
+  updateWiringTechnician,
 };
