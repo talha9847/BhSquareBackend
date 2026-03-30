@@ -1,12 +1,16 @@
 const sequelize = require("../config/db");
+const { CustomerDocument } = require("../models/customerDocumentModel");
 const { Customer } = require("../models/customerModel");
 const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { Lead } = require("../models/leadModel");
 const { Technician } = require("../models/technicianModel");
 const { WireInventory } = require("../models/wireInventoryModel");
+const { WiringDocs } = require("../models/wiringDocModel");
 const { WiringItem } = require("../models/wiringItemModel");
 const { Wiring } = require("../models/wiringModel");
+const { google } = require("googleapis");
+const { Readable } = require("stream");
 
 async function getAllTechnicians() {
   try {
@@ -236,6 +240,7 @@ async function updateWireInventoryById(id, updateData) {
 }
 
 const { Op } = require("sequelize");
+const { CustomerStage } = require("../models/customerStageModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -467,6 +472,186 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
   }
 }
 
+// Replace the old Service Account Auth with this:
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  "https://developers.google.com/oauthplayground", // or your redirect URI
+);
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_REFRESH_TOKEN, // Use the token you got from Playground
+});
+
+const drive = google.drive({ version: "v3", auth: oauth2Client });
+
+async function findFileInFolder(fileName, folderId) {
+  try {
+    const res = await drive.files.list({
+      q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
+      fields: "files(id, name, webViewLink)",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    if (res.data.files.length > 0) {
+      return res.data.files[0]; // return first match
+    }
+
+    return null;
+  } catch (error) {
+    console.error("❌ Error finding file in folder:", error.message);
+    throw error;
+  }
+}
+async function uploadWiringDocsWithCS(files, wiringId, customerId) {
+  try {
+    // 🔹 Step 1: Get folder_id from DB
+    const customerDoc = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!customerDoc || !customerDoc.folder_id) {
+      throw new Error("Customer folder_id not found");
+    }
+
+    const folderId = customerDoc.folder_id;
+
+    // 🔹 Step 2: Upload files directly into this folder
+    const uploadPromises = files.map(async (file) => {
+      const fileName = file.fieldname;
+
+      const existingFile = await findFileInFolder(fileName, folderId);
+
+      let response;
+
+      if (existingFile) {
+        // 🔁 Replace file
+        response = await drive.files.update({
+          fileId: existingFile.id,
+          media: {
+            mimeType: file.mimetype || "application/octet-stream",
+            body: Readable.from(file.buffer),
+          },
+          supportsAllDrives: true,
+          fields: "id, webViewLink",
+        });
+      } else {
+        // 🆕 Upload new file directly in folder
+        response = await drive.files.create({
+          requestBody: {
+            name: fileName,
+            parents: [folderId],
+          },
+          media: {
+            mimeType: file.mimetype || "application/octet-stream",
+            body: Readable.from(file.buffer),
+          },
+          supportsAllDrives: true,
+          fields: "id, webViewLink",
+        });
+      }
+
+      const fileUrl = response.data.webViewLink;
+
+      // 🔹 Step 3: Save in DB
+      await WiringDocs.upsert(
+        {
+          wiring_id: wiringId,
+          doc_name: fileName,
+          doc_link: fileUrl,
+          created_at: new Date(),
+        },
+        {
+          conflictFields: ["wiring_id", "doc_name"],
+        },
+      );
+
+      return {
+        name: fileName,
+        url: fileUrl,
+      };
+    });
+
+    
+    await updateWiringStageIfDocsComplete(wiringId);
+
+    return await Promise.all(uploadPromises);
+  } catch (error) {
+    console.error("❌ WiringDocs Upload Error:", error.message);
+    throw error;
+  }
+}
+
+async function updateWiringStageIfDocsComplete(wiringId) {
+  const t = await sequelize.transaction();
+  try {
+    if (!wiringId) {
+      throw new Error("wiringId is required");
+    }
+
+    // 🔹 Step 1: Count docs
+    const docCount = await WiringDocs.count({
+      where: { wiring_id: wiringId },
+      transaction: t,
+    });
+
+    if (docCount < 3) {
+      await t.rollback();
+      return {
+        success: true,
+        message: `Only ${docCount} docs uploaded. Minimum 3 required.`,
+      };
+    }
+
+    // 🔹 Step 2: Get wiring (to fetch customer_id)
+    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
+
+    if (!wiring) {
+      throw new Error("Wiring not found");
+    }
+
+    const customerId = wiring.customer_id;
+
+    // 🔹 Step 3: Update customer stages
+    await CustomerStage.update(
+      { status: "done" },
+      {
+        where: {
+          customer_id: customerId,
+          stage_id: 9,
+        },
+        transaction: t,
+      },
+    );
+
+    await CustomerStage.update(
+      { status: "pending" },
+      {
+        where: {
+          customer_id: customerId,
+          stage_id: 10,
+        },
+        transaction: t,
+      },
+    );
+
+    // 🔹 Step 4: Update wiring status
+    wiring.status = "done";
+    await wiring.save({ transaction: t });
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Wiring completed and stages updated",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("❌ Error updating wiring stage:", error);
+    return { success: false, message: error.message };
+  }
+}
 
 module.exports = {
   updateTechnician,
@@ -481,4 +666,5 @@ module.exports = {
   getIssuedWiresByWiringId,
   updateWiringTechnician,
   updateWiringInventoryStatus,
+  uploadWiringDocsWithCS,
 };

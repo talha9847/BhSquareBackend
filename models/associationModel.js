@@ -23,6 +23,7 @@ const { Car } = require("./carModel");
 const { Driver } = require("./driverModel");
 const { WiringItem } = require("./wiringItemModel");
 const { WireInventory } = require("./wireInventoryModel");
+const { WiringDocs } = require("./wiringDocModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -217,6 +218,16 @@ Wiring.hasMany(WiringItem, {
   as: "items",
 });
 
+WiringDocs.belongsTo(Wiring, {
+  foreignKey: "wiring_id",
+  as: "wiring",
+  onDelete: "CASCADE",
+});
+
+Wiring.hasMany(WiringDocs, {
+  foreignKey: "wiring_id",
+  as: "docs",
+});
 // Customer -> Lead
 // ----------------------
 // Export all models

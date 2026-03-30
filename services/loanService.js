@@ -9,6 +9,7 @@ const { LoanDoc } = require("../models/loanDocModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { KitReady } = require("../models/kitReadyModel");
 const sequelize = require("../config/db");
+const { CustomerDocument } = require("../models/customerDocumentModel");
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -22,27 +23,52 @@ oauth2Client.setCredentials({
 
 const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-// Helper: get or create folder
-async function getOrCreateCustomerFolder(folderName, parentFolderId) {
+async function getOrCreateCustomerFolder(
+  folderName,
+  parentFolderId,
+  customerId,
+) {
+  // 1️⃣ Check DB first
+  const existingDoc = await CustomerDocument.findOne({
+    where: { customer_id: customerId },
+  });
+
+  if (existingDoc && existingDoc.folder_id) {
+    console.log(`📂 Folder already exists in DB: ${existingDoc.folder_id}`);
+    return existingDoc.folder_id;
+  }
+
+  // 2️⃣ Only run if folder_id not found
   const existing = await drive.files.list({
     q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: "files(id, name)",
   });
 
+  let folderId;
   if (existing.data.files.length > 0) {
-    return existing.data.files[0].id;
+    folderId = existing.data.files[0].id;
+    console.log(`📂 Folder exists in Drive: ${folderName} (ID: ${folderId})`);
+  } else {
+    console.log(`📁 Creating new folder: ${folderName}`);
+    const folder = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentFolderId],
+      },
+      fields: "id",
+    });
+    folderId = folder.data.id;
   }
 
-  const folder = await drive.files.create({
-    requestBody: {
-      name: folderName,
-      mimeType: "application/vnd.google-apps.folder",
-      parents: [parentFolderId],
-    },
-    fields: "id",
+  // 3️⃣ Update DB only if folder was missing
+  await CustomerDocument.upsert({
+    customer_id: customerId,
+    folder_id: folderId,
+    updated_at: new Date(),
   });
 
-  return folder.data.id;
+  return folderId;
 }
 
 // Helper: find file in folder
@@ -57,7 +83,7 @@ async function findFileInFolder(fileName, folderId) {
   return res.data.files.length ? res.data.files[0] : null;
 }
 
-async function uploadLoanDocs(files, customerName, csNo, loanId) {
+async function uploadLoanDocs(files, customerName, csNo, loanId, customerId) {
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
   const folderName = `${csNo} ${customerName}`;
 
@@ -66,6 +92,7 @@ async function uploadLoanDocs(files, customerName, csNo, loanId) {
     const customerFolderId = await getOrCreateCustomerFolder(
       folderName,
       rootFolderId,
+      customerId,
     );
 
     const uploadPromises = files.map(async (file) => {

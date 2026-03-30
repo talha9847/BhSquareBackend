@@ -85,7 +85,6 @@ async function upsertCustomerDocument(req, res) {
 async function uploadDocsToDrive(req, res) {
   try {
     const { customerId, docId, customerName, contactNumber } = req.body;
-    console.log(docId);
     const files = req.files;
 
     if (!files || files.length === 0) {
@@ -100,6 +99,7 @@ async function uploadDocsToDrive(req, res) {
       customerName,
       contactNumber,
       docId,
+      customerId,
     );
 
     const status = await docCollectService.checkCustomerReady(customerId);

@@ -1,34 +1,25 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const CustomerDocument = sequelize.define(
-  "CustomerDocument",
+const WiringDocs = sequelize.define(
+  "WiringDocs",
   {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
     },
-    customer_id: {
+    wiring_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    consumer_number: {
-      type: DataTypes.STRING(50),
+    doc_name: {
+      type: DataTypes.STRING(255),
       allowNull: false,
-      unique: true,
     },
-    geo_coordinate: {
-      type: DataTypes.STRING(100),
-    },
-    registration_number: {
-      type: DataTypes.STRING(50),
-    },
-    sub_division: {
-      type: DataTypes.STRING(50),
-    },
-    folder_id: {
+    doc_link: {
       type: DataTypes.TEXT,
+      allowNull: false,
     },
     created_at: {
       type: DataTypes.DATE,
@@ -40,9 +31,15 @@ const CustomerDocument = sequelize.define(
     },
   },
   {
-    tableName: "customer_documents",
+    tableName: "wiring_docs",
     timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["wiring_id", "doc_name"], // ✅ matches DB constraint
+      },
+    ],
   },
 );
 
-module.exports = { CustomerDocument };
+module.exports = { WiringDocs };

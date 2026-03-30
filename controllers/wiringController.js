@@ -329,6 +329,44 @@ async function updateInventoryStatus(req, res) {
   }
 }
 
+async function uploadWiringDocs(req, res) {
+  try {
+    const { wiringId, customerId } = req.body;
+    const files = req.files;
+
+    if (!wiringId || !customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "wiringId and customerId are required",
+      });
+    }
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No files uploaded",
+      });
+    }
+    
+    const result = await wiringService.uploadWiringDocsWithCS(
+      files,
+      wiringId,
+      customerId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+      message: "Files uploaded successfully",
+    });
+  } catch (error) {
+    console.error("❌ Error uploading wiring docs:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upload wiring documents",
+    });
+  }
+}
 
 module.exports = {
   updateTechnician,
@@ -343,4 +381,5 @@ module.exports = {
   fetchIssuedWires,
   updateTechni,
   updateInventoryStatus,
+  uploadWiringDocs,
 };

@@ -22,32 +22,50 @@ oauth2Client.setCredentials({
 });
 
 const drive = google.drive({ version: "v3", auth: oauth2Client });
-
-async function getOrCreateCustomerFolder(folderName, parentFolderId) {
+async function getOrCreateCustomerFolder(
+  folderName,
+  parentFolderId,
+  customerId,
+) {
   const existing = await drive.files.list({
     q: `name='${folderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: "files(id, name)",
   });
 
+  let folderId;
+
   if (existing.data.files.length > 0) {
-    console.log(
-      `📂 Folder exists: ${folderName} (ID: ${existing.data.files[0].id})`,
-    );
-    return existing.data.files[0].id;
+    folderId = existing.data.files[0].id;
+    console.log(`📂 Folder exists: ${folderName} (ID: ${folderId})`);
+  } else {
+    console.log(`📁 Creating new folder: ${folderName}`);
+
+    const folder = await drive.files.create({
+      requestBody: {
+        name: folderName,
+        mimeType: "application/vnd.google-apps.folder",
+        parents: [parentFolderId],
+      },
+      fields: "id",
+    });
+
+    folderId = folder.data.id;
   }
 
-  // Create it if it doesn't exist
-  console.log(`📁 Creating new folder: ${folderName}`);
-  const folder = await drive.files.create({
-    requestBody: {
-      name: folderName,
-      mimeType: "application/vnd.google-apps.folder",
-      parents: [parentFolderId],
-    },
-    fields: "id",
-  });
+  // ✅ ONLY UPDATE (since record already exists)
+  if (customerId) {
+    await CustomerDocument.update(
+      {
+        folder_id: folderId,
+        updated_at: new Date(),
+      },
+      {
+        where: { customer_id: customerId },
+      },
+    );
+  }
 
-  return folder.data.id;
+  return folderId;
 }
 
 async function findFileInFolder(fileName, folderId) {
@@ -62,7 +80,13 @@ async function findFileInFolder(fileName, folderId) {
 }
 
 // 2. Updated Upload function
-async function uploadBulkFiles(files, customerName, contactNumber, docId) {
+async function uploadBulkFiles(
+  files,
+  customerName,
+  contactNumber,
+  docId,
+  customerId,
+) {
   const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
   const folderName = `${customerName}_${contactNumber}`;
 
@@ -71,6 +95,7 @@ async function uploadBulkFiles(files, customerName, contactNumber, docId) {
     const customerFolderId = await getOrCreateCustomerFolder(
       folderName,
       rootFolderId,
+      customerId,
     );
 
     const uploadPromises = files.map(async (file) => {

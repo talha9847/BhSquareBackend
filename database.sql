@@ -60,16 +60,18 @@ CREATE TABLE stages (
 );
 
 
-
-INSERT INTO stages (stage_name, description, default_order)
-VALUES
-('Customer', 'Lead converted to customer', 1),
-('Name Change', 'Name change verification', 2),
-('Doc Collection', 'Documents collection stage', 3),
-('Loan', 'Loan processing stage', 5, TRUE),
-('Installation', 'Installation scheduled/completed', 6, TRUE),
-('Follow Up', 'Post-installation follow-up', 7, TRUE),
-('Converted', 'Final stage after all processes', 8, TRUE);
+INSERT INTO stages (id, stage_name, default_order, description) VALUES
+(1, 'Customer', 1, 'Lead converted to customer'),
+(2, 'Name Change', 2, 'Name change verification'),
+(3, 'Doc Collection', 3, 'Documents collection stage'),
+(4, 'Registration', 4, 'Customer registration stage'),
+(5, 'Loan', 5, 'Loan process stage'),
+(6, 'Kit Ready', 6, 'Kit ready stage'),
+(7, 'Dispatch', 7, 'Kit dispatched to customer'),
+(8, 'Fabrication', 8, 'Fabrication stage'),
+(9, 'Wiring', 9, 'Wiring stage'),
+(10, 'File Upload', 10, 'File upload stage'),
+(11, 'Inspection', 11, 'Inspection stage');
 
 
 
@@ -110,10 +112,12 @@ CREATE TABLE customer_documents (
     registration_number VARCHAR(50),
     sub_division VARCHAR(50),
     final_system_size VARCHAR(50),
+    folder_id TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+ALTER TABLE customer_documents
+ADD COLUMN folder_id TEXT;
 
 
 CREATE TABLE customer_document_files (
@@ -370,6 +374,15 @@ CREATE TABLE wiring_items (
     UNIQUE (wiring_id, wire_inventory_id)
 )
 
+CREATE TABLE wiring_docs (
+    id SERIAL PRIMARY KEY,
+    wiring_id INTEGER REFERENCES wiring(id) ON DELETE CASCADE,
+    doc_name VARCHAR(255) NOT NULL,
+    doc_link TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (wiring_id, doc_name)
+);
 
 
 TRUNCATE TABLE

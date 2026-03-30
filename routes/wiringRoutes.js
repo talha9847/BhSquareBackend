@@ -2,6 +2,7 @@ const wiringController = require("../controllers/wiringController");
 
 const express = require("express");
 const router = express.Router();
+const upload = require("../middlewares/upload");
 
 router.post("/createTechnician", wiringController.createTechnician);
 router.get("/fetchTechnicians", wiringController.fetchTechnicians);
@@ -25,6 +26,12 @@ router.get("/fetchIssuedWires/:id", wiringController.fetchIssuedWires);
 router.put(
   "/updateInventoryStatus/:wiringId",
   wiringController.updateInventoryStatus,
+);
+
+router.post(
+  "/uploadWiringDocs",
+  upload.any(),
+  wiringController.uploadWiringDocs,
 );
 
 module.exports = router;

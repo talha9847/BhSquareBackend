@@ -32,6 +32,7 @@ async function uploadLoanDocuments(req, res) {
       customer_name,
       cs_no, // you can also use contact number if needed
       loan_id,
+      customerId,
     );
 
     return res.status(200).json({
