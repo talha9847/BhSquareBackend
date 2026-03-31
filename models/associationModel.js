@@ -26,6 +26,7 @@ const { WireInventory } = require("./wireInventoryModel");
 const { WiringDocs } = require("./wiringDocModel");
 const { CustomerStage } = require("./customerStageModel");
 const { Stage } = require("./stegeModel");
+const { Source } = require("./sourceModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -240,6 +241,17 @@ CustomerStage.belongsTo(Stage, {
 Stage.hasMany(CustomerStage, {
   foreignKey: "stage_id",
   as: "customer_stages",
+});
+
+Lead.belongsTo(Source, {
+  foreignKey: "source_id",
+  as: "source",
+});
+
+// Optional (reverse)
+Source.hasMany(Lead, {
+  foreignKey: "source_id",
+  as: "leads",
 });
 // Customer -> Lead
 // ----------------------

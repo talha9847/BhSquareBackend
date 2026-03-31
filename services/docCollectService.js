@@ -359,6 +359,59 @@ async function checkDocAccess(customer_id) {
   return customer;
 }
 
+// services/customerDocumentService.js
+
+async function getCustomerDocumentsWithFiles(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 Step 1: Get customer document
+    const document = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!document) {
+      return {
+        success: false,
+        message: "Customer document not found",
+      };
+    }
+
+    // 🔹 Step 2: Get files using document_id
+    const files = await CustomerDocumentFile.findAll({
+      where: { document_id: document.id },
+      order: [["id", "DESC"]],
+    });
+
+    // 🔹 Step 3: Format response
+    const result = {
+      document_id: document.id,
+      customer_id: document.customer_id,
+      consumer_number: document.consumer_number,
+      geo_coordinate: document.geo_coordinate,
+      registration_number: document.registration_number,
+      sub_division: document.sub_division,
+
+      files: files.map((f) => ({
+        id: f.id,
+        file_name: f.file_name,
+        file_url: f.file_url,
+        uploaded_at: f.uploaded_at,
+      })),
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error fetching customer documents:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
@@ -368,4 +421,5 @@ module.exports = {
   completeStageAndPrepareNext,
   checkDocumentCollectionAccess,
   checkDocAccess,
+  getCustomerDocumentsWithFiles,
 };

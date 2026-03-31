@@ -351,9 +351,34 @@ async function addCustomerSerials(req, res) {
   }
 }
 
-module.exports = {
-  addCustomerSerials,
-};
+// controllers/kitController.js
+
+async function fetchKitItemsbyCustomer(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result = await kitReadyService.getKitItemsByCustomerId(customerId);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching kit items:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch kit items",
+    });
+  }
+}
 
 module.exports = {
   fetchKitReadyCustomers,
@@ -372,4 +397,5 @@ module.exports = {
   allocateItem,
   getPanelAndInventer,
   addCustomerSerials,
+  fetchKitItemsbyCustomer,
 };

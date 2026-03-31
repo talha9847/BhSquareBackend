@@ -30,4 +30,8 @@ router.get(
 );
 router.post("/addCustomerSerials", kitReadyController.addCustomerSerials);
 
+router.get(
+  "/fetchKitItemsbyCustomer/:customerId",
+  kitReadyController.fetchKitItemsbyCustomer,
+);
 module.exports = router;

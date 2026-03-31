@@ -21,4 +21,8 @@ router.put(
   loanController.completeLoanAndMoveToKitReady,
 );
 
+router.get(
+  "/fetchCustomerLoan/:customerId",
+  loanController.fetchCustomerLoan,
+);
 module.exports = router;

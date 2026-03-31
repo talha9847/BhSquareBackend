@@ -33,5 +33,9 @@ router.get(
   "/checkDocAccess/:customer_id",
   docCollectController.checkDocAccess,
 );
+router.get(
+  "/fetchCustomerDocuments/:customerId",
+  docCollectController.fetchCustomerDocuments,
+);
 
 module.exports = router;

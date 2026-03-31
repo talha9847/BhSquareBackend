@@ -12,5 +12,6 @@ router.post("/delayToPending", leadController.delayToPending);
 router.post("/convertToCustomer", leadController.convertToCustomer);
 router.post("/cancelLead", leadController.cancelLead);
 router.post("/updateLead", leadController.updateLead);
+router.get("/fetchLeadById/:id", leadController.fetchLeadById);
 
 module.exports = router;

@@ -199,10 +199,41 @@ async function completeLoanAndMoveToKitReady(req, res) {
   }
 }
 
+// controllers/customerLoanController.js
+
+async function fetchCustomerLoan(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result = await loanService.getCustomerLoanWithDocs(customerId);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching customer loan:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch customer loan",
+    });
+  }
+}
+
+
 module.exports = {
   uploadLoanDocuments,
   getLoanByCustomerId,
   updateLoan,
   approveLoan,
   completeLoanAndMoveToKitReady,
+  fetchCustomerLoan,
 };

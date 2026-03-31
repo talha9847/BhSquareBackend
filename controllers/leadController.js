@@ -242,6 +242,36 @@ async function updateLead(req, res) {
   }
 }
 
+// controllers/leadController.js
+
+async function fetchLeadById(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead id is required",
+      });
+    }
+
+    const result = await leadService.getLeadById(id);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching lead by id:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch lead",
+    });
+  }
+}
+
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -252,4 +282,5 @@ module.exports = {
   convertToCustomer,
   cancelLead,
   updateLead,
+  fetchLeadById,
 };

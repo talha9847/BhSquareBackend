@@ -6,6 +6,7 @@ const { Customer } = require("../models/customerModel");
 const { Stage } = require("../models/stegeModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { LeadCancellation } = require("../models/leadCancellationModel");
+const { Source } = require("../models/sourceModel");
 
 async function addLead(data) {
   try {
@@ -220,6 +221,56 @@ async function updateLead({ id, ...updateData }) {
   }
 }
 
+async function getLeadById(id) {
+  try {
+    if (!id) {
+      throw new Error("Lead id is required");
+    }
+
+    const lead = await Lead.findByPk(id, {
+      include: [
+        {
+          model: Source,
+          as: "source", // make sure alias matches your association
+          attributes: ["id", "source_name"],
+        },
+      ],
+    });
+
+    if (!lead) {
+      return {
+        success: false,
+        message: "Lead not found",
+      };
+    }
+
+    // 🔹 Format response
+    const result = {
+      id: lead.id,
+      customer_name: lead.customer_name,
+      contact_number: lead.contact_number,
+      address: lead.address,
+      site_visit_date: lead.site_visit_date,
+      status: lead.status,
+      installation_type: lead.installation_type,
+      panel_wattage: lead.panel_wattage,
+      number_of_panels: lead.number_of_panels,
+      total_capacity: lead.total_capacity,
+      source: lead.source?.source_name || null,
+      notes: lead.notes,
+      created_at: lead.created_at,
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error fetching lead by id:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -230,4 +281,5 @@ module.exports = {
   convertToCustomer,
   cancelLead,
   updateLead,
+  getLeadById,
 };

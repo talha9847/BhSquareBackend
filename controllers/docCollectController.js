@@ -192,6 +192,37 @@ async function checkDocAccess(req, res) {
   }
 }
 
+// controllers/customerDocumentController.js
+
+async function fetchCustomerDocuments(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result =
+      await docCollectService.getCustomerDocumentsWithFiles(customerId);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching customer documents:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch customer documents",
+    });
+  }
+}
+
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
@@ -200,4 +231,5 @@ module.exports = {
   completeStageAndPrepareNext,
   checkDocumentCollectionAccess,
   checkDocAccess,
+  fetchCustomerDocuments,
 };

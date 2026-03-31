@@ -317,6 +317,62 @@ async function completeLoanAndMoveToKitReady(customerId) {
   }
 }
 
+
+async function getCustomerLoanWithDocs(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 Step 1: Get loan
+    const loan = await Loan.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!loan) {
+      return {
+        success: false,
+        message: "Customer loan not found",
+      };
+    }
+
+    // 🔹 Step 2: Get loan docs
+    const docs = await LoanDoc.findAll({
+      where: { loan_id: loan.id },
+      order: [["created_at", "DESC"]],
+    });
+
+    // 🔹 Step 3: Format response
+    const result = {
+      loan_id: loan.id,
+      customer_id: loan.customer_id,
+      bank_name: loan.bank_name,
+      is_applied: loan.is_applied,
+      estimated: loan.estimated,
+      loan_amount: loan.loan_amount,
+      interest_rate: loan.interest_rate,
+      bank_remarks: loan.bank_remarks,
+      created_at: loan.created_at,
+
+      documents: docs.map((d) => ({
+        id: d.id,
+        doc_name: d.doc_name,
+        url: d.url,
+        created_at: d.created_at,
+      })),
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error fetching loan data:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+
 module.exports = {
   uploadLoanDocs,
   findCustomerName,
@@ -324,4 +380,5 @@ module.exports = {
   updateLoanByCustomerId,
   approveLoanByCustomerId,
   completeLoanAndMoveToKitReady,
+  getCustomerLoanWithDocs,
 };

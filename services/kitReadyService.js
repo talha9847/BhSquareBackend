@@ -679,6 +679,64 @@ async function addSerialsAndDispatch(
   }
 }
 
+async function getKitItemsByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 Step 1: Find kit_ready
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!kit) {
+      return {
+        success: false,
+        message: "Kit not found for this customer",
+      };
+    }
+
+    // 🔹 Step 2: Find kit items
+    const items = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory", // must match association
+          attributes: ["id", "name"], // adjust fields as per your table
+        },
+      ],
+      order: [["created_at", "ASC"]],
+    });
+
+    // 🔹 Step 3: Format response
+    const result = {
+      kit_id: kit.id,
+      customer_id: kit.customer_id,
+      status: kit.status,
+
+      items: items.map((item) => ({
+        id: item.id,
+        inventory_id: item.inventory_id,
+        item_name: item.inventory?.name || null,
+        qty: item.qty,
+        status: item.status,
+        created_at: item.created_at,
+      })),
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error fetching kit items:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -697,4 +755,5 @@ module.exports = {
   allocateKitItem,
   getPanelAndInverterByCustomerId,
   addSerialsAndDispatch,
+  getKitItemsByCustomerId,
 };
