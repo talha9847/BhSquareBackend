@@ -1,6 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const { Brand } = require("./brandModel");
+const { Category } = require("./categoryModel");
 
 const Inventory = sequelize.define(
   "Inventory",
@@ -25,7 +26,14 @@ const Inventory = sequelize.define(
       },
       onDelete: "SET NULL",
     },
-
+    category_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: Category,
+        key: "id",
+      },
+    },
     qty: {
       type: DataTypes.INTEGER,
       defaultValue: 0,

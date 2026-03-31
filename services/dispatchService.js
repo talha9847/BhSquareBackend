@@ -514,6 +514,73 @@ async function updateDriver(id, { name, mobile }) {
   }
 }
 
+async function getAllDispatchesByStatus(status) {
+  try {
+    if (!status || !["pending", "done"].includes(status)) {
+      throw new Error("Invalid status. Must be 'pending' or 'done'");
+    }
+
+    const dispatches = await Dispatch.findAll({
+      where: { status },
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "address", "contact_number"],
+            },
+          ],
+        },
+        {
+          model: Driver,
+          as: "driver",
+          attributes: ["name"],
+        },
+        {
+          model: Car,
+          as: "car",
+          attributes: ["name", "number"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    const result = dispatches.map((d) => ({
+      id: d.id,
+      customer_id: d.customer_id,
+
+      // ✅ NEW
+      driver_id: d.driver_id || null,
+      car_id: d.car_id || null,
+      lead_id: d.customer.lead.id,
+      customer_name: d.customer?.lead?.customer_name || null,
+      address: d.customer?.lead?.address || null,
+      contact: d.customer?.lead?.contact_number || null,
+
+      driver_name: d.driver?.name || null,
+      vehicle: d.car ? `${d.car.name} (${d.car.number})` : null,
+
+      status: d.status || null,
+      date: d.created_at
+        ? new Date(d.created_at).toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })
+        : null,
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching dispatches:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getAllDispatches,
   updateDispatchByCustomerId,
@@ -529,4 +596,5 @@ module.exports = {
   addDriver,
   getAllDrivers,
   updateDriver,
+  getAllDispatchesByStatus,
 };

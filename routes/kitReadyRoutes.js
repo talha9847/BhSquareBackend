@@ -38,4 +38,9 @@ router.get(
   "/fetchKitReadyCustomersByStatus",
   kitReadyController.fetchKitReadyCustomersByStatus,
 );
+
+router.post("/createCategory", kitReadyController.createCategory);
+router.get("/getCategories", kitReadyController.getCategories);
+router.put("/updateCategory/:id", kitReadyController.updateCategory);
+
 module.exports = router;

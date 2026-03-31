@@ -273,6 +273,18 @@ CREATE TABLE brands (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE inventory_table (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  brand_id INTEGER REFERENCES brands(id) ON DELETE SET NULL,
+  category_id INT REFERENCES category(id) ON DELETE SET NULL
+  qty INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+  ALTER TABLE inventory_table
+ADD COLUMN category_id INT REFERENCES category(id) ON DELETE SET NULL;
+
+
 
 CREATE TABLE kit_items (
     id SERIAL PRIMARY KEY,

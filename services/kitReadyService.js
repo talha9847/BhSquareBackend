@@ -13,11 +13,13 @@ const { Op } = require("sequelize");
 const { PanelSerial } = require("../models/panelSerialModel");
 const { InverterSerial } = require("../models/inverterSerialModel");
 const { Dispatch } = require("../models/dispatchModel");
+const { Category } = require("../models/categoryModel");
 
 async function getKitReadyCustomers() {
   try {
     const data = await KitReady.findAll({
       attributes: ["id", "loan_status", "status"],
+      where: { status: "pending" },
       include: [
         {
           model: Customer,
@@ -124,15 +126,16 @@ async function getAllBrands() {
     throw error;
   }
 }
-
 async function addInventory(data) {
-  const { name, brand_id, qty } = data;
+  const { name, brand_id, category_id, qty } = data;
 
   try {
+    // 🔹 Validate inventory name
     if (!name) {
       throw new Error("Inventory name is required");
     }
 
+    // 🔹 Validate brand_id if provided
     if (brand_id) {
       const brand = await Brand.findByPk(brand_id);
       if (!brand) {
@@ -140,9 +143,19 @@ async function addInventory(data) {
       }
     }
 
+    // 🔹 Validate category_id if provided
+    if (category_id) {
+      const category = await Category.findByPk(category_id);
+      if (!category) {
+        throw new Error("Invalid category_id");
+      }
+    }
+
+    // 🔹 Create inventory
     const inventory = await Inventory.create({
-      name,
+      name: name.trim(),
       brand_id: brand_id || null,
+      category_id: category_id || null,
       qty: qty || 0,
     });
 
@@ -161,6 +174,11 @@ async function getAllInventory() {
           as: "brand",
           attributes: ["id", "name"],
         },
+        {
+          model: Category,
+          as: "category",
+          attributes: ["id", "name"],
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -170,7 +188,9 @@ async function getAllInventory() {
       name: item.name,
       brand_id: item.brand_id,
       brand_name: item.brand?.name || null, // ✅ flattened
-      qty: item.qty,
+      category_id: item.category_id,
+      category_name: item.category?.name || null, // ✅ flattened
+      qty: item.qty, // updated field name if using stock
       created_at: item.created_at,
     }));
 
@@ -277,44 +297,63 @@ async function deleteBrand(id) {
     throw error;
   }
 }
-
 async function updateInventory(id, data) {
   try {
-    const { name, brand_id, qty } = data;
+    const { name, brand_id, category_id, qty } = data;
 
-    // 🔹 Validate
+    // 🔹 Validate inventory ID
     if (!id) {
       throw new Error("Inventory id is required");
     }
 
+    // 🔹 Validate name
     if (!name) {
       throw new Error("Inventory name is required");
     }
 
+    // 🔹 Validate quantity
     if (qty === undefined || qty === null) {
       throw new Error("Quantity is required");
     }
 
-    const inventory = await Inventory.findByPk(id);
-
-    if (!inventory) {
-      throw new Error("Inventory not found");
-    }
-
     const numericQty = Number(qty);
-
     if (isNaN(numericQty)) {
       throw new Error("Quantity must be a valid number");
     }
 
+    // 🔹 Fetch inventory
+    const inventory = await Inventory.findByPk(id);
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    // 🔹 Validate brand_id if provided
+    if (brand_id) {
+      const brand = await Brand.findByPk(brand_id);
+      if (!brand) {
+        throw new Error("Invalid brand_id");
+      }
+    }
+
+    // 🔹 Validate category_id if provided
+    if (category_id) {
+      const category = await Category.findByPk(category_id);
+      if (!category) {
+        throw new Error("Invalid category_id");
+      }
+    }
+
+    // 🔹 Update quantity (additive logic)
     const updatedQty = inventory.qty + numericQty;
     if (updatedQty < 0) {
       throw new Error("Insufficient stock");
     }
 
+    // 🔹 Update inventory
     await inventory.update({
       name: name.trim().toUpperCase(),
       brand_id: brand_id || null,
+      category_id: category_id || null,
       qty: updatedQty,
     });
 
@@ -774,6 +813,81 @@ async function getKitReadyCustomersByStatus(status) {
   }
 }
 
+async function addCategory(data) {
+  try {
+    const { name } = data;
+
+    if (!name) {
+      throw new Error("Category name is required");
+    }
+
+    const normalizedName = name.trim().toUpperCase();
+
+    const existing = await Category.findOne({
+      where: { name: normalizedName },
+    });
+
+    if (existing) {
+      throw new Error("Category already exists");
+    }
+
+    const category = await Category.create({
+      name: normalizedName,
+    });
+
+    return category;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateCategory(id, data) {
+  try {
+    const { name } = data;
+
+    if (!id) {
+      throw new Error("Category id is required");
+    }
+
+    if (!name) {
+      throw new Error("Category name is required");
+    }
+
+    const category = await Category.findByPk(id);
+
+    if (!category) {
+      throw new Error("Category not found");
+    }
+
+    const normalizedName = name.trim().toUpperCase();
+
+    const existing = await Category.findOne({
+      where: { name: normalizedName },
+    });
+
+    if (existing && existing.id !== Number(id)) {
+      throw new Error("Category already exists");
+    }
+
+    await category.update({
+      name: normalizedName,
+    });
+
+    return category;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getCategories() {
+  try {
+    return await Category.findAll({
+      order: [["id", "ASC"]],
+    });
+  } catch (error) {
+    throw error;
+  }
+}
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -794,4 +908,7 @@ module.exports = {
   addSerialsAndDispatch,
   getKitItemsByCustomerId,
   getKitReadyCustomersByStatus,
+  addCategory,
+  updateCategory,
+  getCategories,
 };

@@ -399,6 +399,65 @@ async function fetchKitReadyCustomersByStatus(req, res) {
   }
 }
 
+async function createCategory(req, res) {
+  try {
+    const category = await kitReadyService.addCategory(req.body);
+
+    return res.status(201).json({
+      success: true,
+      data: category,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function updateCategory(req, res) {
+  try {
+    const { id } = req.params;
+
+    if (!id || isNaN(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid id is required",
+      });
+    }
+
+    const updated = await kitReadyService.updateCategory(id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    const status = error.message === "Category not found" ? 404 : 400;
+
+    return res.status(status).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function getCategories(req, res) {
+  try {
+    const categories = await kitReadyService.getCategories();
+
+    return res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -418,4 +477,7 @@ module.exports = {
   addCustomerSerials,
   fetchKitItemsbyCustomer,
   fetchKitReadyCustomersByStatus,
+  createCategory,
+  updateCategory,
+  getCategories,
 };

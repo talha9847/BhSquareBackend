@@ -338,6 +338,24 @@ async function updateCar(req, res) {
   }
 }
 
+async function fetchDispatchesByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    const data = await dispatchService.getAllDispatchesByStatus(status);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -353,4 +371,5 @@ module.exports = {
   createCar,
   fetchCars,
   updateCar,
+  fetchDispatchesByStatus,
 };

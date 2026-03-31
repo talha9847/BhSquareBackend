@@ -17,5 +17,9 @@ router.get("/fetchDrivers", dispatchController.fetchDrivers);
 router.get("/fetchCars", dispatchController.fetchCars);
 router.put("/updateDriver/:id", dispatchController.updateDriver);
 router.put("/updateCar/:id", dispatchController.updateCar);
+router.get(
+  "/fetchDispatchesByStatus",
+  dispatchController.fetchDispatchesByStatus,
+);
 
 module.exports = router;
