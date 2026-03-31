@@ -22,7 +22,7 @@ async function getAllDispatches() {
             {
               model: Lead,
               as: "lead",
-              attributes: ["customer_name", "address", "contact_number"],
+              attributes: ["id", "customer_name", "address", "contact_number"],
             },
           ],
         },
@@ -47,7 +47,7 @@ async function getAllDispatches() {
       // ✅ NEW
       driver_id: d.driver_id || null,
       car_id: d.car_id || null,
-
+      lead_id: d.customer.lead.id,
       customer_name: d.customer?.lead?.customer_name || null,
       address: d.customer?.lead?.address || null,
       contact: d.customer?.lead?.contact_number || null,
@@ -215,7 +215,7 @@ async function getAllFabrications() {
             {
               model: Lead,
               as: "lead",
-              attributes: ["customer_name", "contact_number", "address"],
+              attributes: ["id", "customer_name", "contact_number", "address"],
             },
           ],
         },
@@ -232,6 +232,7 @@ async function getAllFabrications() {
     const result = fabrications.map((f) => ({
       id: f.id,
       customer_id: f.customer_id,
+      lead_id: f.customer.lead.id,
       customer_name: f.customer?.lead?.customer_name || null,
       contact_number: f.customer?.lead?.contact_number || null,
       address: f.customer?.lead?.address || null,

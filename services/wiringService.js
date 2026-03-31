@@ -84,7 +84,7 @@ async function getWiringCustomerDetails() {
             {
               model: Lead,
               as: "lead", // 👈 matches Customer.belongsTo(Lead) alias
-              attributes: ["customer_name", "contact_number", "address"],
+              attributes: ["id", "customer_name", "contact_number", "address"],
             },
           ],
         },
@@ -103,6 +103,7 @@ async function getWiringCustomerDetails() {
       wiring_inv_status: w.inventory_status,
       wiring_status: w.status,
       customer_id: w.customer_id,
+      lead_id: w.customerForWiring?.lead?.id || null,
       customer_name: w.customerForWiring?.lead?.customer_name || null,
       contact_number: w.customerForWiring?.lead?.contact_number || null,
       address: w.customerForWiring?.lead?.address || null,
