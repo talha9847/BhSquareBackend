@@ -26,6 +26,8 @@ async function addLead(data) {
       installation_type: data.installation_type,
       panel_wattage: data.panel_wattage,
       number_of_panels: data.number_of_panels,
+      inverter_kw: data.inverter_kw,
+      number_of_inverters: data.number_of_inverters,
     });
 
     return lead;

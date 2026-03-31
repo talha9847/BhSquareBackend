@@ -16,13 +16,16 @@ CREATE TABLE leads (
     source_id INTEGER,
     address TEXT,
     notes TEXT,
-    status VARCHAR(20) DEFAULT 'pending',  -- pending, converted, delayed, cancelled
+    status VARCHAR(20) DEFAULT 'pending',          -- pending, converted, delayed, cancelled
     installation_type VARCHAR(20) DEFAULT 'Residential', -- Residential, Commercial, Industrial
 
     panel_wattage NUMERIC(10,2),
     number_of_panels INTEGER,
-
     total_capacity NUMERIC(10,2) GENERATED ALWAYS AS (panel_wattage * number_of_panels) STORED,
+
+    inverter_kw NUMERIC(10,2),                    -- inverter input in kilowatts
+    number_of_inverters INTEGER,
+    inverter_capacity NUMERIC(10,2) GENERATED ALWAYS AS (inverter_kw * number_of_inverters) STORED,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

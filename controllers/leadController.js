@@ -13,6 +13,8 @@ async function addLead(req, res) {
       number_of_panels,
       status,
       installation_type,
+      inverter_kw,
+      number_of_inverters,
     } = req.body;
 
     if (!customer_name) {
@@ -41,6 +43,8 @@ async function addLead(req, res) {
       panel_wattage,
       number_of_panels,
       installation_type,
+      inverter_kw,
+      number_of_inverters,
     });
 
     return res.status(201).json({
@@ -226,7 +230,7 @@ async function updateLead(req, res) {
         message: "id is required",
       });
     }
-
+    console.log(req.body);
     const lead = await leadService.updateLead(req.body);
 
     return res.status(200).json({
@@ -270,7 +274,6 @@ async function fetchLeadById(req, res) {
     });
   }
 }
-
 
 module.exports = {
   addLead,
