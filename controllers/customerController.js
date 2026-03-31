@@ -73,8 +73,26 @@ async function fetchCustomerStages(req, res) {
   }
 }
 
+async function fetchCustomersByStatus(req, res) {
+  try {
+    const { status } = req.query; // ?status=pending or ?status=done
+
+    const result = await customerService.getCustomersByStatus(status);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
   getCustomers,
   updateCustomerNameChange,
   fetchCustomerStages,
+  fetchCustomersByStatus,
 };

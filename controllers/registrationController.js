@@ -172,9 +172,29 @@ async function getFileGeneration(req, res) {
   }
 }
 
+async function fetchCustomersByStatus(req, res) {
+  try {
+    console.log("i am dkhelk hitted");
+    const { status } = req.query;
+
+    const customers = await registrationService.getCustomersByStatus(status);
+
+    return res.status(200).json({
+      success: true,
+      data: customers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   getCustomersWithSummary,
   registration,
   markRegistrationAsDone,
   getFileGeneration,
+  fetchCustomersByStatus,
 };

@@ -9,6 +9,7 @@ const { KitReady } = require("../models/kitReadyModel");
 const { Brand } = require("../models/brandModel");
 const { google } = require("googleapis");
 const { CustomerStage } = require("../models/customerStageModel");
+const { Op } = require("sequelize");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -22,6 +23,7 @@ oauth2Client.setCredentials({
 });
 
 const drive = google.drive({ version: "v3", auth: oauth2Client });
+
 async function getCustomersWithSummary() {
   try {
     const customers = await Customer.findAll({
@@ -53,37 +55,89 @@ async function getCustomersWithSummary() {
             "panel_qty",
             "status",
           ],
-          required: true, // only include customers who have a registration
-          // include: [
-          //   {
-          //     model: PanelSerial,
-          //     as: "panels", // make sure association alias is correct in your model
-          //     attributes: ["id", "serial_number", "created_at"],
-          //   },
-          // ],
+          required: true, // only include customers with a registration
+          where: {
+            status: {
+              [Op.in]: ["pending", "approved"],
+            },
+          },
         },
       ],
 
       order: [
-        [
-          sequelize.literal(`
-        CASE 
-          WHEN "Customer"."status" = 'pending' THEN 0
-          WHEN "Customer"."status" = 'done' THEN 1
-          ELSE 2
-        END
-      `),
-          "ASC",
-        ],
-        [sequelize.col("lead.created_at"), "DESC"],
+        [sequelize.col("lead.created_at"), "DESC"], // order by lead creation date
       ],
     });
 
     return customers;
   } catch (error) {
+    console.error("❌ Error fetching pending customers:", error);
     throw error;
   }
 }
+
+// async function getCustomersWithSummary() {
+//   try {
+//     const customers = await Customer.findAll({
+//       attributes: ["id"],
+
+//       include: [
+//         {
+//           model: Lead,
+//           as: "lead",
+//           attributes: [
+//             "id",
+//             "customer_name",
+//             "contact_number",
+//             "address",
+//             "number_of_panels",
+//             "total_capacity",
+//             "created_at",
+//           ],
+//         },
+//         {
+//           model: CustomerRegistration,
+//           as: "registration",
+//           attributes: [
+//             "id",
+//             "application_number",
+//             "registration_date",
+//             "agreement_date",
+//             "inverter_qty",
+//             "panel_qty",
+//             "status",
+//           ],
+//           required: true, // only include customers who have a registration
+//           // include: [
+//           //   {
+//           //     model: PanelSerial,
+//           //     as: "panels", // make sure association alias is correct in your model
+//           //     attributes: ["id", "serial_number", "created_at"],
+//           //   },
+//           // ],
+//         },
+//       ],
+
+//       order: [
+//         [
+//           sequelize.literal(`
+//         CASE
+//           WHEN "Customer"."status" = 'pending' THEN 0
+//           WHEN "Customer"."status" = 'done' THEN 1
+//           ELSE 2
+//         END
+//       `),
+//           "ASC",
+//         ],
+//         [sequelize.col("lead.created_at"), "DESC"],
+//       ],
+//     });
+
+//     return customers;
+//   } catch (error) {
+//     throw error;
+//   }
+// }
 
 async function getNumberOfPanelsByLeadId(leadId) {
   try {
@@ -380,10 +434,81 @@ async function getFileGenerationData(registrationId) {
   }
 }
 
+async function getCustomersByStatus(status) {
+  try {
+    if (!status || !["pending", "done"].includes(status)) {
+      throw new Error("Invalid status. Must be 'pending' or 'done'.");
+    }
+
+    // Step 1: Fetch all CustomerRegistrations with given status
+    const registrations = await CustomerRegistration.findAll({
+      where: { status },
+      attributes: [
+        "id",
+        "customer_id",
+        "application_number",
+        "registration_date",
+        "agreement_date",
+        "panel_qty",
+        "inverter_qty",
+        "status",
+        "created_at",
+      ],
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "status"], // status in Customer table if needed
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "number_of_panels",
+                "total_capacity",
+                "created_at",
+              ],
+            },
+          ],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    // Step 2: Map to friendly format
+    const result = registrations.map((reg) => ({
+      registration_id: reg.id,
+      registration_status: reg.status,
+      registration_date: reg.registration_date,
+      agreement_date: reg.agreement_date,
+      panel_qty: reg.panel_qty,
+      inverter_qty: reg.inverter_qty,
+      customer_id: reg.customer?.id || null,
+      customer_status: reg.customer?.status || null,
+      lead_id: reg.customer?.lead?.id || null,
+      customer_name: reg.customer?.lead?.customer_name || null,
+      contact_number: reg.customer?.lead?.contact_number || null,
+      address: reg.customer?.lead?.address || null,
+      number_of_panels: reg.customer?.lead?.number_of_panels || null,
+      total_capacity: reg.customer?.lead?.total_capacity || null,
+    }));
+
+    return result;
+  } catch (error) {
+    console.error("❌ Error fetching customers by registration status:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCustomersWithSummary,
   getNumberOfPanelsByLeadId,
   createCustomerRegistrationWithPanels,
   markRegistrationAsDone,
   getFileGenerationData,
+  getCustomersByStatus,
 };

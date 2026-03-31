@@ -9,5 +9,9 @@ router.post(
   customerController.updateCustomerNameChange,
 );
 router.get("/fetchCustomerStages/:id", customerController.fetchCustomerStages);
+router.get(
+  "/fetchCustomersByStatus",
+  customerController.fetchCustomersByStatus,
+);
 
 module.exports = router;

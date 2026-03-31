@@ -34,4 +34,8 @@ router.get(
   "/fetchKitItemsbyCustomer/:customerId",
   kitReadyController.fetchKitItemsbyCustomer,
 );
+router.get(
+  "/fetchKitReadyCustomersByStatus",
+  kitReadyController.fetchKitReadyCustomersByStatus,
+);
 module.exports = router;

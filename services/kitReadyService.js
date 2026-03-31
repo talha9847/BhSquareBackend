@@ -736,6 +736,44 @@ async function getKitItemsByCustomerId(customerId) {
   }
 }
 
+async function getKitReadyCustomersByStatus(status) {
+  try {
+    if (!status || !["pending", "done"].includes(status)) {
+      throw new Error("Invalid status. Must be 'pending' or 'done'");
+    }
+
+    const data = await KitReady.findAll({
+      where: { status }, // ✅ filter by kit_ready status
+      attributes: ["id", "loan_status", "status"],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "status"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+      ],
+
+      order: [["id", "ASC"]],
+    });
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching kit ready customers:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -755,4 +793,5 @@ module.exports = {
   getPanelAndInverterByCustomerId,
   addSerialsAndDispatch,
   getKitItemsByCustomerId,
+  getKitReadyCustomersByStatus,
 };

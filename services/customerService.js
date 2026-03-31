@@ -9,6 +9,7 @@ async function getCustomersWithLeadData() {
     const sequelize = require("../config/db");
 
     const customers = await Customer.findAll({
+      where: { status: "pending" },
       include: [
         {
           model: Lead,
@@ -22,19 +23,7 @@ async function getCustomersWithLeadData() {
           ],
         },
       ],
-      order: [
-        [
-          sequelize.literal(`
-        CASE 
-          WHEN "Customer"."status" = 'pending' THEN 0
-          WHEN "Customer"."status" = 'done' THEN 1
-          ELSE 2
-        END
-      `),
-          "ASC",
-        ],
-        [sequelize.col("lead.created_at"), "DESC"],
-      ],
+      order: [[sequelize.col("lead.created_at"), "DESC"]],
     });
 
     return customers;
@@ -116,8 +105,53 @@ async function getCustomerStages(customerId) {
   }
 }
 
+async function getCustomersByStatus(status) {
+  try {
+    if (!status) {
+      throw new Error("Status is required (pending or done)");
+    }
+
+    const customers = await Customer.findAll({
+      where: { status },
+      include: [
+        {
+          model: Lead,
+          as: "lead",
+          attributes: [
+            "id",
+            "customer_name",
+            "contact_number",
+            "site_visit_date",
+            "address",
+            "total_capacity",
+            "created_at",
+          ],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    const result = customers.map((c) => ({
+      customer_id: c.id,
+      lead_id: c.lead?.id || null,
+      status: c.status,
+      customer_name: c.lead?.customer_name || null,
+      contact_number: c.lead?.contact_number || null,
+      address: c.lead?.address || null,
+      site_visit_date: c.lead?.site_visit_date || null,
+      total_capacity: c.lead?.total_capacity || null,
+    }));
+
+    return { success: true, data: result };
+  } catch (error) {
+    console.error("Error fetching customers by status:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   getCustomersWithLeadData,
   updateCustomerNameChange,
   getCustomerStages,
+  getCustomersByStatus,
 };

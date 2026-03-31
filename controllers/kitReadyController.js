@@ -380,6 +380,25 @@ async function fetchKitItemsbyCustomer(req, res) {
   }
 }
 
+async function fetchKitReadyCustomersByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    const result = await kitReadyService.getKitReadyCustomersByStatus(status);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -398,4 +417,5 @@ module.exports = {
   getPanelAndInventer,
   addCustomerSerials,
   fetchKitItemsbyCustomer,
+  fetchKitReadyCustomersByStatus,
 };

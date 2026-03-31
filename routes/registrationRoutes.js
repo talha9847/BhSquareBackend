@@ -12,4 +12,8 @@ router.post(
   registrationController.markRegistrationAsDone,
 );
 router.post("/getFileGeneration", registrationController.getFileGeneration);
+router.get(
+  "/fetchCustomersByStatus",
+  registrationController.fetchCustomersByStatus,
+);
 module.exports = router;
