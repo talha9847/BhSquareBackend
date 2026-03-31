@@ -279,7 +279,7 @@ async function completeLoanAndMoveToKitReady(customerId) {
     );
 
     await CustomerStage.update(
-      { status: "pending" },
+      { status: "pending", started_at: new Date() },
       {
         where: {
           customer_id: customerId,
@@ -316,7 +316,6 @@ async function completeLoanAndMoveToKitReady(customerId) {
     throw error;
   }
 }
-
 
 async function getCustomerLoanWithDocs(customerId) {
   try {
@@ -371,7 +370,6 @@ async function getCustomerLoanWithDocs(customerId) {
     return { success: false, message: error.message };
   }
 }
-
 
 module.exports = {
   uploadLoanDocs,

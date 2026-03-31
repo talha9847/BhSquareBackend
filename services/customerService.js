@@ -67,7 +67,7 @@ async function updateCustomerNameChange(customer_id, name_change) {
       const nextStageId = name_change === "required" ? 2 : 3;
 
       await CustomerStage.update(
-        { status: "pending", updated_at: new Date() },
+        { status: "pending", started_at: new Date() },
         { where: { customer_id, stage_id: nextStageId }, transaction: t },
       );
     }

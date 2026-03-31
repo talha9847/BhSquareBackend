@@ -279,7 +279,7 @@ async function completeStageAndPrepareNext(customerId) {
     );
 
     await CustomerStage.update(
-      { status: "pending", updated_at: new Date() },
+      { status: "pending", started_at: new Date() },
       { where: { customer_id: customerId, stage_id: 4 }, transaction: t },
     );
 

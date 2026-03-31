@@ -54,7 +54,7 @@ async function updateLoanStatus(loanRequired, customerId) {
 
       // 2️⃣ Update CustomerStage → Loan stage (id = 5)
       await CustomerStage.update(
-        { status: "pending" },
+        { status: "pending", started_at: new Date() },
         {
           where: {
             customer_id: customerId,
@@ -93,7 +93,7 @@ async function updateLoanStatus(loanRequired, customerId) {
       );
 
       await CustomerStage.update(
-        { status: "pending" },
+        { status: "pending", started_at: new Date() },
         {
           where: {
             customer_id: customerId,
@@ -641,7 +641,7 @@ async function addSerialsAndDispatch(
     );
 
     await CustomerStage.update(
-      { status: "pending", updated_at: new Date() },
+      { status: "pending", started_at: new Date() },
       { where: { customer_id: customerId, stage_id: 7 }, transaction: t },
     );
 
@@ -735,7 +735,6 @@ async function getKitItemsByCustomerId(customerId) {
     return { success: false, message: error.message };
   }
 }
-
 
 module.exports = {
   getKitReadyCustomers,

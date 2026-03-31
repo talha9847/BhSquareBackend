@@ -112,7 +112,7 @@ async function updateDispatchByCustomerId({
 
     // 4. Update stage 8 → pending
     await CustomerStage.update(
-      { status: "pending" },
+      { status: "pending", started_at: new Date() },
       {
         where: {
           customer_id,
@@ -294,7 +294,7 @@ async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
         { where: { customer_id, stage_id: 8 }, transaction: t },
       );
       await CustomerStage.update(
-        { status: "pending" },
+        { status: "pending", started_at: new Date() },
         { where: { customer_id, stage_id: 9 }, transaction: t },
       );
 

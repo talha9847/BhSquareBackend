@@ -626,7 +626,7 @@ async function updateWiringStageIfDocsComplete(wiringId) {
     );
 
     await CustomerStage.update(
-      { status: "pending" },
+      { status: "pending", started_at: new Date() },
       {
         where: {
           customer_id: customerId,

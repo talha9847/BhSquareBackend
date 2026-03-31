@@ -166,6 +166,7 @@ async function convertToCustomer(lead_id) {
       customer_id: customer.id,
       stage_id: stage.id,
       status: index === 0 ? "pending" : "not_used",
+      started_at: new Date(),
     }));
 
     await CustomerStage.bulkCreate(customerStagesData, { transaction: t });
