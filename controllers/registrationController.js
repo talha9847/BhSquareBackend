@@ -198,10 +198,43 @@ async function fetchCustomersByStatus(req, res) {
   }
 }
 
+async function getInventoryByCategory(req, res) {
+  try {
+    const data = await registrationService.getInventoryByCategory(1);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+async function getInventoryByCategoryThree(req, res) {
+  try {
+    const data = await registrationService.getInventoryByCategory(3);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   getCustomersWithSummary,
   registration,
   markRegistrationAsDone,
   getFileGeneration,
   fetchCustomersByStatus,
+  getInventoryByCategory,
+  getInventoryByCategoryThree,
 };

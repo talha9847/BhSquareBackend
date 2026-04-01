@@ -16,4 +16,12 @@ router.get(
   "/fetchCustomersByStatus",
   registrationController.fetchCustomersByStatus,
 );
+router.get(
+  "/getInventoryByCategory",
+  registrationController.getInventoryByCategory,
+);
+router.get(
+  "/getInventoryByCategoryThree",
+  registrationController.getInventoryByCategoryThree,
+);
 module.exports = router;

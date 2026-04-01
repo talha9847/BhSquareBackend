@@ -10,6 +10,7 @@ const { Brand } = require("../models/brandModel");
 const { google } = require("googleapis");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Op } = require("sequelize");
+const { Inventory } = require("../models/inventoryModel");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -510,6 +511,28 @@ async function getCustomersByStatus(status) {
   }
 }
 
+async function getInventoryByCategory(id) {
+  try {
+    const inventory = await Inventory.findAll({
+      where: { category_id: id },
+      attributes: ["id", "name"],
+      include: [
+        {
+          model: Brand,
+          as: "brand",
+          attributes: ["id", "name"], // include brand name
+        },
+      ],
+      order: [["name", "ASC"]],
+    });
+
+    return inventory;
+  } catch (error) {
+    throw error;
+  }
+}
+
+
 module.exports = {
   getCustomersWithSummary,
   getNumberOfPanelsByLeadId,
@@ -517,4 +540,5 @@ module.exports = {
   markRegistrationAsDone,
   getFileGenerationData,
   getCustomersByStatus,
+  getInventoryByCategory,
 };
