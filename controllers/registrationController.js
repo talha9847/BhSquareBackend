@@ -73,8 +73,30 @@ async function markRegistrationAsDone(req, res) {
   try {
     const { registrationId, customerId, leadId, data } = req.body;
 
-    console.log(data);
+    // 🔴 Basic validation
+    if (!registrationId || !customerId || !leadId) {
+      return res.status(400).json({
+        message: "registrationId, customerId, and leadId are required",
+      });
+    }
 
+    if (!data) {
+      return res.status(400).json({
+        message: "data object is required",
+      });
+    }
+
+    const { panel_id, panel_qty, inverter_id, inverter_qty, cs_no } = data;
+
+    // 🔴 Validate required fields inside data
+    if (!panel_id || !panel_qty || !inverter_id || !inverter_qty || !cs_no) {
+      return res.status(400).json({
+        message:
+          "panel_id, panel_qty, inverter_id, inverter_qty, and cs_no are required",
+      });
+    }
+
+    // 🔹 Call service
     const result = await registrationService.markRegistrationAsDone(
       registrationId,
       customerId,
@@ -82,21 +104,35 @@ async function markRegistrationAsDone(req, res) {
       data,
     );
 
+    // 🔴 Business failure (from service)
     if (!result.success) {
-      return res
-        .status(400)
-        .json({ message: result.message || "Cannot update status" });
+      return res.status(400).json({
+        message: result.message || "Cannot update status",
+      });
     }
 
+    // ✅ Success response
     return res.status(200).json({
       message: `Registration status updated to '${result.new_status}'`,
-      // registration_id: result.registration_id,
+      registration_id: result.registration_id,
     });
   } catch (error) {
     console.error("❌ Error marking registration as done:", error);
-    return res
-      .status(500)
-      .json({ error: error.message || "Internal server error" });
+
+    // 🔴 Handle known business errors
+    if (
+      error.message.includes("stock") ||
+      error.message.includes("exceeds") ||
+      error.message.includes("not found")
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
+
+    // 🔴 Fallback server error
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 }
 

@@ -11,6 +11,7 @@ const { google } = require("googleapis");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Op } = require("sequelize");
 const { Inventory } = require("../models/inventoryModel");
+const { KitItems } = require("../models/kitItemsModels");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -274,6 +275,8 @@ async function renameCustomerFolder(
   }
 }
 
+
+
 async function markRegistrationAsDone(
   registrationId,
   customerId,
@@ -287,54 +290,85 @@ async function markRegistrationAsDone(
       cs_no,
       panel_brand_id,
       inverter_brand_id,
-      inverter_capacity,
+      panel_id,
+      panel_qty,
+      inverter_id,
       inverter_qty,
     } = data;
 
+    // 🔹 Registration
     const registration = await CustomerRegistration.findOne({
       where: { id: registrationId },
       transaction: t,
     });
 
     if (!registration) {
-      throw new Error(`Registration with ID ${registrationId} not found`);
+      throw new Error(`Registration not found`);
     }
 
-    if (registration.status === "approved") {
-      registration.status = "done";
-      await registration.save({ transaction: t });
-
-      await CustomerStage.update(
-        { status: "done", completed_at: new Date() },
-        {
-          where: {
-            customer_id: customerId,
-            stage_id: 4,
-          },
-          transaction: t,
-        },
-      );
-    } else {
-      return { success: false, message: `Status is not 'approved'` };
+    if (registration.status !== "approved") {
+      return { success: false, message: "Status is not 'approved'" };
     }
 
-    // ✅ fetch required data
+    registration.status = "done";
+    await registration.save({ transaction: t });
+
+    await CustomerStage.update(
+      { status: "done", completed_at: new Date() },
+      {
+        where: { customer_id: customerId, stage_id: 4 },
+        transaction: t,
+      },
+    );
+
+    // 🔹 Lead
     const lead = await Lead.findByPk(leadId, { transaction: t });
-    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-    const oldFolderName = `${lead.customer_name}_${lead.contact_number}`;
-    const newFolderName = `${cs_no} ${lead.customer_name}`;
+    if (!lead) throw new Error("Lead not found");
+
+    // 🔴 Validate quantities
+    if (panel_qty > lead.number_of_panels) {
+      throw new Error("Panel qty exceeds requirement");
+    }
+
+    if (inverter_qty > lead.number_of_inverters) {
+      throw new Error("Inverter qty exceeds requirement");
+    }
+
+    // 🔹 Lock inventory rows
+    const panelInventory = await Inventory.findByPk(panel_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    const inverterInventory = await Inventory.findByPk(inverter_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!panelInventory || panelInventory.qty < panel_qty) {
+      throw new Error("Panel stock unavailable");
+    }
+
+    if (!inverterInventory || inverterInventory.qty < inverter_qty) {
+      throw new Error("Inverter stock unavailable");
+    }
+
+    // 🔹 Customer Docs
     const customerDocs = await CustomerDocument.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
 
-    const existingKit = await KitReady.findOne({
+    // 🔹 Kit
+    let kit = await KitReady.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
 
-    if (!existingKit) {
-      await KitReady.create(
+    let isNewKit = false;
+
+    if (!kit) {
+      kit = await KitReady.create(
         {
           customer_id: customerId,
           loan_status: "pending",
@@ -342,15 +376,93 @@ async function markRegistrationAsDone(
         },
         { transaction: t },
       );
-    }
-    const folderId = await renameCustomerFolder(
-      oldFolderName,
-      newFolderName,
-      rootFolderId,
-    );
-    //here i want to change the gDrive folder name which is lead.customername_lead.contact_number to  "cs_no lead.customer_name"
 
-    // ✅ check existing
+      isNewKit = true;
+    }
+
+    // ✅ NEW: Insert category_id = 2 items with qty = 0
+    if (isNewKit) {
+      const categoryItems = await Inventory.findAll({
+        where: { category_id: 2 },
+        attributes: ["id"],
+        transaction: t,
+      });
+
+      const bulkData = categoryItems.map((item) => ({
+        kit_id: kit.id,
+        inventory_id: item.id,
+        qty: 0,
+        status: "pending",
+      }));
+
+      if (bulkData.length > 0) {
+        await KitItems.bulkCreate(bulkData, {
+          transaction: t,
+          ignoreDuplicates: true,
+        });
+      }
+    }
+
+    // 🔹 Allocate panel + inverter
+    await KitItems.upsert(
+      {
+        kit_id: kit.id,
+        inventory_id: panel_id,
+        qty: panel_qty,
+        status: "allocated",
+      },
+      { transaction: t },
+    );
+
+    await KitItems.upsert(
+      {
+        kit_id: kit.id,
+        inventory_id: inverter_id,
+        qty: inverter_qty,
+        status: "allocated",
+      },
+      { transaction: t },
+    );
+
+    // 🔹 Deduct stock (atomic safe)
+    const [panelUpdated] = await Inventory.update(
+      { qty: sequelize.literal(`qty - ${panel_qty}`) },
+      {
+        where: {
+          id: panel_id,
+          qty: { [Op.gte]: panel_qty },
+        },
+        transaction: t,
+      },
+    );
+
+    if (panelUpdated === 0) {
+      throw new Error("Panel stock insufficient during update");
+    }
+
+    const [inverterUpdated] = await Inventory.update(
+      { qty: sequelize.literal(`qty - ${inverter_qty}`) },
+      {
+        where: {
+          id: inverter_id,
+          qty: { [Op.gte]: inverter_qty },
+        },
+        transaction: t,
+      },
+    );
+
+    if (inverterUpdated === 0) {
+      throw new Error("Inverter stock insufficient during update");
+    }
+
+    // 🔹 Rename Folder
+    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+    const oldFolderName = `${lead.customer_name}_${lead.contact_number}`;
+    const newFolderName = `${cs_no} ${lead.customer_name}`;
+
+    await renameCustomerFolder(oldFolderName, newFolderName, rootFolderId);
+
+    // 🔹 File Generation
     const existingFile = await FileGeneration.findOne({
       where: { registration_id: registrationId },
       transaction: t,
@@ -360,29 +472,27 @@ async function markRegistrationAsDone(
       await FileGeneration.create(
         {
           registration_id: registrationId,
-
-          // 🔹 from body
           cs_no,
           panel_brand_id,
           inverter_brand_id,
-          inverter_capacity: inverter_capacity
-            ? parseFloat(inverter_capacity)
-            : null,
-          inverter_quantity: inverter_qty,
-          // 🔹 from customer_documents
+
           consumer_number: customerDocs?.consumer_number || null,
           geo_location: customerDocs?.geo_coordinate || null,
           subdivision: customerDocs?.sub_division || null,
 
-          // 🔹 from lead
+          inverter_capacity: lead?.inverter_capacity
+            ? parseFloat(lead.inverter_capacity)
+            : null,
+          inverter_quantity: lead?.number_of_inverters || null,
+
           beneficiary_name: lead?.customer_name || null,
           beneficiary_address: lead?.address || null,
           consumer_contact: lead?.contact_number || null,
+
           panel_quantity: lead?.number_of_panels || null,
           panel_capacity: lead?.panel_wattage || null,
           system_capacity: lead?.total_capacity || null,
 
-          // 🔹 from registration
           application_number: registration?.application_number || null,
           registration_date: registration?.registration_date || null,
           agreement_date: registration?.agreement_date || null,
@@ -400,7 +510,7 @@ async function markRegistrationAsDone(
     };
   } catch (error) {
     await t.rollback();
-    console.error("❌ Error updating registration status:", error);
+    console.error("❌ Error:", error);
     throw error;
   }
 }
@@ -531,7 +641,6 @@ async function getInventoryByCategory(id) {
     throw error;
   }
 }
-
 
 module.exports = {
   getCustomersWithSummary,
