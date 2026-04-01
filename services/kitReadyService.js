@@ -438,7 +438,7 @@ async function addKitItemsByCustomer(customerId) {
 async function getKitItemsByCustomer(customerId) {
   if (!customerId) throw new Error("Customer ID is required");
 
-  // 🔹 Find the kit for the customer
+  // 🔹 Find the kit
   const kit = await KitReady.findOne({
     where: { customer_id: customerId },
     attributes: ["id"],
@@ -446,19 +446,24 @@ async function getKitItemsByCustomer(customerId) {
 
   if (!kit) throw new Error("Kit not found for this customer");
 
-  // 🔹 Fetch all kit items including inventory & brand details
+  // 🔹 Fetch kit items with inventory + brand + category
   const kitItems = await KitItems.findAll({
     where: { kit_id: kit.id },
     include: [
       {
         model: Inventory,
         as: "inventory",
-        attributes: ["id", "name", "qty", "brand_id"],
+        attributes: ["id", "name", "qty", "brand_id", "category_id"],
         include: [
           {
             model: Brand,
             as: "brand",
             attributes: ["id", "name"],
+          },
+          {
+            model: Category,
+            as: "category",
+            attributes: ["id", "name"], // assuming category has name
           },
         ],
       },
@@ -471,10 +476,15 @@ async function getKitItemsByCustomer(customerId) {
     inventoryId: item.inventory_id,
     name: item.inventory?.name || null,
     qty: item.qty,
-    verified: item.status == "pending" ? false : true,
+    verified: item.status === "pending" ? false : true,
     stock: item.inventory?.qty || null,
+
     brandId: item.inventory?.brand?.id || null,
     brand: item.inventory?.brand?.name || null,
+
+    // ✅ NEW: category
+    categoryId: item.inventory?.category?.id || null,
+    category: item.inventory?.category?.name || null,
   }));
 }
 
