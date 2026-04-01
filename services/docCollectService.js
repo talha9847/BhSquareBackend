@@ -178,6 +178,9 @@ async function getLeadDetailFromCustomerId(customer_id) {
           "total_capacity",
           "panel_wattage",
           "number_of_panels",
+          "number_of_inverters",
+          "inverter_kw",
+          "inverter_capacity",
         ],
       },
     });
@@ -287,6 +290,7 @@ async function completeStageAndPrepareNext(customerId) {
     if (!lead) throw new Error("Lead not found");
 
     const panelQty = lead.number_of_panels || 0;
+    const inverterQty = lead.number_of_inverters;
 
     const existingRegistration = await CustomerRegistration.findOne({
       where: { customer_id: customerId },
@@ -300,7 +304,7 @@ async function completeStageAndPrepareNext(customerId) {
           panel_qty: panelQty,
           application_number: null,
           agreement_date: null,
-          inverter_qty: null,
+          inverter_qty: inverterQty,
         },
         { transaction: t },
       );

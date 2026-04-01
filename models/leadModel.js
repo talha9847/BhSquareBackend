@@ -45,11 +45,6 @@ const Lead = sequelize.define(
     },
     total_capacity: {
       type: DataTypes.DECIMAL(10, 2),
-      get() {
-        const wattage = this.getDataValue("panel_wattage") || 0;
-        const panels = this.getDataValue("number_of_panels") || 0;
-        return Number(wattage) * Number(panels);
-      },
     },
 
     // Inverter fields
@@ -61,11 +56,6 @@ const Lead = sequelize.define(
     },
     inverter_capacity: {
       type: DataTypes.DECIMAL(10, 2),
-      get() {
-        const kw = this.getDataValue("inverter_kw") || 0;
-        const invCount = this.getDataValue("number_of_inverters") || 0;
-        return Number(kw) * Number(invCount);
-      },
     },
 
     status: {

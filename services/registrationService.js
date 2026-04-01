@@ -39,6 +39,8 @@ async function getCustomersWithSummary() {
             "contact_number",
             "address",
             "number_of_panels",
+            "number_of_inverters",
+            "inverter_capacity",
             "total_capacity",
             "created_at",
           ],
@@ -143,14 +145,18 @@ async function getNumberOfPanelsByLeadId(leadId) {
   try {
     // Fetch the lead by ID
     const lead = await Lead.findByPk(leadId, {
-      attributes: ["number_of_panels"], // only fetch this column
+      attributes: ["number_of_panels", "number_of_inverters"], // only fetch this column
     });
 
     if (!lead) {
       return { success: false, message: "Lead not found" };
     }
 
-    return { success: true, number_of_panels: lead.number_of_panels };
+    return {
+      success: true,
+      number_of_panels: lead.number_of_panels,
+      number_of_inverters: lead.number_of_inverters,
+    };
   } catch (error) {
     console.error("❌ Error fetching number of panels:", error);
     throw error;
