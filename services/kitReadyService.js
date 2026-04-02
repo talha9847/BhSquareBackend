@@ -657,39 +657,81 @@ async function getPanelAndInverterByCustomerId(customerId) {
   }
 }
 
-async function addSerialsAndDispatch(
-  customerId,
-  // panelSerials,
-  // inverterSerials,
-) {
+async function addSerialsAndDispatch(customerId, kitPanelId, kitInveterId) {
   const t = await sequelize.transaction();
 
   try {
-    // Prepare panel data
-    // const panelData = panelSerials.map((serial) => ({
-    //   customer_id: customerId,
-    //   serial_number: serial.trim(),
-    //   created_at: new Date(),
-    // }));
+    // 🔹 Fetch kit items
+    const panelItem = await KitItems.findOne({
+      where: { id: kitPanelId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
 
-    // Prepare inverter data
-    // const inverterData = inverterSerials.map((serial) => ({
-    //   customer_id: customerId,
-    //   serial_number: serial.trim(),
-    //   created_at: new Date(),
-    // }));
+    const inverterItem = await KitItems.findOne({
+      where: { id: kitInveterId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
 
-    // // Bulk insert panels
-    // if (panelData.length > 0) {
-    //   await PanelSerial.bulkCreate(panelData, { transaction: t });
-    // }
+    if (!panelItem || !inverterItem) {
+      throw new Error("Kit items not found");
+    }
 
-    // // Bulk insert inverters
-    // if (inverterData.length > 0) {
-    //   await InverterSerial.bulkCreate(inverterData, { transaction: t });
-    // }
+    // 🔹 Fetch inventory
+    const panelInventory = await Inventory.findOne({
+      where: { id: panelItem.inventory_id },
+      transaction: t,
+    });
 
-    // Update customer stages
+    const inverterInventory = await Inventory.findOne({
+      where: { id: inverterItem.inventory_id },
+      transaction: t,
+    });
+
+    if (!panelInventory || !inverterInventory) {
+      throw new Error("Inventory not found");
+    }
+
+    // 🔴 Category validation
+    if (panelInventory.category_id !== 1) {
+      throw new Error("Selected panel item is not a panel (category 1)");
+    }
+
+    if (inverterInventory.category_id !== 3) {
+      throw new Error("Selected inverter item is not an inverter (category 3)");
+    }
+
+    // 🔹 Get registration
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Customer registration not found");
+    }
+
+    // 🔹 Update file_generation
+    const [updated] = await FileGeneration.update(
+      {
+        panel_quantity: panelItem.qty,
+        panel_brand_id: panelInventory.brand_id,
+
+        inverter_quantity: inverterItem.qty,
+        inverter_brand_id: inverterInventory.brand_id,
+      },
+      {
+        where: { registration_id: registration.id },
+        transaction: t,
+      },
+    );
+
+    if (updated === 0) {
+      throw new Error("File generation record not found");
+    }
+
+    // 🔹 Stage updates
     await CustomerStage.update(
       { status: "done", completed_at: new Date() },
       { where: { customer_id: customerId, stage_id: 6 }, transaction: t },
@@ -700,7 +742,7 @@ async function addSerialsAndDispatch(
       { where: { customer_id: customerId, stage_id: 7 }, transaction: t },
     );
 
-    // Insert dispatch record with defaults
+    // 🔹 Dispatch
     await Dispatch.create(
       {
         customer_id: customerId,
@@ -712,6 +754,7 @@ async function addSerialsAndDispatch(
       { transaction: t },
     );
 
+    // 🔹 Kit complete
     await KitReady.update(
       { status: "done" },
       { where: { customer_id: customerId }, transaction: t },
@@ -720,14 +763,12 @@ async function addSerialsAndDispatch(
     await t.commit();
 
     return {
-      dispatch_created: true,
+      success: true,
+      message: "Dispatch created and file generation updated",
     };
   } catch (error) {
     await t.rollback();
-    console.error(
-      "Error inserting serials / updating stages / creating dispatch:",
-      error,
-    );
+    console.error("❌ Error:", error);
     throw error;
   }
 }

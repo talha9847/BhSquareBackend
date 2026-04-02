@@ -302,8 +302,8 @@ async function getPanelAndInventer(req, res) {
 
 async function addCustomerSerials(req, res) {
   try {
-    const { customerId, panelSerials, inverterSerials } = req.body;
-
+    const { customerId, inverterId, panelId } = req.body;
+    console.log(panelId, inverterId, "    panel and inveter");
     if (!customerId) {
       return res.status(400).json({
         success: false,
@@ -333,8 +333,8 @@ async function addCustomerSerials(req, res) {
     // Call service to insert serials and create dispatch
     const result = await kitReadyService.addSerialsAndDispatch(
       customerId,
-      // panelSerials || [],
-      // inverterSerials || [],
+      panelId,
+      inverterId,
     );
 
     return res.status(201).json({
