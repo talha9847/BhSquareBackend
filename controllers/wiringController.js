@@ -75,7 +75,7 @@ async function fetchWiringCustomerDetails(req, res) {
 
 async function createWireInventory(req, res) {
   try {
-    const { brand_name, wire_type, color, gauge, stock } = req.body;
+    const { brand_name, wire_type, color, gauge, stock, price, tax } = req.body;
 
     if (!brand_name || !wire_type || !color || !gauge || !stock) {
       return res.status(400).json({
@@ -96,6 +96,8 @@ async function createWireInventory(req, res) {
       color,
       gauge: Number(gauge),
       stock: Number(stock),
+      price,
+      tax,
     });
 
     if (!result.success) {
@@ -146,7 +148,7 @@ async function fetchAllWireInventory(req, res) {
 async function updateWireInventory(req, res) {
   try {
     const { id } = req.params;
-    const { brand_name, wire_type, color, gauge, stock } = req.body;
+    const { brand_name, wire_type, color, gauge, stock, price, tax } = req.body;
 
     // Call the service to update
     const result = await wiringService.updateWireInventoryById(id, {
@@ -155,6 +157,8 @@ async function updateWireInventory(req, res) {
       color,
       gauge,
       stock,
+      price,
+      tax,
     });
 
     if (!result.success) {
@@ -347,7 +351,7 @@ async function uploadWiringDocs(req, res) {
         message: "No files uploaded",
       });
     }
-    
+
     const result = await wiringService.uploadWiringDocsWithCS(
       files,
       wiringId,

@@ -124,6 +124,8 @@ async function addWireInventory({
   color,
   gauge,
   stock,
+  price,
+  tax,
 }) {
   const t = await sequelize.transaction();
   try {
@@ -143,7 +145,7 @@ async function addWireInventory({
 
     // Create new wire inventory record
     const newWire = await WireInventory.create(
-      { brand_name, wire_type, color, gauge, stock },
+      { brand_name, wire_type, color, gauge, stock, price, tax },
       { transaction: t },
     );
 
@@ -187,7 +189,8 @@ async function updateWireInventoryById(id, updateData) {
       await t.rollback();
       return { success: false, message: "Wire inventory not found" };
     }
-    const { brand_name, wire_type, color, gauge, stock } = updateData;
+    const { brand_name, wire_type, color, gauge, stock, price, tax } =
+      updateData;
     console.log(stock);
 
     // Validate required fields
@@ -224,6 +227,8 @@ async function updateWireInventoryById(id, updateData) {
     wire.color = color;
     wire.gauge = gaugeNum;
     wire.stock = stockNum;
+    wire.price = price;
+    wire.tax = tax;
 
     await wire.save({ transaction: t });
     await t.commit();

@@ -368,6 +368,9 @@ CREATE TABLE wire_inventory (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_wire UNIQUE (brand_name, wire_type, color, gauge)
 )
+ALTER TABLE wire_inventory
+ADD COLUMN price NUMERIC(10,2) DEFAULT 0 CHECK (price >= 0),
+ADD COLUMN tax NUMERIC(5,2) DEFAULT 0 CHECK (tax >= 0);
 
 
 
