@@ -38,6 +38,14 @@ const Inventory = sequelize.define(
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
+    price: {
+      type: DataTypes.DECIMAL(10, 2), // better than INTEGER
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0, // prevents negative price
+      },
+    },
 
     created_at: {
       type: DataTypes.DATE,
