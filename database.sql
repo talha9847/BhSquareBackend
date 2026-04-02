@@ -287,6 +287,11 @@ CREATE TABLE inventory_table (
   ALTER TABLE inventory_table
 ADD COLUMN category_id INT REFERENCES category(id) ON DELETE SET NULL;
 
+ALTER TABLE inventory_table
+ADD COLUMN tax NUMERIC(5,2) DEFAULT 0 CHECK (tax >= 0);
+ALTER TABLE inventory_table
+ADD COLUMN price NUMERIC(10,2) DEFAULT 0 CHECK (price >= 0);
+
 
 
 CREATE TABLE kit_items (

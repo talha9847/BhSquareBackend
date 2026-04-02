@@ -127,7 +127,7 @@ async function getAllBrands() {
   }
 }
 async function addInventory(data) {
-  const { name, brand_id, category_id, qty, price } = data;
+  const { name, brand_id, category_id, qty, price, tax } = data;
 
   try {
     // 🔹 Validate inventory name
@@ -158,6 +158,7 @@ async function addInventory(data) {
       category_id: category_id || null,
       qty: qty || 0,
       price: price,
+      tax: tax,
     });
 
     return inventory;
@@ -193,6 +194,7 @@ async function getAllInventory() {
       category_name: item.category?.name || null, // ✅ flattened
       qty: item.qty, // updated field name if using stock
       price: item.price,
+      tax: item.tax,
       created_at: item.created_at,
     }));
 
@@ -301,7 +303,7 @@ async function deleteBrand(id) {
 }
 async function updateInventory(id, data) {
   try {
-    const { name, brand_id, category_id, qty, price } = data;
+    const { name, brand_id, category_id, qty, price, tax } = data;
 
     // 🔹 Validate inventory ID
     if (!id) {
@@ -358,6 +360,7 @@ async function updateInventory(id, data) {
       category_id: category_id || null,
       qty: updatedQty,
       price: price,
+      tax: tax,
     });
 
     return inventory;
