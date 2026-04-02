@@ -491,7 +491,6 @@ async function markRegistrationAsDone(
 
           panel_quantity: lead?.number_of_panels || null,
           panel_capacity: lead?.panel_wattage || null,
-          system_capacity: lead?.total_capacity || null,
 
           application_number: registration?.application_number || null,
           registration_date: registration?.registration_date || null,

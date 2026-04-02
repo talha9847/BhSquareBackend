@@ -247,6 +247,9 @@ async function updateWireInventoryById(id, updateData) {
 
 const { Op } = require("sequelize");
 const { CustomerStage } = require("../models/customerStageModel");
+const { FileGeneration } = require("../models/fileGenerationModel");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const { FinalStage } = require("../models/finalStageModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -444,26 +447,125 @@ async function updateWiringTechnician(wiringId, technicianId) {
 
 async function updateWiringInventoryStatus(wiringId, newStatus) {
   const t = await sequelize.transaction();
+
   try {
+    // 🔴 Basic validation
     if (!wiringId) {
-      throw new Error("wiringId is required");
+      return { success: false, message: "wiringId is required" };
     }
 
-    const validStatuses = ["pending", "done"]; // adjust as needed
+    const validStatuses = ["pending", "done"];
     if (!validStatuses.includes(newStatus)) {
-      throw new Error(
-        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      );
+      return {
+        success: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      };
     }
 
+    // 🔹 Fetch wiring
     const wiring = await Wiring.findByPk(wiringId, { transaction: t });
+
     if (!wiring) {
       await t.rollback();
       return { success: false, message: "Wiring record not found" };
     }
 
+    // 🔴 Only validate strictly when marking done
+    if (newStatus === "done") {
+      // 🔴 Technician check
+      if (!wiring.technician_id) {
+        await t.rollback();
+        return {
+          success: false,
+          message: "Technician is not assigned",
+        };
+      }
+
+      // 🔴 Wiring items check
+      const wiringItemExists = await WiringItem.findOne({
+        where: { wiring_id: wiringId },
+        attributes: ["id"],
+        transaction: t,
+      });
+
+      if (!wiringItemExists) {
+        await t.rollback();
+        return {
+          success: false,
+          message: "No wiring items found",
+        };
+      }
+
+      // 🔹 Get registration
+      const registration = await CustomerRegistration.findOne({
+        where: { customer_id: wiring.customer_id },
+        transaction: t,
+      });
+
+      if (!registration) {
+        await t.rollback();
+        return { success: false, message: "Registration not found" };
+      }
+
+      // 🔹 Get file_generation
+      const fileGen = await FileGeneration.findOne({
+        where: { registration_id: registration.id },
+        transaction: t,
+      });
+
+      if (!fileGen) {
+        await t.rollback();
+        return { success: false, message: "File generation not found" };
+      }
+
+      const panelQty = fileGen.panel_quantity || 0;
+      const inverterQty = fileGen.inverter_quantity || 0;
+
+      if (panelQty === 0 && inverterQty === 0) {
+        await t.rollback();
+        return {
+          success: false,
+          message: "Panel and inverter quantity is zero",
+        };
+      }
+
+      // 🔹 Generate docs
+      const docs = [];
+
+      // Panels
+      for (let i = 1; i <= panelQty; i++) {
+        docs.push({
+          wiring_id: wiringId,
+          doc_name: `Panel ${i}`,
+        });
+      }
+
+      // Inverters
+      for (let i = 1; i <= inverterQty; i++) {
+        docs.push({
+          wiring_id: wiringId,
+          doc_name: `Inverter ${i}`,
+        });
+      }
+
+      // Fixed docs
+      docs.push(
+        { wiring_id: wiringId, doc_name: "Geo Tag" },
+        { wiring_id: wiringId, doc_name: "Site Photo" },
+        { wiring_id: wiringId, doc_name: "Wiring File" },
+      );
+
+      // 🔹 Insert docs (ignore duplicates)
+      await WiringDocs.bulkCreate(docs, {
+        transaction: t,
+        ignoreDuplicates: true,
+      });
+    }
+
+    // 🔹 Update status
     wiring.inventory_status = newStatus;
     await wiring.save({ transaction: t });
+
     await t.commit();
 
     return {
@@ -473,8 +575,12 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
     };
   } catch (error) {
     await t.rollback();
-    console.error("Error updating wiring inventory_status:", error);
-    return { success: false, message: error.message };
+    console.error("❌ Error:", error);
+
+    return {
+      success: false,
+      message: error.message || "Something went wrong",
+    };
   }
 }
 
@@ -491,136 +597,154 @@ oauth2Client.setCredentials({
 
 const drive = google.drive({ version: "v3", auth: oauth2Client });
 
-async function findFileInFolder(fileName, folderId) {
-  try {
-    const res = await drive.files.list({
-      q: `name='${fileName}' and '${folderId}' in parents and trashed=false`,
-      fields: "files(id, name, webViewLink)",
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
-
-    if (res.data.files.length > 0) {
-      return res.data.files[0]; // return first match
-    }
-
-    return null;
-  } catch (error) {
-    console.error("❌ Error finding file in folder:", error.message);
-    throw error;
-  }
-}
-async function uploadWiringDocsWithCS(files, wiringId, customerId) {
-  try {
-    // 🔹 Step 1: Get folder_id from DB
-    const customerDoc = await CustomerDocument.findOne({
-      where: { customer_id: customerId },
-    });
-
-    if (!customerDoc || !customerDoc.folder_id) {
-      throw new Error("Customer folder_id not found");
-    }
-
-    const folderId = customerDoc.folder_id;
-
-    // 🔹 Step 2: Upload files directly into this folder
-    const uploadPromises = files.map(async (file) => {
-      const fileName = file.fieldname;
-
-      const existingFile = await findFileInFolder(fileName, folderId);
-
-      let response;
-
-      if (existingFile) {
-        // 🔁 Replace file
-        response = await drive.files.update({
-          fileId: existingFile.id,
-          media: {
-            mimeType: file.mimetype || "application/octet-stream",
-            body: Readable.from(file.buffer),
-          },
-          supportsAllDrives: true,
-          fields: "id, webViewLink",
-        });
-      } else {
-        // 🆕 Upload new file directly in folder
-        response = await drive.files.create({
-          requestBody: {
-            name: fileName,
-            parents: [folderId],
-          },
-          media: {
-            mimeType: file.mimetype || "application/octet-stream",
-            body: Readable.from(file.buffer),
-          },
-          supportsAllDrives: true,
-          fields: "id, webViewLink",
-        });
-      }
-
-      const fileUrl = response.data.webViewLink;
-
-      // 🔹 Step 3: Save in DB
-      await WiringDocs.upsert(
-        {
-          wiring_id: wiringId,
-          doc_name: fileName,
-          doc_link: fileUrl,
-          created_at: new Date(),
-        },
-        {
-          conflictFields: ["wiring_id", "doc_name"],
-        },
-      );
-
-      return {
-        name: fileName,
-        url: fileUrl,
-      };
-    });
-
-    await updateWiringStageIfDocsComplete(wiringId);
-
-    return await Promise.all(uploadPromises);
-  } catch (error) {
-    console.error("❌ WiringDocs Upload Error:", error.message);
-    throw error;
-  }
-}
-
-async function updateWiringStageIfDocsComplete(wiringId) {
-  const t = await sequelize.transaction();
+async function getWiringDocsByWiringId(wiringId) {
   try {
     if (!wiringId) {
       throw new Error("wiringId is required");
     }
 
-    // 🔹 Step 1: Count docs
-    const docCount = await WiringDocs.count({
+    const docs = await WiringDocs.findAll({
       where: { wiring_id: wiringId },
-      transaction: t,
+      attributes: ["id", "doc_name", "doc_link", "created_at", "updated_at"],
+      order: [["id", "ASC"]],
     });
 
-    if (docCount < 3) {
-      await t.rollback();
+    if (!docs || docs.length === 0) {
       return {
-        success: true,
-        message: `Only ${docCount} docs uploaded. Minimum 3 required.`,
+        success: false,
+        message: "No wiring documents found",
+        data: [],
       };
     }
 
-    // 🔹 Step 2: Get wiring (to fetch customer_id)
-    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
+    return {
+      success: true,
+      count: docs.length,
+      data: docs,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching wiring docs:", error);
+    throw error;
+  }
+}
 
-    if (!wiring) {
-      throw new Error("Wiring not found");
+const findFileInFolder = async (fileName, folderId) => {
+  try {
+    const res = await drive.files.list({
+      q: `name = '${fileName}' and '${folderId}' in parents and trashed = false`,
+      fields: "files(id, name, webViewLink)",
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    return res.data.files.length > 0 ? res.data.files[0] : null;
+  } catch (error) {
+    console.error("❌ Error finding file:", error.message);
+    throw error;
+  }
+};
+
+async function uploadWiringDoc(customerId, wiringDocId, file) {
+  try {
+    if (!customerId || !wiringDocId || !file) {
+      throw new Error("customerId, wiringDocId and file are required");
     }
 
-    const customerId = wiring.customer_id;
+    // 🔹 Step 1: Get folder
+    const customerDoc = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+    });
 
-    // 🔹 Step 3: Update customer stages
+    if (!customerDoc || !customerDoc.folder_id) {
+      throw new Error("Customer folder not found");
+    }
+
+    const folderId = customerDoc.folder_id;
+
+    // 🔹 Step 2: Get wiring doc
+    const wiringDoc = await WiringDocs.findOne({
+      where: { id: wiringDocId },
+    });
+
+    if (!wiringDoc) {
+      throw new Error("Wiring doc not found");
+    }
+
+    const fileName = wiringDoc.doc_name; // 🔥 important
+
+    // 🔹 Step 3: Check existing file
+    const existingFile = await findFileInFolder(fileName, folderId);
+
+    let response;
+
+    if (existingFile) {
+      // 🔁 Replace file
+      response = await drive.files.update({
+        fileId: existingFile.id,
+        media: {
+          mimeType: file.mimetype || "application/octet-stream",
+          body: Readable.from(file.buffer),
+        },
+        supportsAllDrives: true,
+        fields: "id, webViewLink",
+      });
+    } else {
+      // 📤 Upload new
+      response = await drive.files.create({
+        requestBody: {
+          name: fileName,
+          parents: [folderId],
+        },
+        media: {
+          mimeType: file.mimetype || "application/octet-stream",
+          body: Readable.from(file.buffer),
+        },
+        supportsAllDrives: true,
+        fields: "id, webViewLink",
+      });
+    }
+
+    // 🔹 Step 4: Save in DB
+    await WiringDocs.update(
+      {
+        doc_link: response.data.webViewLink,
+        updated_at: new Date(),
+      },
+      {
+        where: { id: wiringDocId },
+      },
+    );
+
+    return {
+      success: true,
+      message: "Wiring document uploaded successfully",
+      data: {
+        doc_name: fileName,
+        url: response.data.webViewLink,
+        fileId: response.data.id,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Wiring Doc Upload Error:", error.message);
+    throw error;
+  }
+}
+
+async function moveToFinalStage(customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 Step 1: Complete stage 9
     await CustomerStage.update(
-      { status: "done", completed_at: new Date() },
+      {
+        status: "done",
+        completed_at: new Date(),
+        updated_at: new Date(),
+      },
       {
         where: {
           customer_id: customerId,
@@ -630,8 +754,13 @@ async function updateWiringStageIfDocsComplete(wiringId) {
       },
     );
 
+    // 🔹 Step 2: Start stage 10
     await CustomerStage.update(
-      { status: "pending", started_at: new Date() },
+      {
+        status: "pending",
+        started_at: new Date(),
+        updated_at: new Date(),
+      },
       {
         where: {
           customer_id: customerId,
@@ -641,23 +770,46 @@ async function updateWiringStageIfDocsComplete(wiringId) {
       },
     );
 
-    // 🔹 Step 4: Update wiring status
-    wiring.status = "done";
-    await wiring.save({ transaction: t });
+    // 🔹 Step 3: Ensure final_stage record exists
+    await FinalStage.findOrCreate({
+      where: { customer_id: customerId },
+      defaults: {
+        customer_id: customerId,
+        created_at: new Date(),
+      },
+      transaction: t,
+    });
+
+    // 🔴 Step 4: Update wiring status
+    const wiringUpdated = await Wiring.update(
+      {
+        status: "done",
+        updated_at: new Date(),
+      },
+      {
+        where: { customer_id: customerId },
+        transaction: t,
+      },
+    );
+
+    // Optional check
+    if (wiringUpdated[0] === 0) {
+      throw new Error("No wiring record found for this customer");
+    }
 
     await t.commit();
 
     return {
       success: true,
-      message: "Wiring completed and stages updated",
+      message: "Moved to final stage and wiring marked as done",
     };
   } catch (error) {
     await t.rollback();
-    console.error("❌ Error updating wiring stage:", error);
-    return { success: false, message: error.message };
+    console.error("❌ Error moving to final stage:", error);
+
+    throw error;
   }
 }
-
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -671,5 +823,7 @@ module.exports = {
   getIssuedWiresByWiringId,
   updateWiringTechnician,
   updateWiringInventoryStatus,
-  uploadWiringDocsWithCS,
+  getWiringDocsByWiringId,
+  uploadWiringDoc,
+  moveToFinalStage,
 };

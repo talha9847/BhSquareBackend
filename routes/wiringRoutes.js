@@ -30,8 +30,10 @@ router.put(
 
 router.post(
   "/uploadWiringDocs",
-  upload.any(),
-  wiringController.uploadWiringDocs,
+  upload.single("file"), // 🔥 fix
+  wiringController.uploadWiringDocController,
 );
 
+router.get("/getWiringDocs/:id", wiringController.getWiringDocs);
+router.post("/moveToFinalStage", wiringController.moveToFinalStage);
 module.exports = router;

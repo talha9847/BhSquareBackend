@@ -333,41 +333,124 @@ async function updateInventoryStatus(req, res) {
   }
 }
 
-async function uploadWiringDocs(req, res) {
+async function getWiringDocs(req, res) {
   try {
-    const { wiringId, customerId } = req.body;
-    const files = req.files;
+    const { id } = req.params;
 
-    if (!wiringId || !customerId) {
+    // 🔴 Validation
+    if (!id) {
       return res.status(400).json({
-        success: false,
-        message: "wiringId and customerId are required",
+        message: "wiringId is required",
       });
     }
 
-    if (!files || files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
+    const result = await wiringService.getWiringDocsByWiringId(id);
+
+    if (!result.success) {
+      return res.status(404).json({
+        message: result.message,
+        data: [],
       });
     }
 
-    const result = await wiringService.uploadWiringDocsWithCS(
-      files,
-      wiringId,
+    return res.status(200).json({
+      message: "Wiring documents fetched successfully",
+      count: result.count,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+async function uploadWiringDocController(req, res) {
+  try {
+    const { customerId, wiringDocId } = req.body;
+    console.log(req.body);
+    // 🔴 Validation
+    if (!customerId || !wiringDocId) {
+      return res.status(400).json({
+        message: "customerId and wiringDocId are required",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "File is required",
+      });
+    }
+
+    // 🔹 Call service
+    const result = await wiringService.uploadWiringDoc(
       customerId,
+      wiringDocId,
+      req.file,
     );
 
     return res.status(200).json({
-      success: true,
-      data: result,
-      message: "Files uploaded successfully",
+      message: result.message,
+      data: result.data,
     });
   } catch (error) {
-    console.error("❌ Error uploading wiring docs:", error);
+    console.error("❌ Controller Error:", error);
+
+    // 🔴 Known errors (business logic)
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("required")
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    // 🔴 Server error
     return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to upload wiring documents",
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+async function moveToFinalStage(req, res) {
+  try {
+    const { customerId } = req.body;
+
+    // 🔴 Validation
+    if (!customerId) {
+      return res.status(400).json({
+        message: "customerId is required",
+      });
+    }
+
+    // 🔹 Call service
+    const result = await wiringService.moveToFinalStage(customerId);
+
+    return res.status(200).json({
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    // 🔴 Business errors
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("required")
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    // 🔴 Server error
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
     });
   }
 }
@@ -385,5 +468,8 @@ module.exports = {
   fetchIssuedWires,
   updateTechni,
   updateInventoryStatus,
-  uploadWiringDocs,
+
+  getWiringDocs,
+  uploadWiringDocController,
+  moveToFinalStage,
 };

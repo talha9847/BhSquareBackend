@@ -405,12 +405,28 @@ CREATE TABLE wiring_docs (
     id SERIAL PRIMARY KEY,
     wiring_id INTEGER REFERENCES wiring(id) ON DELETE CASCADE,
     doc_name VARCHAR(255) NOT NULL,
-    doc_link TEXT NOT NULL,
+    doc_link TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (wiring_id, doc_name)
 );
 
+
+
+  CREATE TABLE final_stage (
+    id SERIAL PRIMARY KEY,
+
+    customer_id INTEGER NOT NULL
+        REFERENCES customers(id) ON DELETE CASCADE,
+
+    file_approved BOOLEAN DEFAULT FALSE,
+    file_uploaded BOOLEAN DEFAULT FALSE,
+    inspection BOOLEAN DEFAULT FALSE,
+    redeem BOOLEAN DEFAULT FALSE,
+    disbursal BOOLEAN DEFAULT FALSE,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 TRUNCATE TABLE
 users,

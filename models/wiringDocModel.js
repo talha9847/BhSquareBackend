@@ -19,7 +19,6 @@ const WiringDocs = sequelize.define(
     },
     doc_link: {
       type: DataTypes.TEXT,
-      allowNull: false,
     },
     created_at: {
       type: DataTypes.DATE,
