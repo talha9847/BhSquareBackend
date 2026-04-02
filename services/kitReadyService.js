@@ -659,35 +659,35 @@ async function getPanelAndInverterByCustomerId(customerId) {
 
 async function addSerialsAndDispatch(
   customerId,
-  panelSerials,
-  inverterSerials,
+  // panelSerials,
+  // inverterSerials,
 ) {
   const t = await sequelize.transaction();
 
   try {
     // Prepare panel data
-    const panelData = panelSerials.map((serial) => ({
-      customer_id: customerId,
-      serial_number: serial.trim(),
-      created_at: new Date(),
-    }));
+    // const panelData = panelSerials.map((serial) => ({
+    //   customer_id: customerId,
+    //   serial_number: serial.trim(),
+    //   created_at: new Date(),
+    // }));
 
     // Prepare inverter data
-    const inverterData = inverterSerials.map((serial) => ({
-      customer_id: customerId,
-      serial_number: serial.trim(),
-      created_at: new Date(),
-    }));
+    // const inverterData = inverterSerials.map((serial) => ({
+    //   customer_id: customerId,
+    //   serial_number: serial.trim(),
+    //   created_at: new Date(),
+    // }));
 
-    // Bulk insert panels
-    if (panelData.length > 0) {
-      await PanelSerial.bulkCreate(panelData, { transaction: t });
-    }
+    // // Bulk insert panels
+    // if (panelData.length > 0) {
+    //   await PanelSerial.bulkCreate(panelData, { transaction: t });
+    // }
 
-    // Bulk insert inverters
-    if (inverterData.length > 0) {
-      await InverterSerial.bulkCreate(inverterData, { transaction: t });
-    }
+    // // Bulk insert inverters
+    // if (inverterData.length > 0) {
+    //   await InverterSerial.bulkCreate(inverterData, { transaction: t });
+    // }
 
     // Update customer stages
     await CustomerStage.update(
@@ -720,8 +720,6 @@ async function addSerialsAndDispatch(
     await t.commit();
 
     return {
-      panel_count: panelData.length,
-      inverter_count: inverterData.length,
       dispatch_created: true,
     };
   } catch (error) {

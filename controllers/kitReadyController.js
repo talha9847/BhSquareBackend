@@ -312,29 +312,29 @@ async function addCustomerSerials(req, res) {
     }
 
     // ✅ Check if customer already has any panel or inverter serials
-    const existingPanels = await PanelSerial.count({
-      where: { customer_id: customerId },
-    });
-    const existingInverters = await InverterSerial.count({
-      where: { customer_id: customerId },
-    });
+    // const existingPanels = await PanelSerial.count({
+    //   where: { customer_id: customerId },
+    // });
+    // const existingInverters = await InverterSerial.count({
+    //   where: { customer_id: customerId },
+    // });
 
-    if (existingPanels > 0 || existingInverters > 0) {
-      return res.status(201).json({
-        success: true,
-        message: "Serials already exist for this customer",
-        data: {
-          panel_count: existingPanels,
-          inverter_count: existingInverters,
-        },
-      });
-    }
+    // if (existingPanels > 0 || existingInverters > 0) {
+    //   return res.status(201).json({
+    //     success: true,
+    //     message: "Serials already exist for this customer",
+    //     data: {
+    //       panel_count: existingPanels,
+    //       inverter_count: existingInverters,
+    //     },
+    //   });
+    // }
 
     // Call service to insert serials and create dispatch
     const result = await kitReadyService.addSerialsAndDispatch(
       customerId,
-      panelSerials || [],
-      inverterSerials || [],
+      // panelSerials || [],
+      // inverterSerials || [],
     );
 
     return res.status(201).json({
