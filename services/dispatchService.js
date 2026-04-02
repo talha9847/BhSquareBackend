@@ -9,6 +9,7 @@ const { Wiring } = require("../models/wiringModel");
 const { Inventory } = require("../models/inventoryModel");
 const { Car } = require("../models/carModel");
 const { Driver } = require("../models/driverModel");
+const { KitItems } = require("../models/kitItemsModels");
 
 async function getAllDispatches() {
   try {
@@ -270,7 +271,7 @@ async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
         fabrication.unused_pipes = Number(unused_pipes);
 
         // Example: Update inventory (replace 5 with actual inventory_id)
-        const inventoryItem = await Inventory.findByPk(5, { transaction: t });
+        const inventoryItem = await Inventory.findByPk(31, { transaction: t });
         if (inventoryItem) {
           inventoryItem.qty =
             (Number(inventoryItem.qty) || 0) + Number(unused_pipes);
@@ -581,6 +582,164 @@ async function getAllDispatchesByStatus(status) {
   }
 }
 
+async function deleteKitItem(kitItemId) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!kitItemId) {
+      throw new Error("kitItemId is required");
+    }
+
+    // 🔹 Step 1: Find kit item
+    const kitItem = await KitItems.findOne({
+      where: { id: kitItemId },
+      transaction: t,
+      lock: t.LOCK.UPDATE, // 🔒 prevent race condition
+    });
+
+    if (!kitItem) {
+      throw new Error("Kit item not found");
+    }
+
+    const { inventory_id, qty } = kitItem;
+
+    // 🔹 Step 2: If qty > 0 → return stock
+    if (qty > 0) {
+      const [updated] = await Inventory.update(
+        {
+          qty: sequelize.literal(`qty + ${qty}`),
+        },
+        {
+          where: { id: inventory_id },
+          transaction: t,
+        },
+      );
+
+      if (updated === 0) {
+        throw new Error("Failed to restore inventory stock");
+      }
+    }
+
+    // 🔹 Step 3: Delete kit item
+    await kitItem.destroy({ transaction: t });
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Kit item deleted successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("❌ Error deleting kit item:", error);
+    throw error;
+  }
+}
+
+async function updateKitItemQty(kitItemId, changeQty) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!kitItemId || changeQty == null) {
+      throw new Error("kitItemId and qty are required");
+    }
+
+    if (changeQty === 0) {
+      throw new Error("changeQty cannot be zero");
+    }
+
+    // 🔹 Fetch kit item
+    const kitItem = await KitItems.findOne({
+      where: { id: kitItemId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!kitItem) {
+      throw new Error("Kit item not found");
+    }
+
+    const { inventory_id, qty: currentQty } = kitItem;
+
+    // 🔹 Fetch inventory
+    const inventory = await Inventory.findOne({
+      where: { id: inventory_id },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    let newKitQty = currentQty;
+    let inventoryChange = 0;
+
+    // 🟢 CASE 1: ALLOCATE (+)
+    if (changeQty > 0) {
+      if (inventory.qty < changeQty) {
+        throw new Error("Not enough stock in inventory");
+      }
+
+      newKitQty = currentQty + changeQty;
+      inventoryChange = -changeQty;
+    }
+
+    // 🔵 CASE 2: DEALLOCATE (-)
+    if (changeQty < 0) {
+      const absQty = Math.abs(changeQty);
+
+      if (currentQty < absQty) {
+        throw new Error("Cannot deallocate more than allocated");
+      }
+
+      newKitQty = currentQty - absQty;
+      inventoryChange = absQty;
+    }
+
+    // 🔹 Update inventory (atomic safe)
+    const [updated] = await Inventory.update(
+      {
+        qty: sequelize.literal(`qty + ${inventoryChange}`),
+      },
+      {
+        where: { id: inventory_id },
+        transaction: t,
+      },
+    );
+
+    if (updated === 0) {
+      throw new Error("Inventory update failed");
+    }
+
+    // 🔹 Update kit item
+    await kitItem.update(
+      {
+        qty: newKitQty,
+        status: newKitQty === 0 ? "pending" : "allocated",
+      },
+      { transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Kit item updated successfully",
+      data: {
+        kitItemId,
+        previousQty: currentQty,
+        changeQty,
+        updatedQty: newKitQty,
+      },
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("❌ Error updating kit item:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getAllDispatches,
   updateDispatchByCustomerId,
@@ -597,4 +756,6 @@ module.exports = {
   getAllDrivers,
   updateDriver,
   getAllDispatchesByStatus,
+  deleteKitItem,
+  updateKitItemQty,
 };

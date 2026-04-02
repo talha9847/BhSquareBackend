@@ -356,6 +356,89 @@ async function fetchDispatchesByStatus(req, res) {
   }
 }
 
+async function deleteKitItem(req, res) {
+  try {
+    const { kitItemId } = req.params;
+
+    // 🔴 Validation
+    if (!kitItemId) {
+      return res.status(400).json({
+        message: "kitItemId is required",
+      });
+    }
+
+    // 🔹 Call service
+    const result = await dispatchService.deleteKitItem(kitItemId);
+
+    return res.status(200).json({
+      message: result.message || "Kit item deleted successfully",
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    // 🔴 Known business errors
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("Failed to restore")
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    // 🔴 Fallback server error
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+async function updateKitItemQty(req, res) {
+  try {
+    const { kitItemId, qty } = req.body;
+
+    // 🔴 Validation
+    if (!kitItemId || qty == null) {
+      return res.status(400).json({
+        message: "kitItemId and changeQty are required",
+      });
+    }
+
+    if (typeof qty !== "number" || qty === 0) {
+      return res.status(400).json({
+        message: "changeQty must be a non-zero number",
+      });
+    }
+
+    // 🔹 Call service
+    const result = await dispatchService.updateKitItemQty(kitItemId, qty);
+
+    return res.status(200).json({
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    // 🔴 Business errors
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("Not enough stock") ||
+      error.message.includes("deallocate")
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    // 🔴 Server error
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -372,4 +455,6 @@ module.exports = {
   fetchCars,
   updateCar,
   fetchDispatchesByStatus,
+  deleteKitItem,
+  updateKitItemQty,
 };

@@ -9,8 +9,8 @@ router.post("/createFabricator", dispatchController.createFabricator);
 router.get("/fetchFabricators", dispatchController.fetchFabricators);
 router.put("/updateFabricator/:id", dispatchController.updateFabricator);
 router.get("/fetchFabrications", dispatchController.fetchFabrications);
-router.put("/updateFabrication/", dispatchController.updateFabrication);
-router.put("/updateFabricatorViaId/", dispatchController.updateFabricatorViaId);
+router.put("/updateFabrication", dispatchController.updateFabrication);
+router.put("/updateFabricatorViaId", dispatchController.updateFabricatorViaId);
 router.post("/createDriver", dispatchController.createDriver);
 router.post("/createCar", dispatchController.createCar);
 router.get("/fetchDrivers", dispatchController.fetchDrivers);
@@ -21,5 +21,7 @@ router.get(
   "/fetchDispatchesByStatus",
   dispatchController.fetchDispatchesByStatus,
 );
+router.delete("/deleteKitItem/:kitItemId", dispatchController.deleteKitItem);
+router.put("/updateKitItemQty", dispatchController.updateKitItemQty);
 
 module.exports = router;
