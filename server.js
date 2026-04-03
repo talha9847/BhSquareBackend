@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
+const cookieParser = require("cookie-parser");
 
 const UserSeeder = require("./Seeder/UserSeed");
 const userRoutes = require("./routes/userRoutes");
@@ -17,8 +18,9 @@ const wiringhRoutes = require("./routes/wiringRoutes");
 require("./models/associationModel");
 UserSeeder.startServer();
 app.use(express.json());
-app.use(cors({ origin: "https://bh-square-frontend.vercel.app" }));
-// app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cookieParser());
+// app.use(cors({ origin: "https://bh-square-frontend.vercel.app" }));
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use("/api/users", userRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/sources", sourceRoutes);

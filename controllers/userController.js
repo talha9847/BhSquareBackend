@@ -14,8 +14,18 @@ async function login(req, res) {
     return res.json({ message: "Internal server error", success: false });
 
   if (isCorrect.code == 1) {
-    const token = await jwtService.signJwt(email, isCorrect.role);
+    const token = await jwtService.signJwt(
+      isCorrect.user.id,
+      isCorrect.user.email,
+      isCorrect.role,
+    );
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
     return res.json({
       success: true,
       message: "User logged in successfully",
@@ -24,4 +34,56 @@ async function login(req, res) {
   }
 }
 
-module.exports = { login };
+async function createUser(req, res) {
+  try {
+    const { email, password, role } = req.body;
+
+    if (!email || !password || !role) {
+      return res.status(400).json({
+        message: "email, password and role are required",
+      });
+    }
+
+    const result = await userService.createUser(email, password, role);
+
+    return res.status(201).json({
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error(" Controller Error:", error);
+
+    if (error.message.includes("exists") || error.message.includes("Invalid")) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+async function getAllUsers(req, res) {
+  try {
+    // 🔹 Call service
+    const result = await userService.getAllUsers();
+
+    return res.status(200).json({
+      message: "Users fetched successfully",
+      count: result.count,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+module.exports = { login, createUser, getAllUsers };

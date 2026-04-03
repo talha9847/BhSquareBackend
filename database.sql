@@ -424,7 +424,7 @@ CREATE TABLE wiring_docs (
     inspection BOOLEAN DEFAULT FALSE,
     redeem BOOLEAN DEFAULT FALSE,
     disbursal BOOLEAN DEFAULT FALSE,
-
+    status varchar(20) default 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

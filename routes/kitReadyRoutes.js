@@ -1,7 +1,7 @@
 const kitReadyController = require("../controllers/kitReadyController");
 const express = require("express");
 const router = express.Router();
-
+const middleware = require("../middlewares/authMiddleware");
 router.get(
   "/fetchKitReadyCustomers",
   kitReadyController.fetchKitReadyCustomers,

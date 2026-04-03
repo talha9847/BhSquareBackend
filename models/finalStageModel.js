@@ -46,6 +46,9 @@ const FinalStage = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    status: {
+      type: DataTypes.STRING,
+    },
 
     created_at: {
       type: DataTypes.DATE,
