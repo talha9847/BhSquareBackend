@@ -1,27 +1,93 @@
 const dispatchController = require("../controllers/dispatchController");
-
+const middleware = require("../middlewares/authMiddleware");
 const express = require("express");
 const router = express.Router();
 
-router.get("/fetchDispatches", dispatchController.fetchDispatches);
-router.post("/updateDispatch", dispatchController.updateDispatch);
-router.post("/createFabricator", dispatchController.createFabricator);
-router.get("/fetchFabricators", dispatchController.fetchFabricators);
-router.put("/updateFabricator/:id", dispatchController.updateFabricator);
-router.get("/fetchFabrications", dispatchController.fetchFabrications);
-router.put("/updateFabrication", dispatchController.updateFabrication);
-router.put("/updateFabricatorViaId", dispatchController.updateFabricatorViaId);
-router.post("/createDriver", dispatchController.createDriver);
-router.post("/createCar", dispatchController.createCar);
-router.get("/fetchDrivers", dispatchController.fetchDrivers);
-router.get("/fetchCars", dispatchController.fetchCars);
-router.put("/updateDriver/:id", dispatchController.updateDriver);
-router.put("/updateCar/:id", dispatchController.updateCar);
+router.get(
+  "/fetchDispatches",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.fetchDispatches,
+);
+router.post(
+  "/updateDispatch",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateDispatch,
+);
+router.post(
+  "/createFabricator",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.createFabricator,
+);
+router.get(
+  "/fetchFabricators",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.fetchFabricators,
+);
+router.put(
+  "/updateFabricator/:id",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateFabricator,
+);
+router.get(
+  "/fetchFabrications",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.fetchFabrications,
+);
+router.put(
+  "/updateFabrication",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateFabrication,
+);
+router.put(
+  "/updateFabricatorViaId",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateFabricatorViaId,
+);
+router.post(
+  "/createDriver",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.createDriver,
+);
+router.post(
+  "/createCar",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.createCar,
+);
+router.get(
+  "/fetchDrivers",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.fetchDrivers,
+);
+router.get(
+  "/fetchCars",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.fetchCars,
+);
+router.put(
+  "/updateDriver/:id",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateDriver,
+);
+router.put(
+  "/updateCar/:id",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateCar,
+);
 router.get(
   "/fetchDispatchesByStatus",
+  middleware.authMiddleware(["admin"]),
+
   dispatchController.fetchDispatchesByStatus,
 );
-router.delete("/deleteKitItem/:kitItemId", dispatchController.deleteKitItem);
-router.put("/updateKitItemQty", dispatchController.updateKitItemQty);
+router.delete(
+  "/deleteKitItem/:kitItemId",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.deleteKitItem,
+);
+router.put(
+  "/updateKitItemQty",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.updateKitItemQty,
+);
 
 module.exports = router;

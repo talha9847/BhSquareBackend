@@ -6,41 +6,109 @@ router.get(
   "/fetchKitReadyCustomers",
   kitReadyController.fetchKitReadyCustomers,
 );
-router.post("/updateLoan", kitReadyController.updateLoan);
-router.post("/createInventory", kitReadyController.createInventory);
-router.get("/getAllBrands", kitReadyController.getAllBrands);
-router.get("/getAllInventory", kitReadyController.getAllInventory);
-router.post("/createBrand", kitReadyController.createBrand);
-router.put("/updateBrand/:id", kitReadyController.updateBrand);
-router.delete("/deleteBrand/:id", kitReadyController.deleteBrand);
-router.put("/updateInventory/:id", kitReadyController.updateInventory);
-router.post("/addKitItems", kitReadyController.addKitItems);
+router.post(
+  "/updateLoan",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateLoan,
+);
+router.post(
+  "/createInventory",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.createInventory,
+);
+router.get(
+  "/getAllBrands",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.getAllBrands,
+);
+router.get(
+  "/getAllInventory",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.getAllInventory,
+);
+router.post(
+  "/createBrand",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.createBrand,
+);
+router.put(
+  "/updateBrand/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateBrand,
+);
+router.delete(
+  "/deleteBrand/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.deleteBrand,
+);
+router.put(
+  "/updateInventory/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateInventory,
+);
+router.post(
+  "/addKitItems",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.addKitItems,
+);
 
-router.get("/fetchKitItems/:customerId", kitReadyController.fetchKitItems);
+router.get(
+  "/fetchKitItems/:customerId",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.fetchKitItems,
+);
 router.get(
   "/fetchAvailableProducts/:customerId",
+  middleware.authMiddleware(["admin"]),
   kitReadyController.fetchAvailableProducts,
 );
 
-router.post("/addItem", kitReadyController.addItem);
-router.post("/allocateItem", kitReadyController.allocateItem);
+router.post(
+  "/addItem",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.addItem,
+);
+router.post(
+  "/allocateItem",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.allocateItem,
+);
 router.get(
   "/getPanelAndInventer/:customerId",
+  middleware.authMiddleware(["admin"]),
   kitReadyController.getPanelAndInventer,
 );
-router.post("/addCustomerSerials", kitReadyController.addCustomerSerials);
+router.post(
+  "/addCustomerSerials",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.addCustomerSerials,
+);
 
 router.get(
   "/fetchKitItemsbyCustomer/:customerId",
+  middleware.authMiddleware(["admin"]),
   kitReadyController.fetchKitItemsbyCustomer,
 );
 router.get(
   "/fetchKitReadyCustomersByStatus",
+  middleware.authMiddleware(["admin"]),
   kitReadyController.fetchKitReadyCustomersByStatus,
 );
 
-router.post("/createCategory", kitReadyController.createCategory);
-router.get("/getCategories", kitReadyController.getCategories);
-router.put("/updateCategory/:id", kitReadyController.updateCategory);
+router.post(
+  "/createCategory",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.createCategory,
+);
+router.get(
+  "/getCategories",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.getCategories,
+);
+router.put(
+  "/updateCategory/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateCategory,
+);
 
 module.exports = router;

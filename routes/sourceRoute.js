@@ -13,10 +13,30 @@ router.post(
   middleware.authMiddleware(["admin"]),
   sourceController.addSource,
 );
-router.get("/getFinalStageCustomers", sourceController.getFinalStageCustomers);
-router.post("/updateStage10", sourceController.updateStage10);
-router.post("/updateStage11", sourceController.updateStage11);
-router.post("/updateStage12", sourceController.updateStage12);
-router.post("/updateStage13", sourceController.updateStage13);
+router.get(
+  "/getFinalStageCustomers",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getFinalStageCustomers,
+);
+router.post(
+  "/updateStage10",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateStage10,
+);
+router.post(
+  "/updateStage11",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateStage11,
+);
+router.post(
+  "/updateStage12",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateStage12,
+);
+router.post(
+  "/updateStage13",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateStage13,
+);
 
 module.exports = router;

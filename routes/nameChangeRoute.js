@@ -1,15 +1,24 @@
 const nameChangeController = require("../controllers/nameChangeController");
 const express = require("express");
-
+const middleware = require("../middlewares/authMiddleware");
 const router = express.Router();
 const upload = require("../middlewares/upload");
 
 router.post(
   "/uploadNameChangeFiles",
   upload.any(),
+  middleware.authMiddleware(["admin"]),
   nameChangeController.uploadNameChangeFiles,
 );
-router.post("/checkReady", nameChangeController.checkReady);
-router.post("/goToStageThree", nameChangeController.goToStageThree);
+router.post(
+  "/checkReady",
+  middleware.authMiddleware(["admin"]),
+  nameChangeController.checkReady,
+);
+router.post(
+  "/goToStageThree",
+  middleware.authMiddleware(["admin"]),
+  nameChangeController.goToStageThree,
+);
 
 module.exports = router;

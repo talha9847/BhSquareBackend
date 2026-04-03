@@ -1,39 +1,87 @@
 const wiringController = require("../controllers/wiringController");
-
+const middleware = require("../middlewares/authMiddleware");
 const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/upload");
 
-router.post("/createTechnician", wiringController.createTechnician);
-router.get("/fetchTechnicians", wiringController.fetchTechnicians);
-router.put("/updateTechnician/:id", wiringController.updateTechnician);
+router.post(
+  "/createTechnician",
+  middleware.authMiddleware(["admin"]),
+  wiringController.createTechnician,
+);
+router.get(
+  "/fetchTechnicians",
+  middleware.authMiddleware(["admin"]),
+  wiringController.fetchTechnicians,
+);
+router.put(
+  "/updateTechnician/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.updateTechnician,
+);
 router.get(
   "/fetchWiringCustomerDetails",
+  middleware.authMiddleware(["admin"]),
   wiringController.fetchWiringCustomerDetails,
 );
 
-router.post("/createWireInventory", wiringController.createWireInventory);
-router.get("/fetchAllWireInventory", wiringController.fetchAllWireInventory);
+router.post(
+  "/createWireInventory",
+  middleware.authMiddleware(["admin"]),
+  wiringController.createWireInventory,
+);
+router.get(
+  "/fetchAllWireInventory",
+  middleware.authMiddleware(["admin"]),
+  wiringController.fetchAllWireInventory,
+);
 router.get(
   "/getAvailableWireInventory/:id",
+  middleware.authMiddleware(["admin"]),
   wiringController.getAvailableWireInventory,
 );
 
-router.put("/updateWireInventory/:id", wiringController.updateWireInventory);
-router.post("/createWiringItem", wiringController.createWiringItem);
-router.put("/updateTechni/:wiringId", wiringController.updateTechni);
-router.get("/fetchIssuedWires/:id", wiringController.fetchIssuedWires);
+router.put(
+  "/updateWireInventory/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.updateWireInventory,
+);
+router.post(
+  "/createWiringItem",
+  middleware.authMiddleware(["admin"]),
+  wiringController.createWiringItem,
+);
+router.put(
+  "/updateTechni/:wiringId",
+  middleware.authMiddleware(["admin"]),
+  wiringController.updateTechni,
+);
+router.get(
+  "/fetchIssuedWires/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.fetchIssuedWires,
+);
 router.put(
   "/updateInventoryStatus/:wiringId",
+  middleware.authMiddleware(["admin"]),
   wiringController.updateInventoryStatus,
 );
 
 router.post(
   "/uploadWiringDocs",
-  upload.single("file"), // 🔥 fix
+  upload.single("file"),
+  middleware.authMiddleware(["admin"]),
   wiringController.uploadWiringDocController,
 );
 
-router.get("/getWiringDocs/:id", wiringController.getWiringDocs);
-router.post("/moveToFinalStage", wiringController.moveToFinalStage);
+router.get(
+  "/getWiringDocs/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getWiringDocs,
+);
+router.post(
+  "/moveToFinalStage",
+  middleware.authMiddleware(["admin"]),
+  wiringController.moveToFinalStage,
+);
 module.exports = router;

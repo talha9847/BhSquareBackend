@@ -1,27 +1,41 @@
 const registrationController = require("../controllers/registrationController");
 const express = require("express");
+const middleware = require("../middlewares/authMiddleware");
 
 const router = express.Router();
 router.get(
   "/getCustomersWithSummary",
+  middleware.authMiddleware(["admin"]),
   registrationController.getCustomersWithSummary,
 );
-router.post("/registration", registrationController.registration);
+router.post(
+  "/registration",
+  middleware.authMiddleware(["admin"]),
+  registrationController.registration,
+);
 router.post(
   "/markRegistrationAsDone",
+  middleware.authMiddleware(["admin"]),
   registrationController.markRegistrationAsDone,
 );
-router.post("/getFileGeneration", registrationController.getFileGeneration);
+router.post(
+  "/getFileGeneration",
+  middleware.authMiddleware(["admin"]),
+  registrationController.getFileGeneration,
+);
 router.get(
   "/fetchCustomersByStatus",
+  middleware.authMiddleware(["admin"]),
   registrationController.fetchCustomersByStatus,
 );
 router.get(
   "/getInventoryByCategory",
+  middleware.authMiddleware(["admin"]),
   registrationController.getInventoryByCategory,
 );
 router.get(
   "/getInventoryByCategoryThree",
+  middleware.authMiddleware(["admin"]),
   registrationController.getInventoryByCategoryThree,
 );
 module.exports = router;
