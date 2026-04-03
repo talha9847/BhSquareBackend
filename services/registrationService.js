@@ -275,8 +275,6 @@ async function renameCustomerFolder(
   }
 }
 
-
-
 async function markRegistrationAsDone(
   registrationId,
   customerId,
@@ -624,7 +622,7 @@ async function getInventoryByCategory(id) {
   try {
     const inventory = await Inventory.findAll({
       where: { category_id: id },
-      attributes: ["id", "name"],
+      attributes: ["id", "name", "qty"],
       include: [
         {
           model: Brand,

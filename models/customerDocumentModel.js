@@ -21,9 +21,9 @@ const CustomerDocument = sequelize.define(
     geo_coordinate: {
       type: DataTypes.STRING(100),
     },
-    registration_number: {
-      type: DataTypes.STRING(50),
-    },
+    // registration_number: {
+    //   type: DataTypes.STRING(50),
+    // },
     sub_division: {
       type: DataTypes.STRING(50),
     },
