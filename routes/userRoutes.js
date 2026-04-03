@@ -4,7 +4,11 @@ const middleware = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 router.post("/login", userController.login);
-router.post("/createUser", userController.createUser);
+router.post(
+  "/createUser",
+  middleware.authMiddleware(["admin"]),
+  userController.createUser,
+);
 router.get(
   "/getAllUsers",
   middleware.authMiddleware(["admin"]),
