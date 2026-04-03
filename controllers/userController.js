@@ -30,6 +30,17 @@ async function login(req, res) {
       success: true,
       message: "User logged in successfully",
       token: token,
+      data: isCorrect,
+    });
+  }
+}
+
+async function me(req, res) {
+  try {
+    res.status(200).json({ email: req.user.email, role: req.user.role });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
     });
   }
 }
@@ -86,4 +97,4 @@ async function getAllUsers(req, res) {
   }
 }
 
-module.exports = { login, createUser, getAllUsers };
+module.exports = { login, createUser, getAllUsers, me };

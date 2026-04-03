@@ -14,5 +14,10 @@ router.get(
   middleware.authMiddleware(["admin"]),
   userController.getAllUsers,
 );
+router.get(
+  "/me",
+  middleware.authMiddleware(["admin"]),
+  userController.me,
+);
 
 module.exports = router;
