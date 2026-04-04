@@ -48,7 +48,7 @@ router.put(
 );
 router.post(
   "/createWiringItem",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.createWiringItem,
 );
 router.put(
@@ -63,10 +63,9 @@ router.get(
 );
 router.put(
   "/updateInventoryStatus/:wiringId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.updateInventoryStatus,
 );
-
 router.post(
   "/uploadWiringDocs",
   upload.single("file"),
