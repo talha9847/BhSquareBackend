@@ -69,13 +69,13 @@ router.put(
 router.post(
   "/uploadWiringDocs",
   upload.single("file"),
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.uploadWiringDocController,
 );
 
 router.get(
   "/getWiringDocs/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.getWiringDocs,
 );
 
