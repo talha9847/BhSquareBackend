@@ -38,5 +38,10 @@ router.post(
   middleware.authMiddleware(["admin"]),
   sourceController.updateStage13,
 );
+router.get(
+  "/getAllMasters",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getAllMasters,
+);
 
 module.exports = router;

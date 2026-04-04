@@ -810,6 +810,63 @@ async function moveToFinalStage(customerId) {
     throw error;
   }
 }
+
+async function getWiringCustomerDetailsById(technicianId) {
+  try {
+    const wirings = await Wiring.findAll({
+      where: {
+        technician_id: technicianId, // 👈 filter here
+      },
+      attributes: [
+        "id",
+        "customer_id",
+        "technician_id",
+        "status",
+        "inventory_status",
+        "created_at",
+        "updated_at",
+      ],
+      include: [
+        {
+          model: Customer,
+          as: "customerForWiring",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+        {
+          model: Technician,
+          as: "technician",
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    return wirings.map((w) => ({
+      wiring_id: w.id,
+      wiring_inv_status: w.inventory_status,
+      wiring_status: w.status,
+      customer_id: w.customer_id,
+      lead_id: w.customerForWiring?.lead?.id || null,
+      customer_name: w.customerForWiring?.lead?.customer_name || null,
+      contact_number: w.customerForWiring?.lead?.contact_number || null,
+      address: w.customerForWiring?.lead?.address || null,
+      technician_id: w.technician_id,
+      technician_name: w.technician?.name || null,
+      created_at: w.created_at,
+      updated_at: w.updated_at,
+    }));
+  } catch (error) {
+    console.error("Error fetching wiring customer details:", error);
+    throw error;
+  }
+}
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -826,4 +883,5 @@ module.exports = {
   getWiringDocsByWiringId,
   uploadWiringDoc,
   moveToFinalStage,
+  getWiringCustomerDetailsById,
 };

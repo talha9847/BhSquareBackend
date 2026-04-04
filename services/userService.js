@@ -1,7 +1,6 @@
 const sequelize = require("../config/db");
 const { User } = require("../models/userModel");
 const bcrypt = require("bcrypt");
-const { signJwt } = require("./jwtService");
 async function login(email, pass) {
   try {
     const user = await User.findOne({
@@ -11,14 +10,11 @@ async function login(email, pass) {
     if (!user) return { code: 0 };
 
     const isMatch = await bcrypt.compare(pass, user.password);
-
     if (!isMatch) return { code: -1 };
-    const token = signJwt(user.id, user.email, user.role);
-
     return {
       code: 1,
-      token,
       role: user.role,
+      role_id: user.role_id,
       user: {
         id: user.id,
         email: user.email,
@@ -84,4 +80,40 @@ async function getAllUsers() {
     throw error;
   }
 }
-module.exports = { login, createUser, getAllUsers };
+
+async function updateUser({ id, password, role, role_id }) {
+  if (!id) {
+    throw new Error("User id is required");
+  }
+
+  const user = await User.findByPk(id);
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const updateData = {};
+
+  if (password) {
+    updateData.password = await bcrypt.hash(password, 10);
+  }
+
+  if (user.role === "admin") {
+    updateData.role_id = 0; // force
+  } else {
+    if (role) {
+      updateData.role = role;
+    }
+
+    if (role_id !== undefined) {
+      updateData.role_id = role_id;
+    }
+  }
+
+  updateData.updated_at = new Date();
+
+  await user.update(updateData);
+
+  return user;
+}
+module.exports = { login, createUser, getAllUsers, updateUser };

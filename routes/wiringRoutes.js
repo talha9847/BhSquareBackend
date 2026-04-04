@@ -37,7 +37,7 @@ router.get(
 );
 router.get(
   "/getAvailableWireInventory/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.getAvailableWireInventory,
 );
 
@@ -58,7 +58,7 @@ router.put(
 );
 router.get(
   "/fetchIssuedWires/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.fetchIssuedWires,
 );
 router.put(
@@ -79,9 +79,16 @@ router.get(
   middleware.authMiddleware(["admin"]),
   wiringController.getWiringDocs,
 );
+
 router.post(
   "/moveToFinalStage",
   middleware.authMiddleware(["admin"]),
   wiringController.moveToFinalStage,
+);
+
+router.get(
+  "/getWiringCustomerDetailsById",
+  middleware.authMiddleware(["technician"]),
+  wiringController.getWiringCustomerDetailsById,
 );
 module.exports = router;

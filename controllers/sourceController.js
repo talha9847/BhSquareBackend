@@ -192,6 +192,21 @@ async function updateStage13(req, res) {
     });
   }
 }
+
+async function getAllMasters(req, res) {
+  try {
+    const result = await sourceService.getAllMasters();
+
+    return res.status(200).json({
+      message: "Master data fetched successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: error.message,
+    });
+  }
+}
 module.exports = {
   fetchSources,
   addSource,
@@ -200,4 +215,5 @@ module.exports = {
   updateStage11,
   updateStage12,
   updateStage13,
+  getAllMasters,
 };

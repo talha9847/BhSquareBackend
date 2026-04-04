@@ -1,9 +1,11 @@
 const sequelize = require("../config/db");
 const { Customer } = require("../models/customerModel");
 const { CustomerStage } = require("../models/customerStageModel");
+const { Fabricator } = require("../models/fabricatorModel");
 const { FinalStage } = require("../models/finalStageModel");
 const { Lead } = require("../models/leadModel");
 const { Source } = require("../models/sourceModel");
+const { Technician } = require("../models/technicianModel");
 
 async function getSources() {
   try {
@@ -520,6 +522,39 @@ async function updateStage13(customerId, flag) {
     throw error;
   }
 }
+
+async function getAllMasters() {
+  try {
+    const [technicians, fabricators, leadSources] = await Promise.all([
+      Technician.findAll({
+        attributes: ["id", "name"],
+        order: [["name", "ASC"]],
+      }),
+
+      Fabricator.findAll({
+        attributes: ["id", "name"],
+        order: [["name", "ASC"]],
+      }),
+
+      Source.findAll({
+        attributes: ["id", "name"],
+        order: [["name", "ASC"]],
+      }),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        technicians,
+        fabricators,
+        sources: leadSources,
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error fetching master data:", error);
+    throw error;
+  }
+}
 module.exports = {
   getSources,
   addSource,
@@ -528,4 +563,5 @@ module.exports = {
   updateStage11,
   updateStage12,
   updateStage13,
+  getAllMasters,
 };

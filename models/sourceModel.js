@@ -10,7 +10,7 @@ const Source = sequelize.define(
       autoIncrement: true,
     },
 
-    source_name: {
+    name: {
       type: DataTypes.STRING(100),
       allowNull: false,
     },

@@ -12,12 +12,13 @@ async function login(req, res) {
 
   if (isCorrect.code == -2)
     return res.json({ message: "Internal server error", success: false });
-
+  console.log(isCorrect.role);
   if (isCorrect.code == 1) {
     const token = await jwtService.signJwt(
       isCorrect.user.id,
       isCorrect.user.email,
       isCorrect.role,
+      isCorrect.role_id,
     );
 
     res.cookie("token", token, {
@@ -97,4 +98,66 @@ async function getAllUsers(req, res) {
   }
 }
 
-module.exports = { login, createUser, getAllUsers, me };
+async function updateUser(req, res) {
+  try {
+    const { id, password, confirmPassword, role, role_id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        message: "User id is required",
+      });
+    }
+
+    if (password) {
+      if (!confirmPassword) {
+        return res.status(400).json({
+          message: "confirmPassword is required",
+        });
+      }
+
+      if (password !== confirmPassword) {
+        return res.status(400).json({
+          message: "Password and confirmPassword do not match",
+        });
+      }
+    }
+
+    const user = await userService.updateUser({
+      id,
+      password,
+      role,
+      role_id,
+    });
+
+    return res.status(200).json({
+      message: "User updated successfully",
+      data: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        role_id: user.role_id,
+      },
+    });
+  } catch (error) {
+    console.error(" Controller Error:", error);
+
+    if (error.message.includes("not found")) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    if (error.message.includes("admin")) {
+      return res.status(403).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
+module.exports = { login, createUser, getAllUsers, me, updateUser };

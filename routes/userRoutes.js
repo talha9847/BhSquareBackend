@@ -16,8 +16,13 @@ router.get(
 );
 router.get(
   "/me",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   userController.me,
 );
 
+router.post(
+  "/updateUser",
+  middleware.authMiddleware(["admin"]),
+  userController.updateUser,
+);
 module.exports = router;

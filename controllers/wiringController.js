@@ -58,6 +58,7 @@ async function updateTechnician(req, res) {
 
 async function fetchWiringCustomerDetails(req, res) {
   try {
+    console.log(req.user.role_id);
     const data = await wiringService.getWiringCustomerDetails();
 
     return res.status(200).json({
@@ -455,6 +456,34 @@ async function moveToFinalStage(req, res) {
   }
 }
 
+async function getWiringCustomerDetailsById(req, res) {
+  try {
+    const technician_id = req.user.role_id;
+
+    if (!technician_id) {
+      return res.status(400).json({
+        message: "technician_id is required",
+      });
+    }
+
+    const data =
+      await wiringService.getWiringCustomerDetailsById(technician_id);
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("Controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -468,7 +497,7 @@ module.exports = {
   fetchIssuedWires,
   updateTechni,
   updateInventoryStatus,
-
+  getWiringCustomerDetailsById,
   getWiringDocs,
   uploadWiringDocController,
   moveToFinalStage,
