@@ -20,9 +20,16 @@ UserSeeder.startServer();
 app.use(express.json());
 app.use(cookieParser());
 app.use(
-  cors({ origin: "https://bh-square-frontend.vercel.app", credentials: true }),
+  cors({
+    origin: [
+      "https://bhsquare.in",
+      "https://www.bhsquare.in",
+      "https://bh-square-frontend.vercel.app",
+      "http://localhost:5173",
+    ],
+    credentials: true,
+  }),
 );
-// app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use("/api/users", userRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/sources", sourceRoutes);
