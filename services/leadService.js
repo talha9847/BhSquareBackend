@@ -235,7 +235,7 @@ async function getLeadById(id) {
         {
           model: Source,
           as: "source", // make sure alias matches your association
-          attributes: ["id", "source_name"],
+          attributes: ["id", "name"],
         },
       ],
     });
