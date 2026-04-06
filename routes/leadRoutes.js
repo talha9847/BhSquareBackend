@@ -8,6 +8,11 @@ router.post(
   middleware.authMiddleware(["admin"]),
   leadController.addLead,
 );
+router.post(
+  "/addLeadBySource",
+  middleware.authMiddleware(["source"]),
+  leadController.addLeadBySource,
+);
 router.get(
   "/fetchPendingLeads",
   middleware.authMiddleware(["admin"]),

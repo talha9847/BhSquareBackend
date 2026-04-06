@@ -51,10 +51,67 @@ async function addLead(req, res) {
       success: true,
       data: lead,
     });
-    // return res.status(201).json({
-    //   success: true,
-    //   message: "taht lkjdlkjc",
-    // });
+  } catch (error) {
+    console.log(error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function addLeadBySource(req, res) {
+  try {
+    const {
+      customer_name,
+      contact_number,
+      site_visit_date,
+      address,
+      notes,
+      panel_wattage,
+      number_of_panels,
+      status,
+      installation_type,
+      inverter_kw,
+      number_of_inverters,
+    } = req.body;
+
+    const source_id = req.user.role_id;
+
+    if (!customer_name) {
+      return res.status(400).json({ message: "Customer name is required" });
+    }
+
+    if (!contact_number) {
+      return res.status(400).json({ message: "Contact number is required" });
+    }
+
+    if (!source_id) {
+      return res.status(400).json({ message: "Source  is required" });
+    }
+    if (!address) {
+      return res.status(400).json({ message: "Address  is required" });
+    }
+
+    const lead = await leadService.addLead({
+      customer_name,
+      contact_number,
+      site_visit_date,
+      source_id,
+      address,
+      notes,
+      status,
+      panel_wattage,
+      number_of_panels,
+      installation_type,
+      inverter_kw,
+      number_of_inverters,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: lead,
+    });
   } catch (error) {
     console.log(error);
     return res.status(500).json({
@@ -311,4 +368,5 @@ module.exports = {
   updateLead,
   fetchLeadById,
   fetchLeadsBySource,
+  addLeadBySource,
 };
