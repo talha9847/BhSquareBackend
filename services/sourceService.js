@@ -36,6 +36,39 @@ async function addSource(name) {
   }
 }
 
+async function getAllSources() {
+  try {
+    const fabricators = await Source.findAll({
+      order: [["created_at", "DESC"]],
+    });
+    return fabricators;
+  } catch (error) {
+    console.error("Error fetching fabricators:", error);
+    throw error;
+  }
+}
+
+async function updateSources(id, { name }) {
+  const t = await sequelize.transaction();
+  try {
+    const fabricator = await Source.findByPk(id, { transaction: t });
+    if (!fabricator) {
+      throw new Error("Fabricator not found");
+    }
+
+    fabricator.name = name ?? fabricator.name;
+
+    await fabricator.save({ transaction: t });
+    await t.commit();
+
+    return fabricator;
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating fabricator:", error);
+    throw error;
+  }
+}
+
 async function getFinalStageCustomers() {
   try {
     const finalStages = await FinalStage.findAll({
@@ -564,4 +597,6 @@ module.exports = {
   updateStage12,
   updateStage13,
   getAllMasters,
+  getAllSources,
+  updateSources,
 };

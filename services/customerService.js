@@ -75,14 +75,13 @@ async function getCustomerStages(customerId) {
       throw new Error("customerId is required");
     }
 
-    // Fetch all customer stages with their master stage info
     const stages = await CustomerStage.findAll({
       where: { customer_id: customerId },
       include: [
         {
           model: Stage,
           as: "stage",
-          attributes: ["id", "stage_name"], // stage master info
+          attributes: ["id", "stage_name"],
         },
       ],
       order: [["stage_id", "ASC"]],
@@ -101,6 +100,30 @@ async function getCustomerStages(customerId) {
     return { success: true, data: result };
   } catch (error) {
     console.error("Error fetching customer stages:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+async function getCustomerStagesByLeadId(leadId) {
+  try {
+    if (!leadId) {
+      throw new Error("leadId is required");
+    }
+
+    // Step 1: Find customer
+    const customer = await Customer.findOne({
+      where: { lead_id: leadId },
+      attributes: ["id"],
+    });
+
+    if (!customer) {
+      return { success: false, message: "Customer not found" };
+    }
+
+    // Step 2: Call your existing service
+    return await getCustomerStages(customer.id);
+  } catch (error) {
+    console.error("Error:", error);
     return { success: false, message: error.message };
   }
 }
@@ -154,4 +177,5 @@ module.exports = {
   updateCustomerNameChange,
   getCustomerStages,
   getCustomersByStatus,
+  getCustomerStagesByLeadId,
 };

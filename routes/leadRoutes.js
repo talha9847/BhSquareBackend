@@ -19,6 +19,11 @@ router.get(
   leadController.fetchLeadsByStatus,
 );
 router.get(
+  "/fetchLeadsBySource",
+  middleware.authMiddleware(["source"]),
+  leadController.fetchLeadsBySource,
+);
+router.get(
   "/fetchPendingLeadsCount",
   middleware.authMiddleware(["admin"]),
   leadController.fetchPendingLeadsCount,
@@ -50,7 +55,7 @@ router.post(
 );
 router.get(
   "/fetchLeadById/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin","source"]),
   leadController.fetchLeadById,
 );
 

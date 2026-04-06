@@ -8,6 +8,17 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.fetchSources,
 );
+router.get(
+  "/fetchAllSources",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchAllSources,
+);
+
+router.put(
+  "/updateSource/:id",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateSource,
+);
 router.post(
   "/addSource",
   middleware.authMiddleware(["admin"]),

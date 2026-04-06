@@ -275,6 +275,30 @@ async function fetchLeadById(req, res) {
   }
 }
 
+async function fetchLeadsBySource(req, res) {
+  try {
+    const source_id = req.user.role_id; // 👈 same pattern
+
+    if (!source_id) {
+      return res.status(400).json({
+        message: "fabricator_id is required",
+      });
+    }
+
+    const leads = await leadService.getLeadsBySource(source_id);
+
+    return res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -286,4 +310,5 @@ module.exports = {
   cancelLead,
   updateLead,
   fetchLeadById,
+  fetchLeadsBySource,
 };

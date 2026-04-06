@@ -18,16 +18,16 @@ async function fetchSources(req, res) {
 
 async function addSource(req, res) {
   try {
-    const { source_name } = req.body;
+    const { name } = req.body;
 
-    if (!source_name) {
+    if (!name) {
       return res.status(400).json({
         success: false,
         message: "source_name is required",
       });
     }
 
-    const source = await sourceService.addSource(source_name);
+    const source = await sourceService.addSource(name);
 
     return res.status(201).json({
       success: true,
@@ -38,6 +38,22 @@ async function addSource(req, res) {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function fetchAllSources(req, res) {
+  try {
+    const sources = await sourceService.getAllSources();
+    return res.status(200).json({
+      success: true,
+      data: sources,
+    });
+  } catch (error) {
+    console.error("Error fetching sources:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
     });
   }
 }
@@ -207,6 +223,25 @@ async function getAllMasters(req, res) {
     });
   }
 }
+
+async function updateSource(req, res) {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    const fabricator = await sourceService.updateSources(id, { name });
+    return res.status(200).json({
+      success: true,
+      data: fabricator,
+    });
+  } catch (error) {
+    console.error("Error updating fabricator:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update fabricator",
+    });
+  }
+}
 module.exports = {
   fetchSources,
   addSource,
@@ -216,4 +251,6 @@ module.exports = {
   updateStage12,
   updateStage13,
   getAllMasters,
+  fetchAllSources,
+  updateSource,
 };

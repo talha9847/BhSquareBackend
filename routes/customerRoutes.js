@@ -19,6 +19,11 @@ router.get(
   customerController.fetchCustomerStages,
 );
 router.get(
+  "/fetchCustomerStagesByLeadId/:id",
+  middleware.authMiddleware(["source"]),
+  customerController.fetchCustomerStagesByLeadId,
+);
+router.get(
   "/fetchCustomersByStatus",
   middleware.authMiddleware(["admin"]),
   customerController.fetchCustomersByStatus,

@@ -63,6 +63,18 @@ async function getLeadsByStatus(status) {
   }
 }
 
+async function getLeadsBySource(source_id) {
+  try {
+    const leads = await Lead.findAll({
+      where: { source_id },
+      order: [["created_at", "DESC"]],
+    });
+    return leads;
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function getPendingLeadsCount() {
   try {
     const count = await Lead.count({
@@ -285,4 +297,5 @@ module.exports = {
   cancelLead,
   updateLead,
   getLeadById,
+  getLeadsBySource,
 };
