@@ -90,4 +90,9 @@ router.get(
   middleware.authMiddleware(["technician"]),
   wiringController.getWiringCustomerDetailsById,
 );
+router.get(
+  "/getFabricationDetailsById",
+  middleware.authMiddleware(["fabricator"]),
+  wiringController.getFabricationDetailsById,
+);
 module.exports = router;

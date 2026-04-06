@@ -483,7 +483,32 @@ async function getWiringCustomerDetailsById(req, res) {
   }
 }
 
+async function getFabricationDetailsById(req, res) {
+  try {
+    const fabricator_id = req.user.role_id; // 👈 same pattern
 
+    if (!fabricator_id) {
+      return res.status(400).json({
+        message: "fabricator_id is required",
+      });
+    }
+
+    const data = await wiringService.getFabricationDetailsById(fabricator_id);
+
+    return res.status(200).json({
+      success: true,
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    console.error("Controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -501,4 +526,5 @@ module.exports = {
   getWiringDocs,
   uploadWiringDocController,
   moveToFinalStage,
+  getFabricationDetailsById,
 };

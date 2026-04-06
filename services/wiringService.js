@@ -250,6 +250,8 @@ const { CustomerStage } = require("../models/customerStageModel");
 const { FileGeneration } = require("../models/fileGenerationModel");
 const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { FinalStage } = require("../models/finalStageModel");
+const { Fabricator } = require("../models/fabricatorModel");
+const { Fabrication } = require("../models/fabricationModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -867,6 +869,69 @@ async function getWiringCustomerDetailsById(technicianId) {
     throw error;
   }
 }
+
+async function getFabricationDetailsById(fabricatorId) {
+  try {
+    if (!fabricatorId) {
+      throw new Error("fabricatorId is required");
+    }
+
+    const fabrications = await Fabrication.findAll({
+      where: {
+        fabricator_id: fabricatorId,
+      },
+      attributes: [
+        "id",
+        "customer_id",
+        "fabricator_id",
+        "status",
+        "created_at",
+        "updated_at",
+      ],
+      include: [
+        {
+          model: Customer,
+          as: "customer", // 👈 ensure alias matches
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+        {
+          model: Fabricator,
+          as: "fabricator", // 👈 ensure alias matches
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    // 🔹 Format response
+    return fabrications.map((f) => ({
+      fabrication_id: f.id,
+      fabrication_status: f.status,
+      customer_id: f.customer_id,
+
+      lead_id: f.customer?.lead?.id || null,
+      customer_name: f.customer?.lead?.customer_name || null,
+      contact_number: f.customer?.lead?.contact_number || null,
+      address: f.customer?.lead?.address || null,
+
+      fabricator_id: f.fabricator_id,
+      fabricator_name: f.fabricator?.name || null,
+
+      created_at: f.created_at,
+      updated_at: f.updated_at,
+    }));
+  } catch (error) {
+    console.error("Error fetching fabrication details:", error);
+    throw error;
+  }
+}
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -884,4 +949,5 @@ module.exports = {
   uploadWiringDoc,
   moveToFinalStage,
   getWiringCustomerDetailsById,
+  getFabricationDetailsById,
 };

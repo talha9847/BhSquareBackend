@@ -10,7 +10,7 @@ const { Technician } = require("../models/technicianModel");
 async function getSources() {
   try {
     const sources = await Source.findAll({
-      attributes: ["id", "source_name"],
+      attributes: ["id", "name"],
       order: [["id", "ASC"]],
     });
 
@@ -20,14 +20,14 @@ async function getSources() {
   }
 }
 
-async function addSource(source_name) {
+async function addSource(name) {
   try {
-    if (!source_name) {
+    if (!name) {
       throw new Error("Source name is required");
     }
 
     const source = await Source.create({
-      source_name,
+      name,
     });
 
     return source;

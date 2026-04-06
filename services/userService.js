@@ -26,9 +26,9 @@ async function login(email, pass) {
   }
 }
 
-async function createUser(email, password, role) {
+async function createUser(email, password, role, role_id) {
   try {
-    if (!email || !password || !role) {
+    if (!email || !password || !role || !role_id) {
       throw new Error("email, password and role are required");
     }
 
@@ -44,6 +44,7 @@ async function createUser(email, password, role) {
       email,
       password: hashedPassword,
       role,
+      role_id,
     });
 
     return {

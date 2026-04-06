@@ -49,15 +49,15 @@ async function me(req, res) {
 
 async function createUser(req, res) {
   try {
-    const { email, password, role } = req.body;
+    const { email, password, role, role_id } = req.body;
 
-    if (!email || !password || !role) {
+    if (!email || !password || !role || !role_id) {
       return res.status(400).json({
         message: "email, password and role are required",
       });
     }
 
-    const result = await userService.createUser(email, password, role);
+    const result = await userService.createUser(email, password, role, role_id);
 
     return res.status(201).json({
       message: result.message,
