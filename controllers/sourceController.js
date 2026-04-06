@@ -227,9 +227,12 @@ async function getAllMasters(req, res) {
 async function updateSource(req, res) {
   try {
     const { id } = req.params;
-    const { name } = req.body;
+    const { name, commercial_commission } = req.body;
 
-    const fabricator = await sourceService.updateSources(id, { name });
+    const fabricator = await sourceService.updateSources(id, {
+      name,
+      commercial_commission,
+    });
     return res.status(200).json({
       success: true,
       data: fabricator,

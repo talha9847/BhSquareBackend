@@ -32,7 +32,9 @@ CREATE TABLE leads (
 
 CREATE TABLE lead_sources (
     id SERIAL PRIMARY KEY,
-    source_name VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    commercial_commission DECIMAL(10,2) DEFAULT 0,
+    residential_commission DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

@@ -48,7 +48,7 @@ async function getAllSources() {
   }
 }
 
-async function updateSources(id, { name }) {
+async function updateSources(id, { name, commercial_commission }) {
   const t = await sequelize.transaction();
   try {
     const fabricator = await Source.findByPk(id, { transaction: t });
@@ -57,6 +57,8 @@ async function updateSources(id, { name }) {
     }
 
     fabricator.name = name ?? fabricator.name;
+    fabricator.commercial_commission =
+      commercial_commission ?? fabricator.commercial_commission;
 
     await fabricator.save({ transaction: t });
     await t.commit();

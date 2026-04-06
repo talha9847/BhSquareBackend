@@ -14,6 +14,15 @@ const Source = sequelize.define(
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    commercial_commission: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
+
+    residential_commission: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
 
     created_at: {
       type: DataTypes.DATE,
