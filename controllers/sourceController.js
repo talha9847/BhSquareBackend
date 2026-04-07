@@ -227,11 +227,12 @@ async function getAllMasters(req, res) {
 async function updateSource(req, res) {
   try {
     const { id } = req.params;
-    const { name, commercial_commission } = req.body;
+    const { name, commercial_commission, residential_commission } = req.body;
 
     const fabricator = await sourceService.updateSources(id, {
       name,
       commercial_commission,
+      residential_commission,
     });
     return res.status(200).json({
       success: true,
@@ -242,6 +243,103 @@ async function updateSource(req, res) {
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update fabricator",
+    });
+  }
+}
+async function getCustomersBySource(req, res) {
+  try {
+    const sourceId = req.user.role_id;
+
+    if (!sourceId) {
+      return res.status(400).json({
+        success: false,
+        message: "sourceId is required",
+      });
+    }
+
+    const data = await sourceService.getCustomersBySource(sourceId);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+}
+
+async function getPermissions(req, res) {
+  try {
+    const { customerId, leadId } = req.params;
+
+    // ✅ Basic validation
+    if (!customerId || !leadId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId and leadId are required",
+      });
+    }
+
+    const permissions = await sourceService.getPermissionsByCustomerAndLead(
+      customerId,
+      leadId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: permissions,
+    });
+  } catch (error) {
+    console.error("Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch permissions",
+      error: error.message,
+    });
+  }
+}
+
+async function updatePermission(req, res) {
+  try {
+    const { permissionId } = req.params;
+    const { is_permitted } = req.body;
+
+    if (!permissionId) {
+      return res.status(400).json({
+        success: false,
+        message: "permissionId is required",
+      });
+    }
+
+    if (typeof is_permitted !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message: "is_permitted must be true or false",
+      });
+    }
+
+    const updatedPermission = await sourceService.updatePermission(
+      permissionId,
+      is_permitted,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Permission updated successfully",
+      data: updatedPermission,
+    });
+  } catch (error) {
+    console.error("Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update permission",
     });
   }
 }
@@ -256,4 +354,7 @@ module.exports = {
   getAllMasters,
   fetchAllSources,
   updateSource,
+  getCustomersBySource,
+  getPermissions,
+  updatePermission,
 };

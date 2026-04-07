@@ -54,5 +54,20 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.getAllMasters,
 );
+router.get(
+  "/getCustomersBySource",
+  middleware.authMiddleware(["source"]),
+  sourceController.getCustomersBySource,
+);
+router.get(
+  "/getPermissions/:customerId/:leadId",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getPermissions,
+);
+router.put(
+  "/updatePermission/:permissionId",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updatePermission,
+);
 
 module.exports = router;

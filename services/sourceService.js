@@ -4,6 +4,8 @@ const { CustomerStage } = require("../models/customerStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
 const { FinalStage } = require("../models/finalStageModel");
 const { Lead } = require("../models/leadModel");
+const { Page } = require("../models/pageModel");
+const { Permission } = require("../models/permissionModel");
 const { Source } = require("../models/sourceModel");
 const { Technician } = require("../models/technicianModel");
 
@@ -48,7 +50,10 @@ async function getAllSources() {
   }
 }
 
-async function updateSources(id, { name, commercial_commission }) {
+async function updateSources(
+  id,
+  { name, commercial_commission, residential_commission },
+) {
   const t = await sequelize.transaction();
   try {
     const fabricator = await Source.findByPk(id, { transaction: t });
@@ -59,6 +64,8 @@ async function updateSources(id, { name, commercial_commission }) {
     fabricator.name = name ?? fabricator.name;
     fabricator.commercial_commission =
       commercial_commission ?? fabricator.commercial_commission;
+    fabricator.residential_commission =
+      residential_commission ?? fabricator.residential_commission;
 
     await fabricator.save({ transaction: t });
     await t.commit();
@@ -590,6 +597,126 @@ async function getAllMasters() {
     throw error;
   }
 }
+const getCustomersBySource = async (sourceId) => {
+  try {
+    const customers = await Customer.findAll({
+      include: [
+        {
+          model: Lead,
+          as: "lead",
+          required: true,
+          where: {
+            source_id: sourceId,
+          },
+          attributes: [
+            "customer_name",
+            "contact_number",
+            "address",
+            "total_capacity",
+          ],
+        },
+        {
+          model: Permission,
+          as: "permissions",
+          required: false,
+          where: {
+            source_id: sourceId,
+          },
+          include: [
+            {
+              model: Page,
+              as: "page",
+              attributes: ["name"],
+            },
+          ],
+          attributes: ["id", "is_permitted"],
+        },
+      ],
+    });
+
+    return customers;
+  } catch (error) {
+    throw error;
+  }
+};
+async function getPermissionsByCustomerAndLead(customerId, leadId) {
+  try {
+    // ✅ Fetch customer with lead + source (ONLY ONCE)
+    const customer = await Customer.findOne({
+      where: { id: customerId },
+      attributes: ["id"],
+      include: [
+        {
+          model: Lead,
+          as: "lead",
+          where: { id: leadId },
+          attributes: ["id", "customer_name"],
+          include: [
+            {
+              model: Source,
+              as: "source",
+              attributes: ["name"],
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!customer) {
+      throw new Error("Customer or Lead not found");
+    }
+
+    // ✅ Fetch permissions separately (no nesting)
+    const permissions = await Permission.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id", "page_id", "is_permitted"],
+      include: [
+        {
+          model: Page,
+          as: "page",
+          attributes: ["id", "name", "url"],
+        },
+      ],
+      order: [["page_id", "ASC"]],
+    });
+
+    // ✅ Final clean response
+    return {
+      customer,
+      permissions,
+    };
+  } catch (error) {
+    console.error("Error fetching permissions:", error);
+    throw error;
+  }
+}
+
+async function updatePermission(permissionId, isPermitted) {
+  try {
+    // ✅ Validate input
+    if (typeof isPermitted !== "boolean") {
+      throw new Error("isPermitted must be true or false");
+    }
+
+    // ✅ Find permission
+    const permission = await Permission.findByPk(permissionId);
+
+    if (!permission) {
+      throw new Error("Permission not found");
+    }
+
+    // ✅ Update value
+    await permission.update({
+      is_permitted: isPermitted,
+    });
+
+    return permission;
+  } catch (error) {
+    console.error("Error updating permission:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getSources,
   addSource,
@@ -601,4 +728,7 @@ module.exports = {
   getAllMasters,
   getAllSources,
   updateSources,
+  getCustomersBySource,
+  getPermissionsByCustomerAndLead,
+  updatePermission,
 };

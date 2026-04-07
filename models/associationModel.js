@@ -29,6 +29,8 @@ const { Stage } = require("./stegeModel");
 const { Source } = require("./sourceModel");
 const { Category } = require("./categoryModel");
 const { FinalStage } = require("./finalStageModel");
+const { Permission } = require("./permissionModel");
+const { Page } = require("./pageModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -262,6 +264,35 @@ FinalStage.belongsTo(Customer, {
   as: "customer",
 });
 
+Permission.belongsTo(Page, {
+  foreignKey: "page_id",
+  as: "page",
+});
+Page.hasMany(Permission, {
+  foreignKey: "page_id",
+  as: "permissions",
+});
+
+// Permission -> Source
+Permission.belongsTo(Source, {
+  foreignKey: "source_id",
+  as: "source",
+});
+Source.hasMany(Permission, {
+  foreignKey: "source_id",
+  as: "permissions",
+});
+
+// Permission -> Customer
+Permission.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
+Customer.hasMany(Permission, {
+  foreignKey: "customer_id",
+  as: "permissions",
+});
+
 // Customer -> Lead
 // ----------------------
 // Export all models
@@ -291,4 +322,6 @@ module.exports = {
   CustomerStage,
   Stage,
   FinalStage,
+  Page,
+  Permission,
 };

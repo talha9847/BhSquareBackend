@@ -7,6 +7,8 @@ const { Stage } = require("../models/stegeModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { LeadCancellation } = require("../models/leadCancellationModel");
 const { Source } = require("../models/sourceModel");
+const { Page } = require("../models/pageModel");
+const { Permission } = require("../models/permissionModel");
 
 async function addLead(data) {
   try {
@@ -154,7 +156,6 @@ async function delayToPending(lead_id) {
     throw error;
   }
 }
-
 async function convertToCustomer(lead_id) {
   const t = await sequelize.transaction();
 
@@ -184,6 +185,22 @@ async function convertToCustomer(lead_id) {
     }));
 
     await CustomerStage.bulkCreate(customerStagesData, { transaction: t });
+
+    // ✅ Fetch all pages
+    const pages = await Page.findAll({
+      attributes: ["id"],
+      transaction: t,
+    });
+
+    // ✅ Insert permissions with source_id from lead
+    const permissionsData = pages.map((page) => ({
+      source_id: lead.source_id, // 🔥 important line
+      customer_id: customer.id,
+      page_id: page.id,
+      is_permitted: false,
+    }));
+
+    await Permission.bulkCreate(permissionsData, { transaction: t });
 
     await t.commit();
 

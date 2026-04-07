@@ -430,6 +430,25 @@ CREATE TABLE wiring_docs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+CREATE TABLE pages (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    url varchar(50)
+);
+INSERT INTO pages (name,url) VALUES
+('name_change','namechange'),
+('doc_collect','documentcollection'),
+('loan_docs','loanstep');
+
+CREATE TABLE permission (
+    id SERIAL PRIMARY KEY,
+    source_id INTEGER,
+    customer_id INTEGER REFERENCES customers(id),
+    page_id INTEGER REFERENCES pages(id),
+    is_permitted BOOLEAN DEFAULT TRUE
+);
+
 TRUNCATE TABLE
 users,
 leads,
