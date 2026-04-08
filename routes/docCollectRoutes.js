@@ -23,7 +23,7 @@ router.put(
 router.post(
   "/uploadDocsToDrive/",
   upload.any(),
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   docCollectController.uploadDocsToDrive,
 );
 

@@ -86,7 +86,16 @@ async function uploadDocsToDrive(req, res) {
   try {
     const { customerId, docId, customerName, contactNumber } = req.body;
     const files = req.files;
-
+    console.log(
+      docId,
+      customerId,
+      customerName,
+      " kjdfklsj fkldjsfl;kedj flkej;kjw;klf je;lkjfdklj;l k; ",
+    );
+    if (!docId || !customerName || !contactNumber) {
+      console.log("it is not kdfjl;sdkjfs");
+      return;
+    }
     if (!files || files.length === 0) {
       return res.status(400).json({
         success: false,
@@ -221,7 +230,6 @@ async function fetchCustomerDocuments(req, res) {
     });
   }
 }
-
 
 module.exports = {
   getLeadDetailFromCustomerId,

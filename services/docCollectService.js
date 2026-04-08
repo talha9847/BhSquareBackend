@@ -91,7 +91,34 @@ async function uploadBulkFiles(
   const folderName = `${customerName}_${contactNumber}`;
 
   try {
+    let customerDoc;
     // Get or create the specific customer folder
+    if (!docId || docId == 0) {
+      customerDoc = await CustomerDocument.findOne({
+        where: { customer_id: customerId },
+      });
+      console.log(customerDoc);
+      if (!customerDoc) {
+        throw new Error(`No document found for customerId: ${customerId}`);
+      }
+
+      // 🔥 Set docId from DB
+      docId = customerDoc.id;
+      console.log("✅ docId set from customerId:", docId);
+    } else {
+      // ✅ If docId is provided → validate it belongs to customer
+      customerDoc = await CustomerDocument.findOne({
+        where: {
+          id: docId,
+          customer_id: customerId,
+        },
+      });
+
+      if (!customerDoc) {
+        throw new Error(`Invalid docId ${docId} for customerId ${customerId}`);
+      }
+    }
+
     const customerFolderId = await getOrCreateCustomerFolder(
       folderName,
       rootFolderId,
