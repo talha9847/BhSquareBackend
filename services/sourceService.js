@@ -626,7 +626,7 @@ const getCustomersBySource = async (sourceId) => {
             {
               model: Page,
               as: "page",
-              attributes: ["name"],
+              attributes: ["id", "name", "url"],
             },
           ],
           attributes: ["id", "is_permitted"],
@@ -717,6 +717,28 @@ async function updatePermission(permissionId, isPermitted) {
   }
 }
 
+async function checkPermissionForPage(customerId, pageId) {
+  try {
+    if (!customerId || !pageId) {
+      throw new Error("customerId and pageId are required");
+    }
+
+    const permission = await Permission.findOne({
+      where: {
+        customer_id: customerId,
+        page_id: pageId,
+      },
+      attributes: ["id", "is_permitted"],
+    });
+
+    // Return boolean: true if permitted, false otherwise
+    return permission ? permission.is_permitted : false;
+  } catch (error) {
+    console.error("Error checking permission:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getSources,
   addSource,
@@ -731,4 +753,5 @@ module.exports = {
   getCustomersBySource,
   getPermissionsByCustomerAndLead,
   updatePermission,
+  checkPermissionForPage,
 };

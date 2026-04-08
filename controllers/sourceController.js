@@ -343,6 +343,34 @@ async function updatePermission(req, res) {
     });
   }
 }
+
+async function checkPermission(req, res) {
+  try {
+    const { customerId, pageId } = req.params; // or req.body
+
+    if (!customerId || !pageId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId and pageId are required",
+      });
+    }
+
+    const isPermitted = await sourceService.checkPermissionForPage(
+      customerId,
+      pageId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: { customerId, pageId, isPermitted },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to check permission",
+    });
+  }
+}
 module.exports = {
   fetchSources,
   addSource,
@@ -357,4 +385,5 @@ module.exports = {
   getCustomersBySource,
   getPermissions,
   updatePermission,
+  checkPermission,
 };

@@ -7,7 +7,7 @@ const upload = require("../middlewares/upload");
 router.post(
   "/uploadNameChangeFiles",
   upload.any(),
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   nameChangeController.uploadNameChangeFiles,
 );
 router.post(

@@ -70,4 +70,9 @@ router.put(
   sourceController.updatePermission,
 );
 
+router.get(
+  "/checkPermission/:customerId/:pageId",
+  middleware.authMiddleware(["source"]),
+  sourceController.checkPermission,
+);
 module.exports = router;

@@ -40,7 +40,7 @@ router.get(
 );
 router.get(
   "/checkDocAccess/:customer_id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   docCollectController.checkDocAccess,
 );
 router.get(
