@@ -356,6 +356,38 @@ async function fetchLeadsBySource(req, res) {
   }
 }
 
+async function updateLeadVisitDate(req, res) {
+  try {
+    const { id, date } = req.body;
+
+    if (!id || !date) {
+      return res.status(400).json({
+        success: false,
+        message: "id and date are required",
+      });
+    }
+
+    console.log(req.body);
+
+    const result = await leadService.updateLeadVisitDate(id, date);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead visit date updated successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -369,4 +401,5 @@ module.exports = {
   fetchLeadById,
   fetchLeadsBySource,
   addLeadBySource,
+  updateLeadVisitDate,
 };

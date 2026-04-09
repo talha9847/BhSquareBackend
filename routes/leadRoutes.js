@@ -60,8 +60,13 @@ router.post(
 );
 router.get(
   "/fetchLeadById/:id",
-  middleware.authMiddleware(["admin","source"]),
+  middleware.authMiddleware(["admin", "source"]),
   leadController.fetchLeadById,
 );
 
+router.post(
+  "/updateLeadVisitDate",
+  middleware.authMiddleware(["source"]),
+  leadController.updateLeadVisitDate,
+);
 module.exports = router;
