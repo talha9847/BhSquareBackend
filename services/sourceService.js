@@ -8,6 +8,8 @@ const { Page } = require("../models/pageModel");
 const { Permission } = require("../models/permissionModel");
 const { Source } = require("../models/sourceModel");
 const { Technician } = require("../models/technicianModel");
+const { WebLead } = require("../models/webLeadModel");
+const { Op } = require("sequelize");
 
 async function getSources() {
   try {
@@ -739,6 +741,80 @@ async function checkPermissionForPage(customerId, pageId) {
   }
 }
 
+async function addWebLead(data) {
+  try {
+    const { name, mobile, address } = data;
+
+    if (!name || !mobile) {
+      throw new Error("name and mobile are required");
+    }
+
+    // Check if mobile already exists
+    const existingLead = await WebLead.findOne({ mobile });
+
+    if (existingLead) {
+      return true; // Mobile already exists
+    }
+
+    // Create new lead if not exists
+    const lead = await WebLead.create({
+      name,
+      mobile,
+      address,
+    });
+
+    return lead;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getAllWebLeads() {
+  try {
+    const leads = await WebLead.findAll({
+      where: {
+        status: {
+          [Op.in]: ["pending", "contacted"],
+        },
+      },
+      order: [["created_at", "DESC"]],
+    });
+
+    return leads;
+  } catch (error) {
+    console.error("Error fetching web leads:", error);
+    throw error;
+  }
+}
+
+async function updateWebLead(data) {
+  try {
+    const { id, name, mobile, address, status } = data;
+
+    if (!id) {
+      throw new Error("id is required");
+    }
+
+    const lead = await WebLead.findByPk(id);
+
+    if (!lead) {
+      throw new Error("Web lead not found");
+    }
+
+    // update only provided fields
+    if (name !== undefined) lead.name = name;
+    if (mobile !== undefined) lead.mobile = mobile;
+    if (address !== undefined) lead.address = address;
+    if (status !== undefined) lead.status = status;
+
+    await lead.save();
+
+    return lead;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getSources,
   addSource,
@@ -754,4 +830,6 @@ module.exports = {
   getPermissionsByCustomerAndLead,
   updatePermission,
   checkPermissionForPage,
+  addWebLead,
+  getAllWebLeads,
 };

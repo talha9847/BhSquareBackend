@@ -64,6 +64,11 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.getPermissions,
 );
+router.get(
+  "/fetchAllWebLeads",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchAllWebLeads,
+);
 router.put(
   "/updatePermission/:permissionId",
   middleware.authMiddleware(["admin"]),
@@ -75,4 +80,5 @@ router.get(
   middleware.authMiddleware(["source"]),
   sourceController.checkPermission,
 );
+router.post("/addWebLead", sourceController.addWebLead);
 module.exports = router;

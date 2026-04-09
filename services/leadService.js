@@ -346,6 +346,7 @@ async function updateLeadVisitDate(id, date) {
     };
   }
 }
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -359,4 +360,5 @@ module.exports = {
   getLeadById,
   getLeadsBySource,
   updateLeadVisitDate,
+
 };

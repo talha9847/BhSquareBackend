@@ -371,6 +371,60 @@ async function checkPermission(req, res) {
     });
   }
 }
+
+async function addWebLead(req, res) {
+  try {
+    const { name, mobile, address } = req.body;
+
+    if (!name || !mobile) {
+      return res.status(400).json({
+        success: false,
+        message: "name and mobile are required",
+      });
+    }
+
+    const lead = await sourceService.addWebLead(req.body);
+
+    // ✅ Handle "mobile already exists"
+    if (lead === true) {
+      return res.status(200).json({
+        success: true,
+        message: "Mobile already exists",
+      });
+    }
+
+    // ✅ New lead created
+    return res.status(201).json({
+      success: true,
+      message: "Web lead added successfully",
+      data: lead,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function fetchAllWebLeads(req, res) {
+  try {
+    const leads = await sourceService.getAllWebLeads();
+
+    return res.status(200).json({
+      success: true,
+      data: leads,
+    });
+  } catch (error) {
+    console.error("Error fetching web leads:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -386,4 +440,6 @@ module.exports = {
   getPermissions,
   updatePermission,
   checkPermission,
+  addWebLead,
+  fetchAllWebLeads,
 };

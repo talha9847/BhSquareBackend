@@ -449,6 +449,23 @@ CREATE TABLE permission (
     is_permitted BOOLEAN DEFAULT TRUE
 );
 
+
+
+CREATE TABLE web_leads ( 
+    id SERIAL PRIMARY KEY,
+
+    name VARCHAR(100) NOT NULL,
+    mobile VARCHAR(15) NOT NULL,
+    address TEXT,
+
+    status VARCHAR(20) DEFAULT 'pending',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
 TRUNCATE TABLE
 users,
 leads,
