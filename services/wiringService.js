@@ -191,7 +191,7 @@ async function updateWireInventoryById(id, updateData) {
     }
     const { brand_name, wire_type, color, gauge, stock, price, tax } =
       updateData;
-    console.log(stock);
+
 
     // Validate required fields
     if (

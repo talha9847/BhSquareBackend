@@ -267,7 +267,6 @@ async function renameCustomerFolder(
       fields: "id, name",
     });
 
-    console.log(`✅ Folder renamed to: ${updatedFolder.data.name}`);
     return updatedFolder.data.id;
   } catch (error) {
     console.error("Error renaming folder:", error.message);

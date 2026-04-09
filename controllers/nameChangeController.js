@@ -20,7 +20,6 @@ async function uploadNameChangeFiles(req, res) {
       });
     }
 
-    console.log(files);
     const uploadedFiles = await nameChangeService.uploadNameChangeFiles(
       files,
       customerId,

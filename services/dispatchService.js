@@ -130,10 +130,7 @@ async function updateDispatchByCustomerId({
     });
 
     if (!created) {
-      console.log(
-        "Fabrication record already exists for customer:",
-        customer_id,
-      );
+ 
     }
 
     // Commit transaction

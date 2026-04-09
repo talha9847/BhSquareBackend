@@ -36,9 +36,7 @@ async function getOrCreateCustomerFolder(
 
   if (existing.data.files.length > 0) {
     folderId = existing.data.files[0].id;
-    console.log(`📂 Folder exists: ${folderName} (ID: ${folderId})`);
   } else {
-    console.log(`📁 Creating new folder: ${folderName}`);
 
     const folder = await drive.files.create({
       requestBody: {
@@ -97,14 +95,14 @@ async function uploadBulkFiles(
       customerDoc = await CustomerDocument.findOne({
         where: { customer_id: customerId },
       });
-      console.log(customerDoc);
+     
       if (!customerDoc) {
         throw new Error(`No document found for customerId: ${customerId}`);
       }
 
       // 🔥 Set docId from DB
       docId = customerDoc.id;
-      console.log("✅ docId set from customerId:", docId);
+    
     } else {
       // ✅ If docId is provided → validate it belongs to customer
       customerDoc = await CustomerDocument.findOne({
@@ -241,7 +239,7 @@ async function upsertCustomerDocument(customer_id, data) {
     if (!customer_id) throw new Error("customer_id is required");
 
     let document = await CustomerDocument.findOne({ where: { customer_id } });
-    console.log(document + "is null", data);
+    
     if (document) {
       await document.update(data);
     } else {

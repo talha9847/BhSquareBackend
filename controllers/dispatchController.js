@@ -121,7 +121,6 @@ async function fetchFabrications(req, res) {
 
 async function updateFabrication(req, res) {
   try {
-    console.log(req.body);
     const { customer_id, unused_pipes } = req.body;
 
     if (!customer_id) {

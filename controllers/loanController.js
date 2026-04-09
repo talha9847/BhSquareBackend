@@ -13,8 +13,6 @@ async function uploadLoanDocuments(req, res) {
       });
     }
 
-    console.log(leadId, customerId);
-    console.log(files);
 
     const customerInfo = await loanService.findCustomerName(leadId, customerId);
 
@@ -26,7 +24,6 @@ async function uploadLoanDocuments(req, res) {
     }
 
     const { customer_name, cs_no, loan_id } = customerInfo;
-    console.log(customerInfo);
     const uploadedFiles = await loanService.uploadLoanDocs(
       files,
       customer_name,

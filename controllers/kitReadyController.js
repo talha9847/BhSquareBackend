@@ -303,7 +303,6 @@ async function getPanelAndInventer(req, res) {
 async function addCustomerSerials(req, res) {
   try {
     const { customerId, inverterId, panelId } = req.body;
-    console.log(panelId, inverterId, "    panel and inveter");
     if (!customerId) {
       return res.status(400).json({
         success: false,

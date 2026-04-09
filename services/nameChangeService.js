@@ -26,14 +26,11 @@ async function getOrCreateCustomerFolder(folderName, parentFolderId) {
   });
 
   if (existing.data.files.length > 0) {
-    console.log(
-      `📂 Folder exists: ${folderName} (ID: ${existing.data.files[0].id})`,
-    );
+
     return existing.data.files[0].id;
   }
 
   // Create it if it doesn't exist
-  console.log(`📁 Creating new folder: ${folderName}`);
   const folder = await drive.files.create({
     requestBody: {
       name: folderName,

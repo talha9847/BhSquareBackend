@@ -2,7 +2,7 @@ const userService = require("../services/userService");
 const jwtService = require("../services/jwtService");
 
 async function login(req, res) {
-  console.log("I am hitet");
+
   const { email, pass } = req.body;
 
   const isCorrect = await userService.login(email, pass);
@@ -12,7 +12,6 @@ async function login(req, res) {
 
   if (isCorrect.code == -2)
     return res.json({ message: "Internal server error", success: false });
-  console.log(isCorrect.role);
   if (isCorrect.code == 1) {
     const token = await jwtService.signJwt(
       isCorrect.user.id,

@@ -55,7 +55,6 @@ async function getCustomerDocumentByCustomerId(req, res) {
 
 async function upsertCustomerDocument(req, res) {
   const { customer_id } = req.body;
-  console.log(customer_id);
   if (!customer_id) {
     return res
       .status(400)
@@ -86,14 +85,8 @@ async function uploadDocsToDrive(req, res) {
   try {
     const { customerId, docId, customerName, contactNumber } = req.body;
     const files = req.files;
-    console.log(
-      docId,
-      customerId,
-      customerName,
-      " kjdfklsj fkldjsfl;kedj flkej;kjw;klf je;lkjfdklj;l k; ",
-    );
+
     if (!docId || !customerName || !contactNumber) {
-      console.log("it is not kdfjl;sdkjfs");
       return;
     }
     if (!files || files.length === 0) {

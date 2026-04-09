@@ -39,7 +39,7 @@ async function registration(req, res) {
         message: `Panel quantity mismatch. Lead has ${panel.number_of_panels}, but you sent ${data.panel_qty}.`,
       });
     }
-    console.log(panel);
+  
     if (panel.number_of_inverters !== data.inverter_qty) {
       return res.status(400).json({
         success: false,
@@ -217,7 +217,6 @@ async function getFileGeneration(req, res) {
 
 async function fetchCustomersByStatus(req, res) {
   try {
-    console.log("i am dkhelk hitted");
     const { status } = req.query;
 
     const customers = await registrationService.getCustomersByStatus(status);

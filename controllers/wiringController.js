@@ -58,7 +58,7 @@ async function updateTechnician(req, res) {
 
 async function fetchWiringCustomerDetails(req, res) {
   try {
-    console.log(req.user.role_id);
+   
     const data = await wiringService.getWiringCustomerDetails();
 
     return res.status(200).json({
@@ -188,7 +188,7 @@ async function updateWireInventory(req, res) {
 async function getAvailableWireInventory(req, res) {
   try {
     const { id } = req.params;
-    console.log(id);
+
 
     if (!id) {
       return res.status(400).json({
@@ -372,7 +372,7 @@ async function getWiringDocs(req, res) {
 async function uploadWiringDocController(req, res) {
   try {
     const { customerId, wiringDocId } = req.body;
-    console.log(req.body);
+   
     // 🔴 Validation
     if (!customerId || !wiringDocId) {
       return res.status(400).json({

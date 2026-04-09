@@ -287,7 +287,7 @@ async function updateLead(req, res) {
         message: "id is required",
       });
     }
-    console.log(req.body);
+
     const lead = await leadService.updateLead(req.body);
 
     return res.status(200).json({
@@ -367,7 +367,6 @@ async function updateLeadVisitDate(req, res) {
       });
     }
 
-    console.log(req.body);
 
     const result = await leadService.updateLeadVisitDate(id, date);
 
