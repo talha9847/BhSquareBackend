@@ -230,7 +230,7 @@ async function fetchCustomerLoan(req, res) {
 async function checkLoanAccess(req, res) {
   try {
     const { customer_id } = req.params;
-
+    
     if (!customer_id) {
       return res.status(400).json({
         success: false,

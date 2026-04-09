@@ -375,10 +375,11 @@ async function checkLoancAccess(customer_id) {
   if (!customer_id) {
     throw new Error("customer_id is required");
   }
+  console.log("customer Id ", customer_id);
 
   const customer = await KitReady.findOne({
     where: {
-      id: customer_id,
+      customer_id: customer_id,
       status: "pending",
       loan_status: "required",
     },

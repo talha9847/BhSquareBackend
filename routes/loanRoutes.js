@@ -7,7 +7,7 @@ const middleware = require("../middlewares/authMiddleware");
 router.post(
   "/uploadLoanDocuments",
   upload.any(),
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
 
   loanController.uploadLoanDocuments,
 );
