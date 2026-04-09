@@ -35,7 +35,7 @@ router.post(
 
 router.get(
   "/checkDocumentCollectionAccess/:customer_id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   docCollectController.checkDocumentCollectionAccess,
 );
 router.get(

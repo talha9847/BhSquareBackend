@@ -302,7 +302,50 @@ async function getLeadById(id) {
     return { success: false, message: error.message };
   }
 }
+async function updateLeadVisitDate(id, date) {
+  try {
+    if (!id || !date) {
+      throw new Error("Lead id and date are required");
+    }
 
+    // 🔎 validate date
+    const parsedDate = new Date(date);
+    if (isNaN(parsedDate)) {
+      throw new Error("Invalid date format");
+    }
+
+    // 🔎 find lead
+    const lead = await Lead.findByPk(id);
+
+    if (!lead) {
+      return {
+        success: false,
+        message: "Lead not found",
+      };
+    }
+
+    // ✅ update
+    lead.site_visit_date = parsedDate;
+    await lead.save();
+
+    // 🔹 formatted response
+    const result = {
+      id: lead.id,
+      site_visit_date: lead.site_visit_date,
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error updating lead visit date:", error);
+    return {
+      success: false,
+      message: error.message,
+    };
+  }
+}
 module.exports = {
   addLead,
   getPendingLeads,
@@ -315,4 +358,5 @@ module.exports = {
   updateLead,
   getLeadById,
   getLeadsBySource,
+  updateLeadVisitDate,
 };
