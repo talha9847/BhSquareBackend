@@ -731,6 +731,26 @@ async function addSerialsAndDispatch(customerId, kitPanelId, kitInveterId) {
       throw new Error("File generation record not found");
     }
 
+    for (let i = 0; i < panelItem.qty; i++) {
+      await PanelSerial.create(
+        {
+          customer_id: customerId,
+          serial_number: `P-${customerId}-${Date.now()}-${i}`,
+        },
+        { transaction: t },
+      );
+    }
+
+    for (let i = 0; i < inverterItem.qty; i++) {
+      await InverterSerial.create(
+        {
+          customer_id: customerId,
+          serial_number: `I-${customerId}-${Date.now()}-${i}`,
+        },
+        { transaction: t },
+      );
+    }
+
     // 🔹 Stage updates
     await CustomerStage.update(
       { status: "done", completed_at: new Date() },
@@ -943,6 +963,82 @@ async function getCategories() {
     throw error;
   }
 }
+
+async function getCustomerSerials(customerId) {
+  if (!customerId) {
+    throw new Error("customerId is required");
+  }
+
+  try {
+    // Fetch all panel serials for the customer
+    const panelSerials = await PanelSerial.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id", "serial_number", "created_at"],
+      order: [["created_at", "ASC"]],
+    });
+
+    // Fetch all inverter serials for the customer
+    const inverterSerials = await InverterSerial.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id", "serial_number", "created_at"],
+      order: [["created_at", "ASC"]],
+    });
+
+    return {
+      success: true,
+      data: {
+        panelSerials,
+        inverterSerials,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching customer serials:", error);
+    throw error;
+  }
+}
+
+async function updatePanelSerialById(id, newSerial) {
+  if (!id) throw new Error("Panel Serial ID is required");
+  if (!newSerial) throw new Error("New serial number is required");
+
+  try {
+    const [rowsAffected, [updatedRecord]] = await PanelSerial.update(
+      { serial_number: newSerial },
+      { where: { id }, returning: true },
+    );
+
+    if (rowsAffected === 0) {
+      throw new Error("Panel serial not found");
+    }
+
+    return updatedRecord;
+  } catch (error) {
+    console.error("Error updating panel serial:", error);
+    throw error;
+  }
+}
+
+async function updateInverterSerialById(id, newSerial) {
+  if (!id) throw new Error("Inverter Serial ID is required");
+  if (!newSerial) throw new Error("New serial number is required");
+
+  try {
+    const [rowsAffected, [updatedRecord]] = await InverterSerial.update(
+      { serial_number: newSerial },
+      { where: { id }, returning: true },
+    );
+
+    if (rowsAffected === 0) {
+      throw new Error("Inverter serial not found");
+    }
+
+    return updatedRecord;
+  } catch (error) {
+    console.error("Error updating inverter serial:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -966,4 +1062,7 @@ module.exports = {
   addCategory,
   updateCategory,
   getCategories,
+  getCustomerSerials,
+  updatePanelSerialById,
+  updateInverterSerialById,
 };

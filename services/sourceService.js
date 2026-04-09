@@ -749,13 +749,6 @@ async function addWebLead(data) {
       throw new Error("name and mobile are required");
     }
 
-    // Check if mobile already exists
-    const existingLead = await WebLead.findOne({ mobile });
-
-    if (existingLead) {
-      return true; // Mobile already exists
-    }
-
     // Create new lead if not exists
     const lead = await WebLead.create({
       name,
@@ -832,4 +825,5 @@ module.exports = {
   checkPermissionForPage,
   addWebLead,
   getAllWebLeads,
+  updateWebLead,
 };

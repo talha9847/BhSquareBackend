@@ -303,6 +303,7 @@ async function getPanelAndInventer(req, res) {
 async function addCustomerSerials(req, res) {
   try {
     const { customerId, inverterId, panelId } = req.body;
+    console.log(panelId, inverterId, "    panel and inveter");
     if (!customerId) {
       return res.status(400).json({
         success: false,
@@ -457,6 +458,77 @@ async function getCategories(req, res) {
   }
 }
 
+// controllers/serialController.js
+
+async function fetchCustomerSerials(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result = await kitReadyService.getCustomerSerials(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer serials fetched successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+async function updateSingleSerial(req, res) {
+  try {
+    const { id, type, serial_number } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Serial ID is required",
+      });
+    }
+
+    if (!serial_number) {
+      return res.status(400).json({
+        success: false,
+        message: "New serial number is required",
+      });
+    }
+
+    let updatedSerial;
+
+    if (type === "panel") {
+      updatedSerial = await kitReadyService.updatePanelSerialById(
+        id,
+        serial_number,
+      );
+    } else if (type === "inverter") {
+      updatedSerial = await kitReadyService.updateInverterSerialById(
+        id,
+        serial_number,
+      );
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Type must be 'panel' or 'inverter'",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `${type} serial updated successfully`,
+      data: updatedSerial,
+    });
+  } catch (error) {
+    console.error("Error updating serial:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Update failed",
+    });
+  }
+}
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -479,4 +551,6 @@ module.exports = {
   createCategory,
   updateCategory,
   getCategories,
+  fetchCustomerSerials,
+  updateSingleSerial,
 };

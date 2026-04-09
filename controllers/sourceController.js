@@ -425,6 +425,32 @@ async function fetchAllWebLeads(req, res) {
   }
 }
 
+async function updateWebLead(req, res) {
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "id is required",
+      });
+    }
+
+    const lead = await sourceService.updateWebLead(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Web lead updated successfully",
+      data: lead,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -442,4 +468,5 @@ module.exports = {
   checkPermission,
   addWebLead,
   fetchAllWebLeads,
+  updateWebLead,
 };

@@ -74,6 +74,11 @@ router.put(
   middleware.authMiddleware(["admin"]),
   sourceController.updatePermission,
 );
+router.put(
+  "/updateWebLead",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateWebLead,
+);
 
 router.get(
   "/checkPermission/:customerId/:pageId",

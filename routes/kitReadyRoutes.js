@@ -111,4 +111,17 @@ router.put(
   kitReadyController.updateCategory,
 );
 
+router.put(
+  "/updateSingleSerial",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateSingleSerial,
+);
+
+
+router.get(
+  "/fetchCustomerSerials/:customerId",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.fetchCustomerSerials,
+);
+
 module.exports = router;
