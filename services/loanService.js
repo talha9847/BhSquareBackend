@@ -371,6 +371,26 @@ async function getCustomerLoanWithDocs(customerId) {
   }
 }
 
+async function checkLoancAccess(customer_id) {
+  if (!customer_id) {
+    throw new Error("customer_id is required");
+  }
+
+  const customer = await KitReady.findOne({
+    where: {
+      id: customer_id,
+      status: "pending",
+      loan_status: "required",
+    },
+  });
+
+  if (!customer) {
+    throw new Error("Document collection not allowed for this customer");
+  }
+
+  return customer;
+}
+
 module.exports = {
   uploadLoanDocs,
   findCustomerName,
@@ -379,4 +399,5 @@ module.exports = {
   approveLoanByCustomerId,
   completeLoanAndMoveToKitReady,
   getCustomerLoanWithDocs,
+  checkLoancAccess,
 };

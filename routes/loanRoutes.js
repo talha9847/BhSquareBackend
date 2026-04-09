@@ -40,4 +40,10 @@ router.get(
   middleware.authMiddleware(["admin"]),
   loanController.fetchCustomerLoan,
 );
+
+router.get(
+  "/checkLoanAccess/:customer_id",
+  middleware.authMiddleware(["admin", "source"]),
+  loanController.checkLoanAccess,
+);
 module.exports = router;
