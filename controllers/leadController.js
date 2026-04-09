@@ -367,7 +367,6 @@ async function updateLeadVisitDate(req, res) {
       });
     }
 
-
     const result = await leadService.updateLeadVisitDate(id, date);
 
     if (!result.success) {
@@ -387,6 +386,22 @@ async function updateLeadVisitDate(req, res) {
   }
 }
 
+async function pendingCounts(req, res) {
+  try {
+    const counts = await leadService.getPendingCounts();
+    res.status(200).json({
+      success: true,
+      data: counts,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending counts",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -401,4 +416,5 @@ module.exports = {
   fetchLeadsBySource,
   addLeadBySource,
   updateLeadVisitDate,
+  pendingCounts,
 };

@@ -63,6 +63,11 @@ router.get(
   middleware.authMiddleware(["admin", "source"]),
   leadController.fetchLeadById,
 );
+router.get(
+  "/pendingCounts",
+  middleware.authMiddleware(["admin"]),
+  leadController.pendingCounts,
+);
 
 router.post(
   "/updateLeadVisitDate",

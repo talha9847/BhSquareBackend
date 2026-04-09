@@ -9,6 +9,11 @@ const { LeadCancellation } = require("../models/leadCancellationModel");
 const { Source } = require("../models/sourceModel");
 const { Page } = require("../models/pageModel");
 const { Permission } = require("../models/permissionModel");
+const { KitReady } = require("../models/kitReadyModel");
+const { Fabrication } = require("../models/fabricationModel");
+const { Wiring } = require("../models/wiringModel");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const { Dispatch } = require("../models/dispatchModel");
 
 async function addLead(data) {
   try {
@@ -347,6 +352,39 @@ async function updateLeadVisitDate(id, date) {
   }
 }
 
+async function getPendingCounts() {
+  try {
+    const pendingLeads = await Lead.count({ where: { status: "pending" } });
+    const activeCustomers = await Customer.count({
+      where: { status: "pending" },
+    });
+    const kitPending = await KitReady.count({ where: { status: "pending" } });
+    const fabPending = await Fabrication.count({
+      where: { status: "pending" },
+    });
+    const wiringPending = await Wiring.count({ where: { status: "pending" } });
+    const registrationPending = await CustomerRegistration.count({
+      where: { status: "pending" },
+    });
+    const dispatchPending = await Dispatch.count({
+      where: { status: "pending" },
+    });
+
+    return {
+      pending_leads: pendingLeads,
+      active_customers: activeCustomers,
+      kit_pending: kitPending,
+      fab_pending: fabPending,
+      wiring_pending: wiringPending,
+      registration_pending: registrationPending,
+      dispatch_pending: dispatchPending,
+    };
+  } catch (error) {
+    console.error("Error fetching pending counts:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -360,5 +398,5 @@ module.exports = {
   getLeadById,
   getLeadsBySource,
   updateLeadVisitDate,
-
+  getPendingCounts,
 };
