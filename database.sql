@@ -464,6 +464,16 @@ CREATE TABLE web_leads (
 );
 
 
+CREATE TABLE commission (
+    id SERIAL PRIMARY KEY,
+    customer_id INT REFERENCES customers(id),
+    source_id INT REFERENCES lead_sources(id),
+    total_kw DECIMAL(10,2),
+    type VARCHAR(50), -- e.g. 'commercial' or 'residential'
+    commission DECIMAL(10,2),
+    status VARCHAR(50), -- e.g. 'pending', 'paid'
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 
 TRUNCATE TABLE

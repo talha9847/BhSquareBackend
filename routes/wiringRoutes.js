@@ -91,6 +91,11 @@ router.get(
   wiringController.getWiringCustomerDetailsById,
 );
 router.get(
+  "/getPendingCommissions",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getPendingCommissions,
+);
+router.get(
   "/getFabricationDetailsById",
   middleware.authMiddleware(["fabricator"]),
   wiringController.getFabricationDetailsById,

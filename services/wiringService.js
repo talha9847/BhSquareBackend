@@ -192,7 +192,6 @@ async function updateWireInventoryById(id, updateData) {
     const { brand_name, wire_type, color, gauge, stock, price, tax } =
       updateData;
 
-
     // Validate required fields
     if (
       !brand_name ||
@@ -252,6 +251,8 @@ const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { FinalStage } = require("../models/finalStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
 const { Fabrication } = require("../models/fabricationModel");
+const { Commission } = require("../models/commissionModel");
+const { Source } = require("../models/sourceModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -732,11 +733,12 @@ async function uploadWiringDoc(customerId, wiringDocId, file) {
   }
 }
 
-async function moveToFinalStage(customerId) {
+async function moveToFinalStage(customerId, leadId) {
   const t = await sequelize.transaction();
 
   try {
-    if (!customerId) {
+    if (!customerId || !leadId) {
+      console.log(customerId);
       throw new Error("customerId is required");
     }
 
@@ -798,6 +800,49 @@ async function moveToFinalStage(customerId) {
     if (wiringUpdated[0] === 0) {
       throw new Error("No wiring record found for this customer");
     }
+
+    const leadData = await Lead.findByPk(leadId, { transaction: t });
+
+    if (!leadData) {
+      throw new Error("Lead not found");
+    }
+
+    const { source_id, installation_type } = leadData;
+
+    // 🔹 Get Customer Registration
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Customer registration not found");
+    }
+
+    // 🔹 Get File Generation (system capacity)
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registration.id },
+      transaction: t,
+    });
+
+    if (!fileGen) {
+      throw new Error("File generation not found");
+    }
+
+    const total_kw = fileGen.system_capacity;
+
+    // 🔹 Insert Commission
+    await Commission.create(
+      {
+        customer_id: customerId,
+        source_id: source_id,
+        total_kw: total_kw / 1000,
+        type: installation_type,
+        status: "pending",
+        created_at: new Date(),
+      },
+      { transaction: t },
+    );
 
     await t.commit();
 
@@ -932,6 +977,88 @@ async function getFabricationDetailsById(fabricatorId) {
     throw error;
   }
 }
+async function getPendingCommissions() {
+  try {
+    const commissions = await Commission.findAll({
+      where: {
+        status: "pending",
+      },
+
+      attributes: [
+        "id",
+        "total_kw",
+        "type",
+        "commission",
+        "status",
+        "created_at",
+      ],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number", "source_id"],
+            },
+          ],
+        },
+
+        {
+          model: Source,
+          as: "source",
+          attributes: [
+            "id",
+            "name",
+            "residential_commission",
+            "commercial_commission",
+          ],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    // 🔥 Compute commission dynamically
+    const result = commissions.map((item) => {
+      const type = item.type;
+
+      let rate = 0;
+
+      if (type === "residential") {
+        rate = item.source?.residential_commission;
+      } else if (type === "Industrial") {
+        rate = item.source?.commercial_commission;
+      }
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        type: item.type,
+        commission: item.commission,
+        status: item.status,
+        created_at: item.created_at,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        source_name: item.source?.name,
+
+        // 🔥 ONLY ONE COMMISSION (calculated)
+        commission_per_kw: Number(item.total_kw) * Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching commissions:", error);
+    throw error;
+  }
+}
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -950,4 +1077,5 @@ module.exports = {
   moveToFinalStage,
   getWiringCustomerDetailsById,
   getFabricationDetailsById,
+  getPendingCommissions,
 };

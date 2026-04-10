@@ -31,6 +31,7 @@ const { Category } = require("./categoryModel");
 const { FinalStage } = require("./finalStageModel");
 const { Permission } = require("./permissionModel");
 const { Page } = require("./pageModel");
+const { Commission } = require("./commissionModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -293,9 +294,28 @@ Customer.hasMany(Permission, {
   as: "permissions",
 });
 
-// Customer -> Lead
-// ----------------------
-// Export all models
+Commission.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
+
+Customer.hasMany(Commission, {
+  foreignKey: "customer_id",
+  as: "commissions",
+});
+
+// Commission → Source (lead_sources)
+Commission.belongsTo(Source, {
+  foreignKey: "source_id",
+  as: "source",
+});
+
+Source.hasMany(Commission, {
+  foreignKey: "source_id",
+  as: "commissions",
+});
+
+
 module.exports = {
   Customer,
   Lead,
@@ -324,4 +344,5 @@ module.exports = {
   FinalStage,
   Page,
   Permission,
+  Commission,
 };

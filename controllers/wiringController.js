@@ -58,7 +58,6 @@ async function updateTechnician(req, res) {
 
 async function fetchWiringCustomerDetails(req, res) {
   try {
-   
     const data = await wiringService.getWiringCustomerDetails();
 
     return res.status(200).json({
@@ -188,7 +187,6 @@ async function updateWireInventory(req, res) {
 async function getAvailableWireInventory(req, res) {
   try {
     const { id } = req.params;
-
 
     if (!id) {
       return res.status(400).json({
@@ -372,7 +370,7 @@ async function getWiringDocs(req, res) {
 async function uploadWiringDocController(req, res) {
   try {
     const { customerId, wiringDocId } = req.body;
-   
+
     // 🔴 Validation
     if (!customerId || !wiringDocId) {
       return res.status(400).json({
@@ -420,17 +418,17 @@ async function uploadWiringDocController(req, res) {
 
 async function moveToFinalStage(req, res) {
   try {
-    const { customerId } = req.body;
-
+    const { customerId, leadId } = req.body;
+    console.log(leadId);
     // 🔴 Validation
-    if (!customerId) {
+    if (!customerId || !leadId) {
       return res.status(400).json({
         message: "customerId is required",
       });
     }
 
     // 🔹 Call service
-    const result = await wiringService.moveToFinalStage(customerId);
+    const result = await wiringService.moveToFinalStage(customerId, leadId);
 
     return res.status(200).json({
       message: result.message,
@@ -509,6 +507,26 @@ async function getFabricationDetailsById(req, res) {
     });
   }
 }
+
+async function getPendingCommissions(req, res) {
+  try {
+    const result = await wiringService.getPendingCommissions();
+
+    return res.json({
+      success: true,
+      message: "Pending commissions fetched successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending commissions",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -527,4 +545,5 @@ module.exports = {
   uploadWiringDocController,
   moveToFinalStage,
   getFabricationDetailsById,
+  getPendingCommissions,
 };
