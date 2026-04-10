@@ -28,5 +28,10 @@ router.get(
   middleware.authMiddleware(["admin"]),
   customerController.fetchCustomersByStatus,
 );
+router.delete(
+  "/deleteCustomerWithLead/:id",
+  middleware.authMiddleware(["admin"]),
+  customerController.deleteCustomerWithLead,
+);
 
 module.exports = router;

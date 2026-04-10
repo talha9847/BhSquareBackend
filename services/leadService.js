@@ -307,6 +307,24 @@ async function getLeadById(id) {
     return { success: false, message: error.message };
   }
 }
+
+async function deleteLeadById(id) {
+  try {
+    if (!id) {
+      throw new Error("Lead id is required");
+    }
+
+    const deletedCount = await Lead.destroy({
+      where: { id },
+    });
+
+    return deletedCount; // just return number of deleted rows
+  } catch (error) {
+    console.error("Error deleting lead:", error);
+    throw error;
+  }
+}
+
 async function updateLeadVisitDate(id, date) {
   try {
     if (!id || !date) {
@@ -399,4 +417,5 @@ module.exports = {
   getLeadsBySource,
   updateLeadVisitDate,
   getPendingCounts,
+  deleteLeadById,
 };

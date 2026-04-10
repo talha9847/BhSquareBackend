@@ -100,4 +100,15 @@ router.get(
   middleware.authMiddleware(["fabricator"]),
   wiringController.getFabricationDetailsById,
 );
+router.put(
+  "/updateCommission/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.updateCommission,
+);
+
+router.get(
+  "/getCommissionsByStatus",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getCommissionsByStatus,
+);
 module.exports = router;

@@ -526,6 +526,39 @@ async function getPendingCommissions(req, res) {
     });
   }
 }
+async function updateCommission(req, res) {
+  try {
+    const { id } = req.params;
+    const { commission, status } = req.body;
+
+    const result = await wiringService.updateCommissionById(
+      id,
+      commission,
+      status,
+    );
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update commission",
+    });
+  }
+}
+async function getCommissionsByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    const result = await wiringService.getCommissionsByStatus(status);
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch commissions",
+    });
+  }
+}
 
 module.exports = {
   updateTechnician,
@@ -546,4 +579,6 @@ module.exports = {
   moveToFinalStage,
   getFabricationDetailsById,
   getPendingCommissions,
+  updateCommission,
+  getCommissionsByStatus,
 };

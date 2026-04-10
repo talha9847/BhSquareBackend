@@ -74,4 +74,9 @@ router.post(
   middleware.authMiddleware(["source"]),
   leadController.updateLeadVisitDate,
 );
+router.delete(
+  "/deleteLeadById/:id",
+  middleware.authMiddleware(["admin"]),
+  leadController.deleteLeadById,
+);
 module.exports = router;

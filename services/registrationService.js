@@ -53,6 +53,7 @@ async function getCustomersWithSummary() {
           attributes: [
             "id",
             "application_number",
+            "customer_id",
             "registration_date",
             "agreement_date",
             "inverter_qty",

@@ -402,6 +402,32 @@ async function pendingCounts(req, res) {
   }
 }
 
+async function deleteLeadById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const deletedCount = await leadService.deleteLeadById(id);
+
+    if (deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete lead",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -417,4 +443,5 @@ module.exports = {
   addLeadBySource,
   updateLeadVisitDate,
   pendingCounts,
+  deleteLeadById,
 };

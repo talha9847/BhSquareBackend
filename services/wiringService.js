@@ -738,7 +738,6 @@ async function moveToFinalStage(customerId, leadId) {
 
   try {
     if (!customerId || !leadId) {
-      console.log(customerId);
       throw new Error("customerId is required");
     }
 
@@ -1025,12 +1024,13 @@ async function getPendingCommissions() {
     // 🔥 Compute commission dynamically
     const result = commissions.map((item) => {
       const type = item.type;
-
       let rate = 0;
 
-      if (type === "residential") {
+      if (type === "Residential") {
         rate = item.source?.residential_commission;
       } else if (type === "Industrial") {
+        rate = item.source?.commercial_commission;
+      } else if (type === "Commercial") {
         rate = item.source?.commercial_commission;
       }
       return {
@@ -1046,7 +1046,7 @@ async function getPendingCommissions() {
         source_name: item.source?.name,
 
         // 🔥 ONLY ONE COMMISSION (calculated)
-        commission_per_kw: Number(item.total_kw) * Number(rate),
+        commission_per_kw: Number(rate),
       };
     });
 
@@ -1059,6 +1059,136 @@ async function getPendingCommissions() {
     throw error;
   }
 }
+
+async function updateCommissionById(id, commission, status) {
+  try {
+    if (!id) {
+      throw new Error("Commission ID is required");
+    }
+
+    // Optional validation
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (status && !allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const [updatedRows] = await Commission.update(
+      {
+        ...(commission !== undefined && { commission }),
+        ...(status && { status }),
+      },
+      {
+        where: { id },
+      },
+    );
+
+    if (updatedRows === 0) {
+      throw new Error("Commission not found or no changes made");
+    }
+
+    // 🔹 Fetch updated record (optional but useful)
+    const updatedCommission = await Commission.findByPk(id);
+
+    return {
+      success: true,
+      message: "Commission updated successfully",
+      data: updatedCommission,
+    };
+  } catch (error) {
+    console.error("❌ Error updating commission:", error);
+    throw error;
+  }
+}
+
+async function getCommissionsByStatus(status) {
+  try {
+    if (!status) {
+      throw new Error("Status is required");
+    }
+
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (!allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const commissions = await Commission.findAll({
+      where: {
+        status: status,
+      },
+
+      attributes: [
+        "id",
+        "total_kw",
+        "type",
+        "commission",
+        "status",
+        "created_at",
+      ],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number"],
+            },
+          ],
+        },
+        {
+          model: Source,
+          as: "source",
+          attributes: [
+            "id",
+            "name",
+            "residential_commission",
+            "commercial_commission",
+          ],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    const result = commissions.map((item) => {
+      let rate = 0;
+
+      if (item.type === "Residential") {
+        rate = item.source?.residential_commission;
+      } else if (item.type === "Commercial") {
+        rate = item.source?.commercial_commission;
+      } else if (item.type === "Industrial") {
+        rate = item.source?.commercial_commission || 0;
+      }
+
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        type: item.type,
+        status: item.status,
+        created_at: item.created_at,
+        commission: item.commission,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        source_name: item.source?.name,
+        commission_per_kw: Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching commissions by status:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -1078,4 +1208,6 @@ module.exports = {
   getWiringCustomerDetailsById,
   getFabricationDetailsById,
   getPendingCommissions,
+  updateCommissionById,
+  getCommissionsByStatus,
 };

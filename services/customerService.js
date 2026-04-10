@@ -3,6 +3,11 @@ const sequelize = require("../config/db");
 const { Lead } = require("../models/leadModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Stage } = require("../models/stegeModel");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const { CustomerDocument } = require("../models/customerDocumentModel");
+const { CustomerDocumentFile } = require("../models/customerDocumentFileModel");
+const { Permission } = require("../models/permissionModel");
+const { NameChange } = require("../models/nameChangeModel");
 
 async function getCustomersWithLeadData() {
   try {
@@ -172,10 +177,82 @@ async function getCustomersByStatus(status) {
   }
 }
 
+async function deleteCustomerWithLead(customerId) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    if (!customerId) {
+      throw new Error("Customer id is required");
+    }
+
+    const customer = await Customer.findByPk(customerId, { transaction });
+
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    const leadId = customer.lead_id;
+
+    const documents = await CustomerDocument.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id"],
+      transaction,
+    });
+
+    await CustomerRegistration.destroy({
+      where: { customer_id: customerId },
+      transaction,
+    });
+    const documentIds = documents.map((doc) => doc.id);
+
+    if (documentIds.length > 0) {
+      await CustomerDocumentFile.destroy({
+        where: {
+          document_id: documentIds,
+        },
+        transaction,
+      });
+    }
+
+    await NameChange.destroy({
+      where: { customer_id: customerId },
+      transaction,
+    });
+    await CustomerDocument.destroy({
+      where: { customer_id: customerId },
+      transaction,
+    });
+
+    await Permission.destroy({
+      where: { customer_id: customerId },
+      transaction,
+    });
+
+    await Customer.destroy({
+      where: { id: customerId },
+      transaction,
+    });
+
+    await Lead.destroy({
+      where: { id: leadId },
+      transaction,
+    });
+
+    await transaction.commit();
+
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error deleting customer with lead:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   getCustomersWithLeadData,
   updateCustomerNameChange,
   getCustomerStages,
   getCustomersByStatus,
   getCustomerStagesByLeadId,
+  deleteCustomerWithLead,
 };
