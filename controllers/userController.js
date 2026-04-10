@@ -2,7 +2,6 @@ const userService = require("../services/userService");
 const jwtService = require("../services/jwtService");
 
 async function login(req, res) {
-
   const { email, pass } = req.body;
 
   const isCorrect = await userService.login(email, pass);
@@ -32,6 +31,27 @@ async function login(req, res) {
       message: "User logged in successfully",
       token: token,
       data: isCorrect,
+    });
+  }
+}
+
+async function logout(req, res) {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    });
+
+    return res.json({
+      success: true,
+      message: "User logged out successfully",
+    });
+  } catch (error) {
+    return res.json({
+      success: false,
+      message: "Error while logging out",
     });
   }
 }
@@ -160,4 +180,4 @@ async function updateUser(req, res) {
   }
 }
 
-module.exports = { login, createUser, getAllUsers, me, updateUser };
+module.exports = { login, createUser, getAllUsers, me, updateUser, logout };

@@ -4,6 +4,7 @@ const middleware = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 router.post("/login", userController.login);
+router.post("/logout", userController.logout);
 router.post(
   "/createUser",
   middleware.authMiddleware(["admin"]),
