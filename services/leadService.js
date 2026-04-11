@@ -14,6 +14,8 @@ const { Fabrication } = require("../models/fabricationModel");
 const { Wiring } = require("../models/wiringModel");
 const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { Dispatch } = require("../models/dispatchModel");
+const { Loan } = require("../models/loanModel");
+const { FinalStage } = require("../models/finalStageModel");
 
 async function addLead(data) {
   try {
@@ -377,6 +379,7 @@ async function getPendingCounts() {
       where: { status: "pending" },
     });
     const kitPending = await KitReady.count({ where: { status: "pending" } });
+    const loanPending = await Loan.count({ where: { status: "pending" } });
     const fabPending = await Fabrication.count({
       where: { status: "pending" },
     });
@@ -387,15 +390,36 @@ async function getPendingCounts() {
     const dispatchPending = await Dispatch.count({
       where: { status: "pending" },
     });
+    const fileApprovalPending = await FinalStage.count({
+      where: { file_approved: false },
+    });
+    const fileUploadPending = await FinalStage.count({
+      where: { file_uploaded: false },
+    });
+    const inspectionPending = await FinalStage.count({
+      where: { inspection: false },
+    });
+    const redeemPending = await FinalStage.count({
+      where: { redeem: false },
+    });
+    const disbursalPending = await FinalStage.count({
+      where: { disbursal: false },
+    });
 
     return {
       pending_leads: pendingLeads,
       active_customers: activeCustomers,
+      registration_pending: registrationPending,
+      loan_pending: loanPending,
       kit_pending: kitPending,
+      dispatch_pending: dispatchPending,
       fab_pending: fabPending,
       wiring_pending: wiringPending,
-      registration_pending: registrationPending,
-      dispatch_pending: dispatchPending,
+      file_appr_pending: fileApprovalPending,
+      file_upload_pending: fileUploadPending,
+      inspection_pending: inspectionPending,
+      redeem_pending: redeemPending,
+      disbursal_pending: disbursalPending,
     };
   } catch (error) {
     console.error("Error fetching pending counts:", error);
