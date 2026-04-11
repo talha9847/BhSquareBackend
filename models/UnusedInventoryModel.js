@@ -47,6 +47,11 @@ const UnusedInventory = sequelize.define(
         min: 0,
       },
     },
+    status: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "pending",
+    },
   },
   {
     tableName: "unused_inventory",

@@ -253,6 +253,7 @@ const { Fabricator } = require("../models/fabricatorModel");
 const { Fabrication } = require("../models/fabricationModel");
 const { Commission } = require("../models/commissionModel");
 const { Source } = require("../models/sourceModel");
+const { UnusedInventory } = require("../models/UnusedInventoryModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -447,12 +448,10 @@ async function updateWiringTechnician(wiringId, technicianId) {
     return { success: false, message: error.message };
   }
 }
-
 async function updateWiringInventoryStatus(wiringId, newStatus) {
   const t = await sequelize.transaction();
 
   try {
-    // 🔴 Basic validation
     if (!wiringId) {
       return { success: false, message: "wiringId is required" };
     }
@@ -465,7 +464,6 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
       };
     }
 
-    // 🔹 Fetch wiring
     const wiring = await Wiring.findByPk(wiringId, { transaction: t });
 
     if (!wiring) {
@@ -473,18 +471,13 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
       return { success: false, message: "Wiring record not found" };
     }
 
-    // 🔴 Only validate strictly when marking done
     if (newStatus === "done") {
-      // 🔴 Technician check
+      // 🔴 validations
       if (!wiring.technician_id) {
         await t.rollback();
-        return {
-          success: false,
-          message: "Technician is not assigned",
-        };
+        return { success: false, message: "Technician is not assigned" };
       }
 
-      // 🔴 Wiring items check
       const wiringItemExists = await WiringItem.findOne({
         where: { wiring_id: wiringId },
         attributes: ["id"],
@@ -493,13 +486,9 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
 
       if (!wiringItemExists) {
         await t.rollback();
-        return {
-          success: false,
-          message: "No wiring items found",
-        };
+        return { success: false, message: "No wiring items found" };
       }
 
-      // 🔹 Get registration
       const registration = await CustomerRegistration.findOne({
         where: { customer_id: wiring.customer_id },
         transaction: t,
@@ -510,7 +499,6 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
         return { success: false, message: "Registration not found" };
       }
 
-      // 🔹 Get file_generation
       const fileGen = await FileGeneration.findOne({
         where: { registration_id: registration.id },
         transaction: t,
@@ -532,40 +520,70 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
         };
       }
 
-      // 🔹 Generate docs
+      // 🔹 docs
       const docs = [];
 
-      // Panels
       for (let i = 1; i <= panelQty; i++) {
-        docs.push({
-          wiring_id: wiringId,
-          doc_name: `Panel ${i}`,
-        });
+        docs.push({ wiring_id: wiringId, doc_name: `Panel ${i}` });
       }
 
-      // Inverters
       for (let i = 1; i <= inverterQty; i++) {
-        docs.push({
-          wiring_id: wiringId,
-          doc_name: `Inverter ${i}`,
-        });
+        docs.push({ wiring_id: wiringId, doc_name: `Inverter ${i}` });
       }
 
-      // Fixed docs
       docs.push(
         { wiring_id: wiringId, doc_name: "Geo Tag" },
         { wiring_id: wiringId, doc_name: "Site Photo" },
         { wiring_id: wiringId, doc_name: "Wiring File" },
       );
 
-      // 🔹 Insert docs (ignore duplicates)
       await WiringDocs.bulkCreate(docs, {
         transaction: t,
         ignoreDuplicates: true,
       });
+
+      // 🔹 UNUSED INVENTORY (FIXED 🔥)
+      const unusedItems = await UnusedInventory.findAll({
+        where: {
+          customer_id: wiring.customer_id,
+          status: "pending",
+        },
+        transaction: t,
+      });
+
+      for (const item of unusedItems) {
+        // 🔴 safety check
+        const kitItem = await KitItems.findByPk(item.kit_item_id, {
+          transaction: t,
+        });
+
+        if (kitItem && item.unused_qty > kitItem.qty) {
+          throw new Error("Unused qty exceeds kit item qty");
+        }
+
+        // ➕ inventory add
+        await Inventory.increment("qty", {
+          by: item.unused_qty,
+          where: { id: item.inventory_id },
+          transaction: t,
+        });
+
+        // ➖ kit reduce
+        if (kitItem) {
+          await kitItem.update(
+            {
+              qty: kitItem.qty - item.unused_qty,
+            },
+            { transaction: t },
+          );
+        }
+
+        // ✅ mark done
+        await item.update({ status: "done" }, { transaction: t });
+      }
     }
 
-    // 🔹 Update status
+    // 🔹 update status
     wiring.inventory_status = newStatus;
     await wiring.save({ transaction: t });
 
@@ -578,6 +596,7 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
     };
   } catch (error) {
     await t.rollback();
+
     console.error("❌ Error:", error);
 
     return {

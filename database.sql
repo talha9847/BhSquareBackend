@@ -478,7 +478,7 @@ CREATE TABLE commission (
   
 
 
-  CREATE TABLE unused_inventory (
+CREATE TABLE unused_inventory (
     id SERIAL PRIMARY KEY,
 
     customer_id INTEGER NOT NULL REFERENCES customers(id),
@@ -487,6 +487,7 @@ CREATE TABLE commission (
 
     unused_qty INTEGER NOT NULL DEFAULT 0 CHECK (unused_qty >= 0),
 
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
