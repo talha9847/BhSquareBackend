@@ -39,7 +39,7 @@ async function registration(req, res) {
         message: `Panel quantity mismatch. Lead has ${panel.number_of_panels}, but you sent ${data.panel_qty}.`,
       });
     }
-  
+
     if (panel.number_of_inverters !== data.inverter_qty) {
       return res.status(400).json({
         success: false,
@@ -264,6 +264,65 @@ async function getInventoryByCategoryThree(req, res) {
   }
 }
 
+async function getFileGenerationBasicDetails(req, res) {
+  try {
+    const { registrationId } = req.params;
+
+    const result =
+      await registrationService.getFileGenerationBasicDetails(registrationId);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "File generation record not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "File generation details fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function updateFileGenerationAndLead(req, res) {
+  try {
+    const { registrationId, leadId } = req.params;
+
+    const { name, contact, address, panel_capacity, inverter_capacity } =
+      req.body;
+
+    const result = await registrationService.updateFileGenerationAndLead({
+      registrationId,
+      leadId,
+      name,
+      contact,
+      address,
+      panel_capacity,
+      inverter_capacity,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
 module.exports = {
   getCustomersWithSummary,
   registration,
@@ -272,4 +331,6 @@ module.exports = {
   fetchCustomersByStatus,
   getInventoryByCategory,
   getInventoryByCategoryThree,
+  getFileGenerationBasicDetails,
+  updateFileGenerationAndLead,
 };

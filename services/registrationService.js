@@ -582,7 +582,9 @@ async function getCustomersByStatus(status) {
                 "customer_name",
                 "contact_number",
                 "address",
+                "panel_wattage",
                 "number_of_panels",
+                "inverter_kw",
                 "total_capacity",
                 "created_at",
               ],
@@ -608,6 +610,8 @@ async function getCustomersByStatus(status) {
       contact_number: reg.customer?.lead?.contact_number || null,
       address: reg.customer?.lead?.address || null,
       number_of_panels: reg.customer?.lead?.number_of_panels || null,
+      panel_wattage: reg.customer?.lead?.panel_wattage || null,
+      inverter_kw: reg.customer?.lead?.inverter_kw || null,
       total_capacity: reg.customer?.lead?.total_capacity || null,
     }));
 
@@ -639,6 +643,108 @@ async function getInventoryByCategory(id) {
   }
 }
 
+async function getFileGenerationBasicDetails(registrationId) {
+  try {
+    if (!registrationId) {
+      throw new Error("registrationId is required");
+    }
+
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+      attributes: [
+        "beneficiary_name",
+        "consumer_contact",
+        "beneficiary_address",
+        "panel_capacity",
+        "inverter_capacity",
+      ],
+    });
+
+    if (!fileGen) {
+      return null;
+    }
+
+    return {
+      name: fileGen.beneficiary_name,
+      contact: fileGen.consumer_contact,
+      address: fileGen.beneficiary_address,
+      panel_capacity: fileGen.panel_capacity,
+      inverter_capacity: fileGen.inverter_capacity,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateFileGenerationAndLead({
+  registrationId,
+  leadId,
+  name,
+  contact,
+  address,
+  panel_capacity,
+  inverter_capacity,
+}) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!registrationId || !leadId) {
+      throw new Error("registrationId and leadId are required");
+    }
+
+    // 🔹 Update FileGeneration
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+      transaction: t,
+    });
+
+    if (!fileGen) {
+      await t.rollback();
+      return { success: false, message: "File generation not found" };
+    }
+
+    await fileGen.update(
+      {
+        beneficiary_name: name,
+        consumer_contact: contact,
+        beneficiary_address: address,
+        panel_capacity,
+        inverter_capacity,
+      },
+      { transaction: t },
+    );
+
+    // 🔹 Update Lead
+    const lead = await Lead.findByPk(leadId, { transaction: t });
+
+    if (!lead) {
+      await t.rollback();
+      return { success: false, message: "Lead not found" };
+    }
+
+    await lead.update(
+      {
+        customer_name: name,
+        contact_number: contact,
+        address: address,
+        panel_wattage: panel_capacity, // ⚠️ assuming mapping
+        inverter_kw: inverter_capacity,
+      },
+      { transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "File generation and lead updated successfully",
+    };
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getCustomersWithSummary,
   getNumberOfPanelsByLeadId,
@@ -647,4 +753,6 @@ module.exports = {
   getFileGenerationData,
   getCustomersByStatus,
   getInventoryByCategory,
+  getFileGenerationBasicDetails,
+  updateFileGenerationAndLead,
 };

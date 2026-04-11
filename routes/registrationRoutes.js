@@ -38,4 +38,15 @@ router.get(
   middleware.authMiddleware(["admin"]),
   registrationController.getInventoryByCategoryThree,
 );
+router.get(
+  "/getFileGenerationBasicDetails/:registrationId",
+  middleware.authMiddleware(["admin"]),
+  registrationController.getFileGenerationBasicDetails,
+);
+router.put(
+  "/updateFileGenerationAndLead/:registrationId/:leadId",
+  middleware.authMiddleware(["admin"]),
+  registrationController.updateFileGenerationAndLead,
+);
+
 module.exports = router;
