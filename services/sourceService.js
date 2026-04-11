@@ -1,4 +1,5 @@
 const sequelize = require("../config/db");
+const { Commission } = require("../models/commissionModel");
 const { Customer } = require("../models/customerModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
@@ -808,6 +809,60 @@ async function updateWebLead(data) {
   }
 }
 
+async function getPaidCommissionBySourceId(sourceId) {
+  try {
+    if (!sourceId) {
+      throw new Error("sourceId is required");
+    }
+
+    const commissions = await Commission.findAll({
+      where: {
+        source_id: sourceId,
+        status: "paid",
+      },
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "address"],
+            },
+          ],
+        },
+      ],
+      attributes: [
+        "id",
+        "customer_id",
+        "total_kw",
+        "type",
+        "commission",
+        "created_at",
+      ],
+    });
+
+    if (!commissions || commissions.length === 0) {
+      return [];
+    }
+
+    // 🔹 format response
+    return commissions.map((item) => ({
+      id: item.id,
+      customer_id: item.customer_id,
+      customer_name: item.customer?.lead?.customer_name || null,
+      address: item.customer?.lead?.address || null,
+      total_kw: item.total_kw,
+      type: item.type,
+      commission: item.commission,
+      created_at: item.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
 module.exports = {
   getSources,
   addSource,
@@ -826,4 +881,5 @@ module.exports = {
   addWebLead,
   getAllWebLeads,
   updateWebLead,
+  getPaidCommissionBySourceId,
 };

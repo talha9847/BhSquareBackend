@@ -451,6 +451,26 @@ async function updateWebLead(req, res) {
   }
 }
 
+async function getPaidCommissionBySourceId(req, res) {
+  try {
+    const sourceId = req.user.role_id;
+
+    const result =
+      await sourceService.getPaidCommissionBySourceId(sourceId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Paid commission fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -469,4 +489,5 @@ module.exports = {
   addWebLead,
   fetchAllWebLeads,
   updateWebLead,
+  getPaidCommissionBySourceId,
 };

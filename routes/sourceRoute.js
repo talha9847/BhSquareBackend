@@ -85,5 +85,10 @@ router.get(
   middleware.authMiddleware(["source"]),
   sourceController.checkPermission,
 );
+router.get(
+  "/getPaidCommissionBySourceId",
+  middleware.authMiddleware(["source"]),
+  sourceController.getPaidCommissionBySourceId,
+);
 router.post("/addWebLead", sourceController.addWebLead);
 module.exports = router;
