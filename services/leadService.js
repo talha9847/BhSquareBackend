@@ -172,7 +172,10 @@ async function convertToCustomer(lead_id) {
       throw new Error("Lead not found");
     }
 
-    await lead.update({ status: "converted" }, { transaction: t });
+    await lead.update(
+      { status: "converted", updated_at: new Date() },
+      { transaction: t },
+    );
 
     const customer = await Customer.create(
       { lead_id: lead.id },
@@ -406,22 +409,6 @@ async function getPendingCounts() {
       where: { disbursal: false },
     });
 
-    const trendQuery = `
-      SELECT 
-        TO_CHAR(date_trunc('month', created_at), 'Mon YYYY') as month,
-        COUNT(Id) FILTER (WHERE Status = 'pending') as total_leads,
-        COUNT(Id) FILTER (WHERE Status = 'converted') as converted_customers
-      FROM Leads
-      WHERE created_at > NOW() - INTERVAL '6 months'
-      GROUP BY date_trunc('month', created_at)
-      ORDER BY date_trunc('month', created_at) ASC;
-    `;
-
-    // Assuming you're using Sequelize. Change to your specific DB driver if different.
-    const monthlyTrends = await sequelize.query(trendQuery, {
-      type: sequelize.QueryTypes.SELECT,
-    });
-
     return {
       pending_leads: pendingLeads,
       active_customers: activeCustomers,
@@ -436,10 +423,89 @@ async function getPendingCounts() {
       inspection_pending: inspectionPending,
       redeem_pending: redeemPending,
       disbursal_pending: disbursalPending,
-      monthly_trends: monthlyTrends,
     };
   } catch (error) {
     console.error("Error fetching pending counts:", error);
+    throw error;
+  }
+}
+
+async function getLeadAnalytics({ months, startDate, endDate }) {
+  try {
+    let start;
+    let end;
+
+    // 🔹 case 1: last N months
+    if (months) {
+      end = new Date();
+      start = new Date();
+      start.setMonth(start.getMonth() - months + 1);
+      start.setDate(1);
+    }
+
+    // 🔹 case 2: custom range
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    }
+
+    // fallback
+    if (!start || !end) {
+      end = new Date();
+      start = new Date();
+      start.setMonth(start.getMonth() - 5);
+      start.setDate(1);
+    }
+
+    const query = `
+      SELECT 
+        TO_CHAR(months.month, 'Mon YYYY') as month,
+
+        COUNT(DISTINCT l.id) FILTER (
+          WHERE date_trunc('month', l.created_at) = months.month
+        ) as total_leads,
+
+        COUNT(DISTINCT l.id) FILTER (
+          WHERE l.status = 'converted'
+          AND date_trunc('month', l.updated_at) = months.month
+        ) as converted_customers,
+
+        COUNT(DISTINCT c.id) FILTER (
+          WHERE cs.stage_id = 9
+          AND cs.status = 'done'
+          AND date_trunc('month', cs.completed_at) = months.month
+        ) as stage_9_done
+
+      FROM generate_series(
+        date_trunc('month', :startDate::date),
+        date_trunc('month', :endDate::date),
+        INTERVAL '1 month'
+      ) as months(month)
+
+      LEFT JOIN leads l
+        ON date_trunc('month', l.created_at) = months.month
+        OR date_trunc('month', l.updated_at) = months.month
+
+      LEFT JOIN customers c
+        ON c.lead_id = l.id
+
+      LEFT JOIN customer_stages cs
+        ON cs.customer_id = c.id
+
+      GROUP BY months.month
+      ORDER BY months.month;
+    `;
+
+    const result = await sequelize.query(query, {
+      replacements: {
+        startDate: start,
+        endDate: end,
+      },
+      type: sequelize.QueryTypes.SELECT,
+    });
+
+    return result;
+  } catch (error) {
     throw error;
   }
 }
@@ -459,4 +525,5 @@ module.exports = {
   updateLeadVisitDate,
   getPendingCounts,
   deleteLeadById,
+  getLeadAnalytics,
 };

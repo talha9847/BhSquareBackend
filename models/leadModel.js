@@ -73,6 +73,9 @@ const Lead = sequelize.define(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    updated_at: {
+      type: DataTypes.DATE,
+    },
   },
   {
     tableName: "leads",

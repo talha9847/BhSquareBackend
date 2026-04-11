@@ -27,7 +27,8 @@ CREATE TABLE leads (
     number_of_inverters INTEGER,
     inverter_capacity NUMERIC(10,2) GENERATED ALWAYS AS (inverter_kw * number_of_inverters) STORED,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE lead_sources (

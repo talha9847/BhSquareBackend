@@ -428,6 +428,34 @@ async function deleteLeadById(req, res) {
   }
 }
 
+async function getLeadAnalytics(req, res) {
+  try {
+    let { months, startDate, endDate } = req.body;
+
+    // 🔹 default = 1 month
+    if (!months && !startDate && !endDate) {
+      months = 1;
+    }
+
+    const result = await leadService.getLeadAnalytics({
+      months,
+      startDate,
+      endDate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead analytics fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -444,4 +472,5 @@ module.exports = {
   updateLeadVisitDate,
   pendingCounts,
   deleteLeadById,
+  getLeadAnalytics,
 };
