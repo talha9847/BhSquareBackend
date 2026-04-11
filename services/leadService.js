@@ -510,6 +510,70 @@ async function getLeadAnalytics({ months, startDate, endDate }) {
   }
 }
 
+
+async function getCustomerReport({ startDate, endDate }) {
+  try {
+    let start;
+    let end;
+
+    // 🔹 default = current month
+    if (!startDate && !endDate) {
+      start = new Date();
+      start.setDate(1);
+
+      end = new Date();
+    }
+
+    // 🔹 custom range
+    if (startDate && endDate) {
+      start = new Date(startDate);
+      end = new Date(endDate);
+    }
+
+    const query = `
+      SELECT 
+        TO_CHAR(date_trunc('month', cs.completed_at), 'Mon YYYY') as month,
+
+        l.customer_name,
+        l.address,
+        l.panel_wattage,
+        l.number_of_panels,
+        l.total_capacity,
+
+        s.name as source_name
+
+      FROM customer_stages cs
+
+      INNER JOIN customers c
+        ON c.id = cs.customer_id
+
+      INNER JOIN leads l
+        ON l.id = c.lead_id
+
+      LEFT JOIN lead_sources s
+        ON s.id = l.source_id
+
+      WHERE cs.stage_id = 9
+        AND cs.status = 'done'
+        AND cs.completed_at BETWEEN :startDate AND :endDate
+
+      ORDER BY cs.completed_at ASC;
+    `;
+
+    const result = await sequelize.query(query, {
+      replacements: {
+        startDate: start,
+        endDate: end,
+      },
+      type: sequelize.QueryTypes.SELECT,
+    });
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -526,4 +590,5 @@ module.exports = {
   getPendingCounts,
   deleteLeadById,
   getLeadAnalytics,
+  getCustomerReport,
 };

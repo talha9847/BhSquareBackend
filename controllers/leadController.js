@@ -456,6 +456,36 @@ async function getLeadAnalytics(req, res) {
   }
 }
 
+async function getCustomerReport(req, res) {
+  try {
+    let { startDate, endDate } = req.body;
+
+    // 🔹 default = current month
+    if (!startDate && !endDate) {
+      const now = new Date();
+
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      endDate = new Date();
+    }
+
+    const result = await leadService.getCustomerReport({
+      startDate,
+      endDate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Stage 9 completed customers fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -473,4 +503,5 @@ module.exports = {
   pendingCounts,
   deleteLeadById,
   getLeadAnalytics,
+  getCustomerReport,
 };

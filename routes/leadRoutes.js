@@ -84,4 +84,9 @@ router.post(
   middleware.authMiddleware(["admin"]),
   leadController.getLeadAnalytics,
 );
+router.post(
+  "/getCustomerReport",
+  middleware.authMiddleware(["admin"]),
+  leadController.getCustomerReport,
+);
 module.exports = router;
