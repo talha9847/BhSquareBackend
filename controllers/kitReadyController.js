@@ -529,6 +529,85 @@ async function updateSingleSerial(req, res) {
   }
 }
 
+async function getKitByCustomerId(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result = await kitReadyService.getKitByCustomerId(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Kit items fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function createUnusedInventory(req, res) {
+  try {
+    const result = await kitReadyService.createUnusedInventory(req.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Unused inventory created successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function getUnusedInventoryByCustomerId(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result =
+      await kitReadyService.getUnusedInventoryByCustomerId(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Unused inventory fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function deleteUnusedInventory(req, res) {
+  try {
+    const { unusedId, customer_id, inventory_id } = req.body;
+
+    const result = await kitReadyService.deleteUnusedInventory({
+      unusedId,
+      customer_id,
+      inventory_id,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Unused inventory deleted successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   fetchKitReadyCustomers,
   updateLoan,
@@ -553,4 +632,8 @@ module.exports = {
   getCategories,
   fetchCustomerSerials,
   updateSingleSerial,
+  getKitByCustomerId,
+  createUnusedInventory,
+  getUnusedInventoryByCustomerId,
+  deleteUnusedInventory,
 };

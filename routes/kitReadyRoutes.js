@@ -117,11 +117,30 @@ router.put(
   kitReadyController.updateSingleSerial,
 );
 
-
 router.get(
   "/fetchCustomerSerials/:customerId",
   middleware.authMiddleware(["admin"]),
   kitReadyController.fetchCustomerSerials,
 );
+router.get(
+  "/getKitByCustomerId/:customerId",
+  middleware.authMiddleware(["admin", "technician"]),
+  kitReadyController.getKitByCustomerId,
+);
+router.post(
+  "/createUnusedInventory",
+  middleware.authMiddleware(["admin", "technician"]),
+  kitReadyController.createUnusedInventory,
+);
 
+router.get(
+  "/getUnusedInventoryByCustomerId/:customerId",
+  middleware.authMiddleware(["admin", "technician"]),
+  kitReadyController.getUnusedInventoryByCustomerId,
+);
+router.delete(
+  "/deleteUnusedInventory",
+  middleware.authMiddleware(["admin", "technician"]),
+  kitReadyController.deleteUnusedInventory,
+);
 module.exports = router;

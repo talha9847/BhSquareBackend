@@ -14,6 +14,8 @@ const { PanelSerial } = require("../models/panelSerialModel");
 const { InverterSerial } = require("../models/inverterSerialModel");
 const { Dispatch } = require("../models/dispatchModel");
 const { Category } = require("../models/categoryModel");
+const { Wiring } = require("../models/wiringModel");
+const { UnusedInventory } = require("../models/UnusedInventoryModel");
 
 async function getKitReadyCustomers() {
   try {
@@ -1039,6 +1041,144 @@ async function updateInverterSerialById(id, newSerial) {
   }
 }
 
+async function getKitByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("Customer id is required");
+    }
+
+    // 🔎 check wiring status first
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!wiring || wiring.inventory_status !== "pending") {
+      return null;
+    }
+
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!kit) return null;
+
+    // 🔎 get kit items
+    const items = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["name"],
+        },
+      ],
+    });
+
+    // 🔎 get unused inventory entries
+    const unused = await UnusedInventory.findAll({
+      where: { customer_id: customerId },
+      attributes: ["kit_item_id"],
+    });
+
+    const unusedSet = new Set(unused.map((u) => u.kit_item_id));
+
+    // 🔥 filter out unused items
+    const filteredItems = items
+      .filter((item) => !unusedSet.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        inventory_id: item.inventory_id,
+        name: item.inventory?.name || null,
+        qty: item.qty,
+      }));
+
+    return filteredItems;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function createUnusedInventory(data) {
+  try {
+    const { customer_id, kit_item_id, inventory_id, unused_qty } = data;
+
+    if (!customer_id || !kit_item_id || !inventory_id) {
+      throw new Error("Required fields missing");
+    }
+
+    if (unused_qty === undefined || unused_qty < 0) {
+      throw new Error("Invalid unused quantity");
+    }
+
+    const result = await UnusedInventory.create({
+      customer_id,
+      kit_item_id,
+      inventory_id,
+      unused_qty,
+    });
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getUnusedInventoryByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("Customer id is required");
+    }
+
+    const result = await UnusedInventory.findAll({
+      where: { customer_id: customerId },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["name"],
+        },
+      ],
+    });
+
+    if (!result || result.length === 0) return null;
+
+    return result.map((item) => ({
+      id: item.id,
+      kit_item_id: item.kit_item_id,
+      inventory_id: item.inventory_id,
+      name: item.inventory?.name || null,
+      unused_qty: item.unused_qty,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function deleteUnusedInventory(data) {
+  try {
+    const { unusedId, customer_id, inventory_id } = data;
+    console.log(unusedId, customer_id, inventory_id);
+
+    if (!unusedId || !customer_id || !inventory_id) {
+      throw new Error("Required fields missing");
+    }
+
+    const deleted = await UnusedInventory.destroy({
+      where: {
+        id: unusedId,
+        customer_id,
+        inventory_id,
+      },
+    });
+
+    if (!deleted) return null;
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -1065,4 +1205,8 @@ module.exports = {
   getCustomerSerials,
   updatePanelSerialById,
   updateInverterSerialById,
+  getKitByCustomerId,
+  createUnusedInventory,
+  getUnusedInventoryByCustomerId,
+  deleteUnusedInventory,
 };

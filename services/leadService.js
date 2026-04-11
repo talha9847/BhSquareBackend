@@ -406,6 +406,22 @@ async function getPendingCounts() {
       where: { disbursal: false },
     });
 
+    const trendQuery = `
+      SELECT 
+        TO_CHAR(date_trunc('month', created_at), 'Mon YYYY') as month,
+        COUNT(Id) FILTER (WHERE Status = 'pending') as total_leads,
+        COUNT(Id) FILTER (WHERE Status = 'converted') as converted_customers
+      FROM Leads
+      WHERE created_at > NOW() - INTERVAL '6 months'
+      GROUP BY date_trunc('month', created_at)
+      ORDER BY date_trunc('month', created_at) ASC;
+    `;
+
+    // Assuming you're using Sequelize. Change to your specific DB driver if different.
+    const monthlyTrends = await sequelize.query(trendQuery, {
+      type: sequelize.QueryTypes.SELECT,
+    });
+
     return {
       pending_leads: pendingLeads,
       active_customers: activeCustomers,
@@ -420,6 +436,7 @@ async function getPendingCounts() {
       inspection_pending: inspectionPending,
       redeem_pending: redeemPending,
       disbursal_pending: disbursalPending,
+      monthly_trends: monthlyTrends,
     };
   } catch (error) {
     console.error("Error fetching pending counts:", error);

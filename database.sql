@@ -474,7 +474,20 @@ CREATE TABLE commission (
     status VARCHAR(50), -- e.g. 'pending', 'paid'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+  
 
+
+  CREATE TABLE unused_inventory (
+    id SERIAL PRIMARY KEY,
+
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    kit_item_id INTEGER NOT NULL REFERENCES kit_items(id),
+    inventory_id INTEGER NOT NULL REFERENCES inventory_table(id),
+
+    unused_qty INTEGER NOT NULL DEFAULT 0 CHECK (unused_qty >= 0),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 TRUNCATE TABLE
 users,
