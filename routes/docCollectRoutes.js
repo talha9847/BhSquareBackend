@@ -12,12 +12,12 @@ router.get(
 );
 router.get(
   "/getCustomerDocumentByCustomerId/:customer_id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   docCollectController.getCustomerDocumentByCustomerId,
 );
 router.put(
   "/upsertCustomerDocument/",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "source"]),
   docCollectController.upsertCustomerDocument,
 );
 router.post(

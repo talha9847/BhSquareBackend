@@ -921,6 +921,7 @@ const getCustomersBySource = async (sourceId) => {
           attributes: ["id", "is_permitted"],
         },
       ],
+      order: [["created_at", "DESC"]],
     });
 
     return customers;
