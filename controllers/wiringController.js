@@ -560,6 +560,29 @@ async function getCommissionsByStatus(req, res) {
   }
 }
 
+async function getWiringCustomerDetailsByStatus(req, res) {
+  try {
+    let { status } = req.query;
+
+    if (!status) {
+      status = "pending";
+    }
+
+    const result = await wiringService.getWiringCustomerDetailsByStatus(status);
+
+    return res.status(200).json({
+      success: true,
+      message: `Wiring ${status} data fetched successfully`,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -581,4 +604,5 @@ module.exports = {
   getPendingCommissions,
   updateCommission,
   getCommissionsByStatus,
+  getWiringCustomerDetailsByStatus,
 };

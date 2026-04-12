@@ -121,7 +121,7 @@ async function fetchFabrications(req, res) {
 
 async function updateFabrication(req, res) {
   try {
-    const { customer_id, unused_pipes } = req.body;
+    const { customer_id } = req.body;
 
     if (!customer_id) {
       return res.status(400).json({
@@ -132,7 +132,6 @@ async function updateFabrication(req, res) {
 
     const result = await dispatchService.updateFabricationByCustomerId({
       customer_id,
-      unused_pipes,
     });
 
     return res.status(200).json({
@@ -438,6 +437,30 @@ async function updateKitItemQty(req, res) {
     });
   }
 }
+
+async function getFabricationsByStatus(req, res) {
+  try {
+    let { status } = req.query;
+
+    // 🔹 default = pending
+    if (!status) {
+      status = "pending";
+    }
+
+    const result = await dispatchService.getFabricationsByStatus(status);
+
+    return res.status(200).json({
+      success: true,
+      message: `Fabrications ${status} data fetched successfully`,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -456,4 +479,5 @@ module.exports = {
   fetchDispatchesByStatus,
   deleteKitItem,
   updateKitItemQty,
+  getFabricationsByStatus,
 };

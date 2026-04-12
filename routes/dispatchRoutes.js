@@ -76,7 +76,6 @@ router.put(
 router.get(
   "/fetchDispatchesByStatus",
   middleware.authMiddleware(["admin"]),
-
   dispatchController.fetchDispatchesByStatus,
 );
 router.delete(
@@ -88,6 +87,11 @@ router.put(
   "/updateKitItemQty",
   middleware.authMiddleware(["admin"]),
   dispatchController.updateKitItemQty,
+);
+router.get(
+  "/getFabricationsByStatus",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.getFabricationsByStatus,
 );
 
 module.exports = router;

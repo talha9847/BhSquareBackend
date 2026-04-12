@@ -14,6 +14,7 @@ const { KitItems } = require("../models/kitItemsModels");
 async function getAllDispatches() {
   try {
     const dispatches = await Dispatch.findAll({
+      where: { status: "pending" },
       include: [
         {
           model: Customer,
@@ -130,7 +131,6 @@ async function updateDispatchByCustomerId({
     });
 
     if (!created) {
- 
     }
 
     // Commit transaction
@@ -204,6 +204,7 @@ async function updateFabricator(id, { name }) {
 async function getAllFabrications() {
   try {
     const fabrications = await Fabrication.findAll({
+      where: { status: "pending" },
       include: [
         {
           model: Customer,
@@ -237,7 +238,6 @@ async function getAllFabrications() {
       fabricator_id: f.fabricator_id,
       fabricator_name: f.fabricator?.name || null,
       status: f.status,
-      unused_pipes: f.unused_pipes,
       created_at: f.created_at,
       updated_at: f.updated_at,
     }));
@@ -249,7 +249,67 @@ async function getAllFabrications() {
   }
 }
 
-async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
+async function getFabricationsByStatus(status) {
+  try {
+    if (!status) {
+      throw new Error("status is required");
+    }
+
+    const validStatuses = ["pending", "done"];
+    if (!validStatuses.includes(status)) {
+      throw new Error("Invalid status. Must be pending or done");
+    }
+
+    const fabrications = await Fabrication.findAll({
+      where: { status },
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+        {
+          model: Fabricator,
+          as: "fabricator",
+          attributes: ["id", "name"],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    if (!fabrications || fabrications.length === 0) {
+      return [];
+    }
+
+    // 🔹 format response
+    return fabrications.map((f) => ({
+      id: f.id,
+      customer_id: f.customer_id,
+      lead_id: f.customer?.lead?.id || null,
+      customer_name: f.customer?.lead?.customer_name || null,
+      contact_number: f.customer?.lead?.contact_number || null,
+      address: f.customer?.lead?.address || null,
+      fabricator_id: f.fabricator_id,
+      fabricator_name: f.fabricator?.name || null,
+      status: f.status,
+      created_at: f.created_at,
+      updated_at: f.updated_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateFabricationByCustomerId({ customer_id }) {
   const t = await sequelize.transaction();
   try {
     const fabrication = await Fabrication.findOne({
@@ -263,19 +323,6 @@ async function updateFabricationByCustomerId({ customer_id, unused_pipes }) {
 
     // 2️⃣ Only proceed if a fabricator is assigned
     if (fabrication.fabricator_id && Number(fabrication.fabricator_id) > 0) {
-      // Update unused_pipes if provided
-      if (unused_pipes && Number(unused_pipes) > 0) {
-        fabrication.unused_pipes = Number(unused_pipes);
-
-        // Example: Update inventory (replace 5 with actual inventory_id)
-        const inventoryItem = await Inventory.findByPk(31, { transaction: t });
-        if (inventoryItem) {
-          inventoryItem.qty =
-            (Number(inventoryItem.qty) || 0) + Number(unused_pipes);
-          await inventoryItem.save({ transaction: t });
-        }
-      }
-
       // 3️⃣ Always set fabrication status to 'done'
       fabrication.status = "done";
       await fabrication.save({ transaction: t });
@@ -755,4 +802,5 @@ module.exports = {
   getAllDispatchesByStatus,
   deleteKitItem,
   updateKitItemQty,
+  getFabricationsByStatus,
 };
