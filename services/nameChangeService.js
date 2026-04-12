@@ -26,7 +26,6 @@ async function getOrCreateCustomerFolder(folderName, parentFolderId) {
   });
 
   if (existing.data.files.length > 0) {
-
     return existing.data.files[0].id;
   }
 
@@ -208,4 +207,31 @@ async function goToStageThree(customerId) {
   }
 }
 
-module.exports = { uploadNameChangeFiles, checkCustomerReady, goToStageThree };
+async function getNameChangeDocsByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    const docs = await NameChange.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id", "document_name", "document_url"],
+    });
+
+    // 🔹 if no records → return empty array
+    if (!docs || docs.length === 0) {
+      return [];
+    }
+
+    return docs;
+  } catch (error) {
+    throw error;
+  }
+}
+
+module.exports = {
+  uploadNameChangeFiles,
+  checkCustomerReady,
+  goToStageThree,
+  getNameChangeDocsByCustomerId,
+};

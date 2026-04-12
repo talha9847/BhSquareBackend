@@ -461,6 +461,62 @@ async function getFabricationsByStatus(req, res) {
     });
   }
 }
+
+async function getDispatchByCustomerId(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result = await dispatchService.getDispatchByCustomerId(customerId);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Dispatch not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Dispatch fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching dispatch:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function getFabricationByCustomerId(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result = await dispatchService.getFabricationByCustomerId(customerId);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Fabrication not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Fabrication fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching fabrication:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
 module.exports = {
   fetchDispatches,
   updateDispatch,
@@ -480,4 +536,6 @@ module.exports = {
   deleteKitItem,
   updateKitItemQty,
   getFabricationsByStatus,
+  getDispatchByCustomerId,
+  getFabricationByCustomerId,
 };

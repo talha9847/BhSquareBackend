@@ -784,6 +784,98 @@ async function updateKitItemQty(kitItemId, changeQty) {
   }
 }
 
+async function getDispatchByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    const dispatch = await Dispatch.findOne({
+      where: { customer_id: customerId },
+      attributes: ["id", "customer_id", "driver_id", "car_id", "created_at"],
+      include: [
+        {
+          model: Driver,
+          as: "driver",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Car,
+          as: "car",
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    // 🔹 if not found → return null
+    if (!dispatch) {
+      return null;
+    }
+
+    return {
+      id: dispatch.id,
+      customer_id: dispatch.customer_id,
+
+      driver_id: dispatch.driver_id,
+      driver_name: dispatch.driver?.name || null,
+
+      car_id: dispatch.car_id,
+      car_name: dispatch.car?.name || null,
+
+      created_at: dispatch.created_at,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getFabricationByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    const fabrication = await Fabrication.findOne({
+      where: { customer_id: customerId },
+      attributes: [
+        "id",
+        "customer_id",
+        "fabricator_id",
+        "status",
+        "created_at",
+        "updated_at",
+      ],
+      include: [
+        {
+          model: Fabricator,
+          as: "fabricator",
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    // 🔹 if not found → return null
+    if (!fabrication) {
+      return null;
+    }
+
+    return {
+      id: fabrication.id,
+      customer_id: fabrication.customer_id,
+
+      fabricator_id: fabrication.fabricator_id,
+      fabricator_name: fabrication.fabricator?.name || null,
+
+      status: fabrication.status,
+
+      created_at: fabrication.created_at,
+      updated_at: fabrication.updated_at,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getAllDispatches,
   updateDispatchByCustomerId,
@@ -803,4 +895,6 @@ module.exports = {
   deleteKitItem,
   updateKitItemQty,
   getFabricationsByStatus,
+  getDispatchByCustomerId,
+  getFabricationByCustomerId,
 };

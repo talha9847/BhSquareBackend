@@ -108,8 +108,31 @@ async function goToStageThree(req, res) {
   }
 }
 
+async function getNameChangeDocs(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const docs =
+      await nameChangeService.getNameChangeDocsByCustomerId(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Name change documents fetched successfully",
+      data: docs,
+    });
+  } catch (error) {
+    console.error("Error fetching name change docs:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   uploadNameChangeFiles,
   checkReady,
   goToStageThree,
+  getNameChangeDocs,
 };

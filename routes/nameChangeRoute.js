@@ -20,5 +20,10 @@ router.post(
   middleware.authMiddleware(["admin"]),
   nameChangeController.goToStageThree,
 );
+router.get(
+  "/getNameChangeDocs/:customerId",
+  middleware.authMiddleware(["admin"]),
+  nameChangeController.getNameChangeDocs,
+);
 
 module.exports = router;

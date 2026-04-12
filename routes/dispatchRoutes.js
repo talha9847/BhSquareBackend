@@ -93,5 +93,15 @@ router.get(
   middleware.authMiddleware(["admin"]),
   dispatchController.getFabricationsByStatus,
 );
+router.get(
+  "/getDispatchByCustomerId/:customerId",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.getDispatchByCustomerId,
+);
+router.get(
+  "/getFabricationByCustomerId/:customerId",
+  middleware.authMiddleware(["admin"]),
+  dispatchController.getFabricationByCustomerId,
+);
 
 module.exports = router;
