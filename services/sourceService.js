@@ -1208,6 +1208,41 @@ async function getCompletionReport({ startDate, endDate }) {
     throw error;
   }
 }
+
+async function updateExtraCostById(id, extraCost) {
+  try {
+    if (!id) {
+      throw new Error("id is required");
+    }
+
+    if (extraCost === undefined || extraCost === null) {
+      throw new Error("extra_cost is required");
+    }
+
+    // 🔹 find completion
+    const completion = await Completion.findByPk(id);
+
+    if (!completion) {
+      return {
+        success: false,
+        message: "Completion not found",
+      };
+    }
+
+    // 🔹 update extra_cost
+    await completion.update({
+      extra_cost: extraCost,
+    });
+
+    return {
+      success: true,
+      message: "Extra cost updated successfully",
+      data: completion,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
 module.exports = {
   getSources,
   addSource,
@@ -1229,4 +1264,5 @@ module.exports = {
   getPaidCommissionBySourceId,
   updateStage14,
   getCompletionReport,
+  updateExtraCostById,
 };

@@ -525,6 +525,31 @@ async function getCompletionReport(req, res) {
   }
 }
 
+async function updateExtraCost(req, res) {
+  try {
+    const { id, extra_cost } = req.body;
+
+    const result = await sourceService.updateExtraCostById(id, extra_cost);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Error updating extra cost:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -546,4 +571,5 @@ module.exports = {
   updateWebLead,
   getPaidCommissionBySourceId,
   getCompletionReport,
+  updateExtraCost,
 };

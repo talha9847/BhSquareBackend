@@ -100,5 +100,10 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.getCompletionReport,
 );
+router.put(
+  "/updateExtraCost",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateExtraCost,
+);
 router.post("/addWebLead", sourceController.addWebLead);
 module.exports = router;
