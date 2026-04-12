@@ -116,4 +116,9 @@ router.get(
   middleware.authMiddleware(["admin"]),
   wiringController.getWiringCustomerDetailsByStatus,
 );
+router.get(
+  "/getWiringItemsByCustomerId/:customerId",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getWiringItemsByCustomerId,
+);
 module.exports = router;

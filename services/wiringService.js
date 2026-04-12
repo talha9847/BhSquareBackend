@@ -1279,6 +1279,77 @@ async function getWiringCustomerDetailsByStatus(status) {
     throw error;
   }
 }
+async function getWiringItemsByCustomerId(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 get wiring with technician
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+      attributes: [
+        "id",
+        "customer_id",
+        "status",
+        "technician_id",
+        "created_at",
+      ],
+      include: [
+        {
+          model: Technician,
+          as: "technician",
+          attributes: ["id", "name"],
+        },
+      ],
+    });
+
+    if (!wiring) {
+      return null;
+    }
+
+    // 🔹 get wiring items
+    const items = await WiringItem.findAll({
+      where: { wiring_id: wiring.id },
+      attributes: ["id", "wire_inventory_id", "qty"],
+      include: [
+        {
+          model: WireInventory,
+          as: "wire",
+          attributes: [
+            "id",
+            "brand_name",
+            "wire_type",
+            "color",
+            "gauge",
+            "price",
+          ],
+        },
+      ],
+    });
+
+    return {
+      wiring_id: wiring.id,
+      customer_id: wiring.customer_id,
+      status: wiring.status,
+
+      technician_id: wiring.technician_id,
+      technician_name: wiring.technician?.name || null,
+
+      items: items.map((i) => ({
+        wiring_item_id: i.id,
+        wire_inventory_id: i.wire_inventory_id,
+        name: i.wire?.brand_name || null,
+        wire_type: i.wire?.wire_type || null,
+        color: i.wire?.color || null,
+        gauge: i.wire?.gauge || null,
+        qty: i.qty,
+      })),
+    };
+  } catch (error) {
+    throw error;
+  }
+}
 
 module.exports = {
   updateTechnician,
@@ -1302,4 +1373,5 @@ module.exports = {
   updateCommissionById,
   getCommissionsByStatus,
   getWiringCustomerDetailsByStatus,
+  getWiringItemsByCustomerId,
 };

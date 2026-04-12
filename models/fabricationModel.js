@@ -20,14 +20,6 @@ const Fabrication = sequelize.define(
       allowNull: true,
     },
 
-    unused_pipes: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-      validate: {
-        min: 0,
-      },
-    },
-
     status: {
       type: DataTypes.ENUM("pending", "done"),
       defaultValue: "pending",

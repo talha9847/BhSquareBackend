@@ -126,7 +126,7 @@ async function updateDispatchByCustomerId({
 
     const [fabrication, created] = await Fabrication.findOrCreate({
       where: { customer_id },
-      defaults: { customer_id, status: "pending", unused_pipes: 0 },
+      defaults: { customer_id, status: "pending" },
       transaction: t,
     });
 

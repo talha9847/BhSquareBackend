@@ -583,6 +583,34 @@ async function getWiringCustomerDetailsByStatus(req, res) {
   }
 }
 
+async function getWiringItemsByCustomerId(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    const result = await wiringService.getWiringItemsByCustomerId(customerId);
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Wiring not found for this customer",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Wiring items fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching wiring items:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -605,4 +633,5 @@ module.exports = {
   updateCommission,
   getCommissionsByStatus,
   getWiringCustomerDetailsByStatus,
+  getWiringItemsByCustomerId,
 };
