@@ -208,6 +208,36 @@ async function updateStage13(req, res) {
     });
   }
 }
+async function updateStage14(req, res) {
+  try {
+    const { customerId, flag } = req.body;
+
+    if (!customerId || typeof flag !== "boolean") {
+      return res.status(400).json({
+        message: "customerId and boolean flag are required",
+      });
+    }
+
+    const result = await sourceService.updateStage14(customerId, flag);
+
+    return res.status(200).json({
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    if (error.message.includes("not found")) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
 
 async function getAllMasters(req, res) {
   try {
@@ -479,6 +509,7 @@ module.exports = {
   updateStage11,
   updateStage12,
   updateStage13,
+  updateStage14,
   getAllMasters,
   fetchAllSources,
   updateSource,

@@ -1,9 +1,13 @@
 const sequelize = require("../config/db");
 const { Commission } = require("../models/commissionModel");
+const { Completion } = require("../models/completionModel");
 const { Customer } = require("../models/customerModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
 const { FinalStage } = require("../models/finalStageModel");
+const { Inventory } = require("../models/inventoryModel");
+const { KitItems } = require("../models/kitItemsModels");
+const { KitReady } = require("../models/kitReadyModel");
 const { Lead } = require("../models/leadModel");
 const { Page } = require("../models/pageModel");
 const { Permission } = require("../models/permissionModel");
@@ -11,6 +15,9 @@ const { Source } = require("../models/sourceModel");
 const { Technician } = require("../models/technicianModel");
 const { WebLead } = require("../models/webLeadModel");
 const { Op } = require("sequelize");
+const { Wiring } = require("../models/wiringModel");
+const { WiringItem } = require("../models/wiringItemModel");
+const { WireInventory } = require("../models/wireInventoryModel");
 
 async function getSources() {
   try {
@@ -568,6 +575,234 @@ async function updateStage13(customerId, flag) {
   }
 }
 
+async function updateStage14(customerId, flag) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!customerId || typeof flag !== "boolean") {
+      throw new Error("customerId and boolean flag are required");
+    }
+
+    const stage14 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 14 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!stage14) {
+      throw new Error("Stage 14 not found");
+    }
+
+    const [finalStage] = await FinalStage.findOrCreate({
+      where: { customer_id: customerId },
+      defaults: {
+        customer_id: customerId,
+        created_at: new Date(),
+      },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    // ✅ Check if previous stage (11) is completed
+    const prevStage = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 13 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!prevStage || prevStage.status !== "done") {
+      throw new Error("Stage 13 must be completed before Stage 14");
+    }
+    if (flag === true) {
+      await stage14.update(
+        {
+          status: "done",
+          completed_at: new Date(),
+          updated_at: new Date(),
+        },
+        { transaction: t },
+      );
+
+      // const stage15 = await CustomerStage.findOne({
+      //   where: { customer_id: customerId, stage_id: 15 },
+      //   transaction: t,
+      //   lock: t.LOCK.UPDATE,
+      // });
+
+      // if (!stage15) {
+      //   throw new Error("Stage 11 not found");
+      // }
+
+      // await stage15.update(
+      //   {
+      //     status: "pending",
+      //     started_at: new Date(),
+      //     updated_at: new Date(),
+      //   },
+      //   { transaction: t },
+      // );
+
+      // 🔥 IMPORTANT: await + pass transaction
+      const completionResult = await createCompletionByCustomerId(
+        customerId,
+        t,
+      );
+
+      if (!completionResult?.success) {
+        throw new Error(
+          completionResult?.message || "Completion creation failed",
+        );
+      }
+      await finalStage.update(
+        {
+          disbursal: true,
+          updated_at: new Date(),
+        },
+        { transaction: t },
+      );
+    }
+
+    if (flag === false) {
+      await stage14.update(
+        {
+          status: "pending",
+          completed_at: null,
+          updated_at: new Date(),
+        },
+        { transaction: t },
+      );
+
+      await finalStage.update(
+        {
+          redeem: false,
+          updated_at: new Date(),
+        },
+        { transaction: t },
+      );
+    }
+
+    await t.commit();
+
+    return {
+      success: true,
+      message:
+        flag === true
+          ? "Stage 13 completed, stage 11 started, file approved"
+          : "Stage 13 reset and file approval removed",
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("❌ Error updating stage 13:", error);
+    throw error;
+  }
+}
+async function createCompletionByCustomerId(customerId, transaction = null) {
+  const t = transaction || (await sequelize.transaction());
+  let external = !!transaction;
+
+  try {
+    // 🔹 check existing completion
+    const existing = await Completion.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // ✅ IMPORTANT: just skip, do NOT throw error
+    if (existing) {
+      return {
+        success: true,
+        skipped: true,
+        message: "Completion already exists",
+        data: existing,
+      };
+    }
+    /////////////////
+    ///// kit cost
+    /////////////
+
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!kit) {
+      throw new Error("Kit not found");
+    }
+
+    const kitItems = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["price"],
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!kitItems.length) {
+      throw new Error("No kit items found");
+    }
+
+    let kitCost = 0;
+
+    for (const item of kitItems) {
+      kitCost += Number(item.inventory?.price || 0) * Number(item.qty || 0);
+    }
+
+    /////////////
+    /// wire cost
+    ////////
+
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    let wireCost = 0;
+
+    if (wiring) {
+      const wiringItems = await WiringItem.findAll({
+        where: { wiring_id: wiring.id },
+        include: [
+          {
+            model: WireInventory,
+            as: "wire",
+            attributes: ["price"],
+          },
+        ],
+        transaction: t,
+      });
+
+      for (const w of wiringItems) {
+        wireCost += Number(w.wire?.price || 0) * Number(w.qty || 1);
+      }
+    }
+
+    const completion = await Completion.create(
+      {
+        customer_id: customerId,
+        kit_cost: kitCost,
+        wire_cost: wireCost,
+        remarks: "Auto generated",
+      },
+      { transaction: t },
+    );
+
+    if (!external) await t.commit();
+
+    return {
+      success: true,
+      skipped: false,
+      data: completion,
+    };
+  } catch (error) {
+    if (!external) await t.rollback();
+    throw error;
+  }
+}
+
 async function getAllMasters() {
   try {
     const [technicians, fabricators, leadSources] = await Promise.all([
@@ -882,4 +1117,5 @@ module.exports = {
   getAllWebLeads,
   updateWebLead,
   getPaidCommissionBySourceId,
+  updateStage14,
 };

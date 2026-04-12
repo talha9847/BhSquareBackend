@@ -49,6 +49,11 @@ router.post(
   middleware.authMiddleware(["admin"]),
   sourceController.updateStage13,
 );
+router.post(
+  "/updateStage14",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateStage14,
+);
 router.get(
   "/getAllMasters",
   middleware.authMiddleware(["admin"]),
