@@ -486,6 +486,23 @@ async function getCustomerReport(req, res) {
   }
 }
 
+async function getPendingStageCapacity(req, res) {
+  try {
+    const result = await leadService.getPendingStageCapacity();
+
+    return res.status(200).json({
+      success: true,
+      message: "Pending stage capacity fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -504,4 +521,5 @@ module.exports = {
   deleteLeadById,
   getLeadAnalytics,
   getCustomerReport,
+  getPendingStageCapacity,
 };

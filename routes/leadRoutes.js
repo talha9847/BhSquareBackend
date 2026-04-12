@@ -89,4 +89,9 @@ router.post(
   middleware.authMiddleware(["admin"]),
   leadController.getCustomerReport,
 );
+router.get(
+  "/getPendingStageCapacity",
+  middleware.authMiddleware(["admin"]),
+  leadController.getPendingStageCapacity,
+);
 module.exports = router;

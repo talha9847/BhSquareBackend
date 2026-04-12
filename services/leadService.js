@@ -510,7 +510,6 @@ async function getLeadAnalytics({ months, startDate, endDate }) {
   }
 }
 
-
 async function getCustomerReport({ startDate, endDate }) {
   try {
     let start;
@@ -574,6 +573,71 @@ async function getCustomerReport({ startDate, endDate }) {
   }
 }
 
+async function getPendingStageCapacity() {
+  try {
+    const query = `
+      SELECT 
+        s.id as stage_id,
+        s.stage_name as stage_name,
+
+        COUNT(cs.customer_id) FILTER (
+          WHERE cs.status = 'pending'
+        ) as pending_count,
+
+        COALESCE(
+          SUM(l.total_capacity) FILTER (
+            WHERE cs.status = 'pending'
+          ),
+          0
+        ) as pending_capacity_kw
+
+      FROM stages s
+
+      LEFT JOIN customer_stages cs
+        ON cs.stage_id = s.id
+
+      LEFT JOIN customers c
+        ON c.id = cs.customer_id
+
+      LEFT JOIN leads l
+        ON l.id = c.lead_id
+
+      GROUP BY s.id, s.stage_name
+      ORDER BY s.id ASC;
+    `;
+
+    const result = await sequelize.query(query, {
+      type: sequelize.QueryTypes.SELECT,
+    });
+
+    // 🔹 Stage → URL mapping
+    const stageUrlMap = {
+      1: "/customers",
+      2: "/name-change",
+      3: "/document-collection",
+      4: "/registration",
+      5: "/loan",
+      6: "/kit-ready",
+      7: "/dispatch",
+      8: "/fabrication",
+      9: "/wiring",
+      10: "/finalstage",
+      11: "/finalstage",
+      12: "/finalstage",
+      13: "/finalstage",
+      14: "/finalstage",
+    };
+
+    // 🔹 Append URL
+    return result.map((item) => ({
+      ...item,
+      url: stageUrlMap[item.stage_id] || null,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -591,4 +655,5 @@ module.exports = {
   deleteLeadById,
   getLeadAnalytics,
   getCustomerReport,
+  getPendingStageCapacity,
 };
