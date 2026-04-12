@@ -26,6 +26,10 @@ const User = sequelize.define(
     role_id: {
       type: DataTypes.INTEGER,
     },
+    is_active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
     created_at: {
       type: DataTypes.DATE,
     },

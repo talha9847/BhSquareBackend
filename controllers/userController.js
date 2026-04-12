@@ -180,4 +180,38 @@ async function updateUser(req, res) {
   }
 }
 
-module.exports = { login, createUser, getAllUsers, me, updateUser, logout };
+async function updateUserActiveStatus(req, res) {
+  try {
+    const { is_active, userId } = req.body;
+
+    const result = await userService.updateUserActiveStatus(userId, is_active);
+
+    // 🔴 handle admin restriction or custom failure
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Error updating user status:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+module.exports = {
+  login,
+  createUser,
+  getAllUsers,
+  me,
+  updateUser,
+  logout,
+  updateUserActiveStatus,
+};

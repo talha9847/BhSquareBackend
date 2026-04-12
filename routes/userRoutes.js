@@ -26,4 +26,9 @@ router.post(
   middleware.authMiddleware(["admin"]),
   userController.updateUser,
 );
+router.put(
+  "/updateUserActiveStatus",
+  middleware.authMiddleware(["admin"]),
+  userController.updateUserActiveStatus,
+);
 module.exports = router;

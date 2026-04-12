@@ -7,10 +7,16 @@ async function login(email, pass) {
       where: { email: email },
     });
 
-    if (!user) return { code: 0 };
+    if (!user) return { code: 0 }; // user not found
+
+    // 🔴 check active status
+    if (!user.is_active) {
+      return { code: -1, message: "User is inactive. Contact admin." };
+    }
 
     const isMatch = await bcrypt.compare(pass, user.password);
-    if (!isMatch) return { code: -1 };
+    if (!isMatch) return { code: -1 }; // wrong password
+
     return {
       code: 1,
       role: user.role,
@@ -117,4 +123,53 @@ async function updateUser({ id, password, role, role_id }) {
 
   return user;
 }
-module.exports = { login, createUser, getAllUsers, updateUser };
+
+async function updateUserActiveStatus(userId, isActive) {
+  try {
+    if (!userId) {
+      throw new Error("userId is required");
+    }
+
+    if (typeof isActive !== "boolean") {
+      throw new Error("isActive must be boolean");
+    }
+
+    // 🔹 fetch user
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    if (user.role === "admin") {
+      return {
+        success: false,
+        message: "Admin user cannot be deactivated",
+      };
+    }
+
+    // 🔹 update status
+    await user.update({
+      is_active: isActive,
+      updated_at: new Date(),
+    });
+
+    return {
+      success: true,
+      data: {
+        id: user.id,
+        is_active: user.is_active,
+      },
+      message: "User status updated successfully",
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+module.exports = {
+  login,
+  createUser,
+  getAllUsers,
+  updateUser,
+  updateUserActiveStatus,
+};
