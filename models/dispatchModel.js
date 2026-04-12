@@ -24,12 +24,6 @@ const Dispatch = sequelize.define(
       allowNull: true,
     },
 
-    driver_name: {
-      type: DataTypes.STRING(255),
-    },
-    vehicle: {
-      type: DataTypes.STRING(100),
-    },
     status: {
       type: DataTypes.STRING(20),
       defaultValue: "pending",

@@ -1180,7 +1180,7 @@ async function getCompletionReport({ startDate, endDate }) {
             {
               model: Lead,
               as: "lead",
-              attributes: ["customer_name", "contact_number", "address"],
+              attributes: ["id", "customer_name", "contact_number", "address"],
             },
           ],
         },
@@ -1194,6 +1194,8 @@ async function getCompletionReport({ startDate, endDate }) {
 
     return completions.map((c) => ({
       id: c.id,
+      customerId: c.customer?.id,
+      leadId: c.customer?.lead?.id,
       customer_name: c.customer?.lead?.customer_name || null,
       contact: c.customer?.lead?.contact_number || null,
       address: c.customer?.lead?.address || null,
