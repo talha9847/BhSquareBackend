@@ -95,5 +95,10 @@ router.get(
   middleware.authMiddleware(["source"]),
   sourceController.getPaidCommissionBySourceId,
 );
+router.get(
+  "/getCompletionReport",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getCompletionReport,
+);
 router.post("/addWebLead", sourceController.addWebLead);
 module.exports = router;

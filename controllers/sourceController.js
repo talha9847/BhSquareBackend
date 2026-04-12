@@ -485,8 +485,7 @@ async function getPaidCommissionBySourceId(req, res) {
   try {
     const sourceId = req.user.role_id;
 
-    const result =
-      await sourceService.getPaidCommissionBySourceId(sourceId);
+    const result = await sourceService.getPaidCommissionBySourceId(sourceId);
 
     return res.status(200).json({
       success: true,
@@ -494,6 +493,31 @@ async function getPaidCommissionBySourceId(req, res) {
       data: result,
     });
   } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function getCompletionReport(req, res) {
+  try {
+    let { startDate, endDate } = req.query;
+
+    // 🔹 call service (it already handles default current month)
+    const result = await sourceService.getCompletionReport({
+      startDate,
+      endDate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Completion report fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching completion report:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -521,4 +545,5 @@ module.exports = {
   fetchAllWebLeads,
   updateWebLead,
   getPaidCommissionBySourceId,
+  getCompletionReport,
 };

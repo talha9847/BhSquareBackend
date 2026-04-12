@@ -159,6 +159,19 @@ async function updateStage10(customerId, flag) {
       throw new Error("Stage 10 not found");
     }
 
+    const stage11 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 11 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    // 🔴 NEW RULE: if stage 14 is already done, block stage 13 changes
+    if (stage11 && stage11.status === "done") {
+      throw new Error(
+        "Stage 11 already completed. Stage 12 cannot be modified.",
+      );
+    }
+
     const [finalStage] = await FinalStage.findOrCreate({
       where: { customer_id: customerId },
       defaults: {
@@ -258,6 +271,19 @@ async function updateStage11(customerId, flag) {
 
     if (!stage11) {
       throw new Error("Stage 10 not found");
+    }
+
+    const stage12 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 12 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    // 🔴 NEW RULE: if stage 14 is already done, block stage 13 changes
+    if (stage12 && stage12.status === "done") {
+      throw new Error(
+        "Stage 12 already completed. Stage 11 cannot be modified.",
+      );
     }
 
     const [finalStage] = await FinalStage.findOrCreate({
@@ -371,6 +397,19 @@ async function updateStage12(customerId, flag) {
       throw new Error("Stage 10 not found");
     }
 
+    const stage13 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 13 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    // 🔴 NEW RULE: if stage 14 is already done, block stage 13 changes
+    if (stage13 && stage13.status === "done") {
+      throw new Error(
+        "Stage 13 already completed. Stage 12 cannot be modified.",
+      );
+    }
+
     const [finalStage] = await FinalStage.findOrCreate({
       where: { customer_id: customerId },
       defaults: {
@@ -482,6 +521,19 @@ async function updateStage13(customerId, flag) {
       throw new Error("Stage 13 not found");
     }
 
+    const stage14 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 14 },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    // 🔴 NEW RULE: if stage 14 is already done, block stage 13 changes
+    if (stage14 && stage14.status === "done") {
+      throw new Error(
+        "Stage 14 already completed. Stage 13 cannot be modified.",
+      );
+    }
+
     const [finalStage] = await FinalStage.findOrCreate({
       where: { customer_id: customerId },
       defaults: {
@@ -577,7 +629,6 @@ async function updateStage13(customerId, flag) {
 
 async function updateStage14(customerId, flag) {
   const t = await sequelize.transaction();
-
   try {
     if (!customerId || typeof flag !== "boolean") {
       throw new Error("customerId and boolean flag are required");
@@ -674,7 +725,7 @@ async function updateStage14(customerId, flag) {
 
       await finalStage.update(
         {
-          redeem: false,
+          disbursal: false,
           updated_at: new Date(),
         },
         { transaction: t },
@@ -1098,6 +1149,65 @@ async function getPaidCommissionBySourceId(sourceId) {
     throw error;
   }
 }
+
+async function getCompletionReport({ startDate, endDate }) {
+  try {
+    let whereCondition = {};
+
+    // 🔹 default = current month
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      startDate = start;
+      endDate = end;
+    }
+
+    whereCondition.created_at = {
+      [Op.between]: [startDate, endDate],
+    };
+
+    const completions = await Completion.findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    if (!completions.length) {
+      return [];
+    }
+
+    return completions.map((c) => ({
+      id: c.id,
+      customer_name: c.customer?.lead?.customer_name || null,
+      contact: c.customer?.lead?.contact_number || null,
+      address: c.customer?.lead?.address || null,
+
+      kit_cost: Number(c.kit_cost || 0),
+      wire_cost: Number(c.wire_cost || 0),
+      extra_cost: Number(c.extra_cost || 0),
+
+      total_cost: c.total_cost,
+      created_at: c.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
 module.exports = {
   getSources,
   addSource,
@@ -1118,4 +1228,5 @@ module.exports = {
   updateWebLead,
   getPaidCommissionBySourceId,
   updateStage14,
+  getCompletionReport,
 };

@@ -45,6 +45,13 @@ const Completion = sequelize.define(
         min: 0,
       },
     },
+    total_cost: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
 
     remarks: {
       type: DataTypes.TEXT,

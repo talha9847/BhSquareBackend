@@ -33,6 +33,7 @@ const { Permission } = require("./permissionModel");
 const { Page } = require("./pageModel");
 const { Commission } = require("./commissionModel");
 const { UnusedInventory } = require("./UnusedInventoryModel");
+const { Completion } = require("./completionModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -328,6 +329,15 @@ Inventory.hasMany(UnusedInventory, {
   as: "unused_inventory",
 });
 
+Completion.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
+Customer.hasOne(Completion, {
+  foreignKey: "customer_id",
+  as: "completion",
+});
+
 module.exports = {
   Customer,
   Lead,
@@ -358,4 +368,5 @@ module.exports = {
   Permission,
   Commission,
   UnusedInventory,
+  Completion,
 };
