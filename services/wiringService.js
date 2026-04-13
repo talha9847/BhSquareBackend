@@ -449,55 +449,51 @@ async function updateWiringTechnician(wiringId, technicianId) {
     return { success: false, message: error.message };
   }
 }
+
 async function updateWiringInventoryStatus(wiringId, newStatus) {
   const t = await sequelize.transaction();
 
   try {
     if (!wiringId) {
-      return { success: false, message: "wiringId is required" };
+      throw new Error("wiringId is required");
     }
 
     const validStatuses = ["pending", "done"];
     if (!validStatuses.includes(newStatus)) {
-      return {
-        success: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      };
+      throw new Error(`Invalid status. Must be: ${validStatuses.join(", ")}`);
     }
 
     const wiring = await Wiring.findByPk(wiringId, { transaction: t });
-
     if (!wiring) {
-      await t.rollback();
-      return { success: false, message: "Wiring record not found" };
+      throw new Error("Wiring record not found");
     }
 
+    // ===============================
+    // 🔥 WHEN MARKING AS DONE
+    // ===============================
     if (newStatus === "done") {
-      // 🔴 validations
+      // ✅ 1. Basic validations
       if (!wiring.technician_id) {
-        await t.rollback();
-        return { success: false, message: "Technician is not assigned" };
+        throw new Error("Technician is not assigned");
       }
 
       const wiringItemExists = await WiringItem.findOne({
         where: { wiring_id: wiringId },
-        attributes: ["id"],
         transaction: t,
       });
 
       if (!wiringItemExists) {
-        await t.rollback();
-        return { success: false, message: "No wiring items found" };
+        throw new Error("No wiring items found");
       }
 
+      // ✅ 2. Get registration + file generation
       const registration = await CustomerRegistration.findOne({
         where: { customer_id: wiring.customer_id },
         transaction: t,
       });
 
       if (!registration) {
-        await t.rollback();
-        return { success: false, message: "Registration not found" };
+        throw new Error("Registration not found");
       }
 
       const fileGen = await FileGeneration.findOne({
@@ -506,22 +502,61 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
       });
 
       if (!fileGen) {
-        await t.rollback();
-        return { success: false, message: "File generation not found" };
+        throw new Error("File generation not found");
       }
 
-      const panelQty = fileGen.panel_quantity || 0;
-      const inverterQty = fileGen.inverter_quantity || 0;
+      // ===============================
+      // 🔹 3. CALCULATE FINAL QTY (IMPORTANT FIX)
+      // ===============================
+      const PANEL_CATEGORY = 1;
+      const INVERTER_CATEGORY = 3;
+
+      const unusedItems = await UnusedInventory.findAll({
+        where: {
+          customer_id: wiring.customer_id,
+          status: "pending",
+        },
+        include: [
+          {
+            model: Inventory,
+            as: "inventory", // ✅ MUST MATCH alias
+
+            attributes: ["id", "category_id"],
+          },
+        ],
+        transaction: t,
+      });
+
+      let unusedPanelQty = 0;
+      let unusedInverterQty = 0;
+
+      for (const item of unusedItems) {
+        const categoryId = item.inventory?.category_id;
+        console.log(categoryId);
+
+        if (categoryId === PANEL_CATEGORY) {
+          unusedPanelQty += item.unused_qty;
+        }
+
+        if (categoryId === INVERTER_CATEGORY) {
+          unusedInverterQty += item.unused_qty;
+        }
+      }
+
+      let panelQty = (fileGen.panel_quantity || 0) - unusedPanelQty;
+      let inverterQty = (fileGen.inverter_quantity || 0) - unusedInverterQty;
+
+      if (panelQty < 0 || inverterQty < 0) {
+        throw new Error("Unused qty exceeds actual quantity");
+      }
 
       if (panelQty === 0 && inverterQty === 0) {
-        await t.rollback();
-        return {
-          success: false,
-          message: "Panel and inverter quantity is zero",
-        };
+        throw new Error("Panel and inverter quantity is zero after adjustment");
       }
 
-      // 🔹 docs
+      // ===============================
+      // 🔹 4. GENERATE DOCS
+      // ===============================
       const docs = [];
 
       for (let i = 1; i <= panelQty; i++) {
@@ -543,17 +578,10 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
         ignoreDuplicates: true,
       });
 
-      // 🔹 UNUSED INVENTORY (FIXED 🔥)
-      const unusedItems = await UnusedInventory.findAll({
-        where: {
-          customer_id: wiring.customer_id,
-          status: "pending",
-        },
-        transaction: t,
-      });
-
+      // ===============================
+      // 🔹 5. HANDLE UNUSED INVENTORY
+      // ===============================
       for (const item of unusedItems) {
-        // 🔴 safety check
         const kitItem = await KitItems.findByPk(item.kit_item_id, {
           transaction: t,
         });
@@ -562,29 +590,37 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
           throw new Error("Unused qty exceeds kit item qty");
         }
 
-        // ➕ inventory add
+        // ➕ Add back to inventory
         await Inventory.increment("qty", {
           by: item.unused_qty,
           where: { id: item.inventory_id },
           transaction: t,
         });
 
-        // ➖ kit reduce
+        // ➖ Reduce from kit
         if (kitItem) {
           await kitItem.update(
-            {
-              qty: kitItem.qty - item.unused_qty,
-            },
+            { qty: kitItem.qty - item.unused_qty },
             { transaction: t },
           );
         }
 
-        // ✅ mark done
+        // ✅ mark processed
         await item.update({ status: "done" }, { transaction: t });
       }
+
+      await fileGen.update(
+        {
+          panel_quantity: panelQty,
+          inverter_quantity: inverterQty,
+        },
+        { transaction: t },
+      );
     }
 
-    // 🔹 update status
+    // ===============================
+    // 🔹 FINAL STATUS UPDATE
+    // ===============================
     wiring.inventory_status = newStatus;
     await wiring.save({ transaction: t });
 
