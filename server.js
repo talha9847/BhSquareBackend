@@ -16,6 +16,7 @@ const loanRoutes = require("./routes/loanRoutes");
 const dispatchRoutes = require("./routes/dispatchRoutes");
 const wiringhRoutes = require("./routes/wiringRoutes");
 require("./models/associationModel");
+
 UserSeeder.startServer();
 app.use(express.json());
 app.use(cookieParser());
