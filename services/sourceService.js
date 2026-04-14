@@ -1,6 +1,6 @@
 const sequelize = require("../config/db");
 const { Commission } = require("../models/commissionModel");
-const {  Cost } = require("../models/costModel");
+const { Cost } = require("../models/costModel");
 const { Customer } = require("../models/customerModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
@@ -14,7 +14,7 @@ const { Permission } = require("../models/permissionModel");
 const { Source } = require("../models/sourceModel");
 const { Technician } = require("../models/technicianModel");
 const { WebLead } = require("../models/webLeadModel");
-const { Op } = require("sequelize");
+const { Op, NUMBER } = require("sequelize");
 const { Wiring } = require("../models/wiringModel");
 const { WiringItem } = require("../models/wiringItemModel");
 const { WireInventory } = require("../models/wireInventoryModel");
@@ -860,9 +860,6 @@ async function updateStage14(customerId, flag) {
       //   );
       // }
 
-
-
-
       await finalStage.update(
         {
           disbursal: true,
@@ -1363,6 +1360,9 @@ async function getCompletionReport({ startDate, endDate }) {
       kit_cost: Number(c.kit_cost || 0),
       wire_cost: Number(c.wire_cost || 0),
       extra_cost: Number(c.extra_cost || 0),
+      fabricator_commission: Number(c.fabricator_commission || 0),
+      commission_cost: Number(c.commission_cost || 0),
+      supervisor_commission: Number(c.supervisor_commission || 0),
 
       total_cost: c.total_cost,
       created_at: c.created_at,

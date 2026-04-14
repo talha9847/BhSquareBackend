@@ -456,113 +456,6 @@ async function updateWiringTechnician(wiringId, technicianId) {
   }
 }
 
-async function createCompletionByCustomerId(customerId, transaction = null) {
-  const t = transaction || (await sequelize.transaction());
-  let external = !!transaction;
-
-  try {
-    // 🔹 check existing completion
-    const existing = await Cost.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    // ✅ IMPORTANT: just skip, do NOT throw error
-    if (existing) {
-      return {
-        success: true,
-        skipped: true,
-        message: "Completion already exists",
-        data: existing,
-      };
-    }
-    /////////////////
-    ///// kit cost
-    /////////////
-
-    const kit = await KitReady.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    if (!kit) {
-      throw new Error("Kit not found");
-    }
-
-    const kitItems = await KitItems.findAll({
-      where: { kit_id: kit.id },
-      include: [
-        {
-          model: Inventory,
-          as: "inventory",
-          attributes: ["price"],
-        },
-      ],
-      transaction: t,
-    });
-
-    if (!kitItems.length) {
-      throw new Error("No kit items found");
-    }
-
-    let kitCost = 0;
-
-    for (const item of kitItems) {
-      kitCost += Number(item.inventory?.price || 0) * Number(item.qty || 0);
-    }
-
-    /////////////
-    /// wire cost
-    ////////
-
-    const wiring = await Wiring.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    let wireCost = 0;
-
-    if (wiring) {
-      const wiringItems = await WiringItem.findAll({
-        where: { wiring_id: wiring.id },
-        include: [
-          {
-            model: WireInventory,
-            as: "wire",
-            attributes: ["price"],
-          },
-        ],
-        transaction: t,
-      });
-
-      for (const w of wiringItems) {
-        wireCost += Number(w.wire?.price || 0) * Number(w.qty || 1);
-      }
-    }
-
-    const completion = await Cost.create(
-      {
-        customer_id: customerId,
-        kit_cost: kitCost,
-        wire_cost: wireCost,
-        remarks: "Auto generated",
-      },
-      { transaction: t },
-    );
-
-    if (!external) await t.commit();
-
-    return {
-      success: true,
-      skipped: false,
-      data: completion,
-    };
-  } catch (error) {
-    if (!external) await t.rollback();
-    throw error;
-  }
-}
-
 async function updateWiringInventoryStatus(wiringId, newStatus) {
   const t = await sequelize.transaction();
 
@@ -728,17 +621,6 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
           inverter_quantity: inverterQty,
         },
         { transaction: t },
-      );
-    }
-    console.log("here kdj kjlk sdf", wiring.customer_id);
-    const completionResult = await createCompletionByCustomerId(
-      wiring.customer_id,
-      t,
-    );
-
-    if (!completionResult?.success) {
-      throw new Error(
-        completionResult?.message || "Completion creation failed",
       );
     }
 
@@ -913,6 +795,163 @@ async function uploadWiringDoc(customerId, wiringDocId, file) {
   }
 }
 
+async function createCompletionByCustomerId(customerId, transaction = null) {
+  const t = transaction || (await sequelize.transaction());
+  let external = !!transaction;
+
+  try {
+    // 🔹 check existing completion
+    const existing = await Cost.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // ✅ IMPORTANT: just skip, do NOT throw error
+    if (existing) {
+      return {
+        success: true,
+        skipped: true,
+        message: "Completion already exists",
+        data: existing,
+      };
+    }
+    /////////////////
+    ///// kit cost
+    /////////////
+
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!kit) {
+      throw new Error("Kit not found");
+    }
+
+    const kitItems = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["price", "tax"],
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!kitItems.length) {
+      throw new Error("No kit items found");
+    }
+
+    let kitCost = 0;
+
+    for (const item of kitItems) {
+      const price = Number(item.inventory?.price || 0);
+      const tax = Number(item.inventory?.tax || 0);
+      const qty = Number(item.qty || 0);
+
+      const priceWithTax = price + (price * tax) / 100;
+
+      kitCost += priceWithTax * qty;
+    }
+
+    /////////////
+    /// wire cost
+    ////////
+
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    let wireCost = 0;
+
+    if (wiring) {
+      const wiringItems = await WiringItem.findAll({
+        where: { wiring_id: wiring.id },
+        include: [
+          {
+            model: WireInventory,
+            as: "wire",
+            attributes: ["price", "tax"],
+          },
+        ],
+        transaction: t,
+      });
+
+      for (const w of wiringItems) {
+        const price = Number(w.wire?.price || 0);
+        const tax = Number(w.wire?.tax || 0);
+        const qty = Number(w.qty || 1);
+
+        const priceWithTax = price + (price * tax) / 100;
+
+        wireCost += priceWithTax * qty;
+      }
+    }
+
+    //////////////////////
+    /////Source Commission
+    //////////////////////
+
+    const commissionData = await Commission.findOne({
+      where: { customer_id: customerId },
+      attributes: ["commission"],
+      transaction: t,
+    });
+
+    let commission_cost = Number(commissionData?.commission || 0);
+
+    //////////////////////
+    /////Fab Commission
+    //////////////////////
+
+    const fab_commission = await FabricatorCommission.findOne({
+      where: { customer_id: customerId },
+      attributes: ["commission"],
+      transaction: t,
+    });
+
+    let fabricator_commission = Number(fab_commission?.commission || 0);
+
+    //////////////////////
+    /////Super Commission
+    //////////////////////
+
+    const sup_commission = await SupervisorCommission.findOne({
+      where: { customer_id: customerId },
+      attributes: ["commission"],
+      transaction: t,
+    });
+
+    let supervisor_commission = Number(sup_commission?.commission || 0);
+
+    const completion = await Cost.create(
+      {
+        customer_id: customerId,
+        kit_cost: kitCost,
+        wire_cost: wireCost,
+        supervisor_commission,
+        commission_cost,
+        fabricator_commission,
+        remarks: "Auto generated",
+      },
+      { transaction: t },
+    );
+
+    if (!external) await t.commit();
+
+    return {
+      success: true,
+      skipped: false,
+      data: completion,
+    };
+  } catch (error) {
+    if (!external) await t.rollback();
+    throw error;
+  }
+}
 async function moveToFinalStage(customerId, leadId) {
   const t = await sequelize.transaction();
 
@@ -952,6 +991,14 @@ async function moveToFinalStage(customerId, leadId) {
         transaction: t,
       },
     );
+
+    const completionResult = await createCompletionByCustomerId(customerId, t);
+
+    if (!completionResult?.success) {
+      throw new Error(
+        completionResult?.message || "Completion creation failed",
+      );
+    }
 
     // 🔹 Step 3: Ensure final_stage record exists
     await FinalStage.findOrCreate({
@@ -1384,123 +1431,216 @@ async function getPendingFabricatorCommissions() {
     throw error;
   }
 }
-
 async function updateCommissionById(id, commission, status) {
+  const t = await sequelize.transaction();
+
   try {
     if (!id) {
       throw new Error("Commission ID is required");
     }
 
-    // Optional validation
     const allowedStatus = ["pending", "approved", "paid"];
     if (status && !allowedStatus.includes(status)) {
       throw new Error("Invalid status value");
     }
 
-    const [updatedRows] = await Commission.update(
+    // 1️⃣ Get commission record (to fetch customer_id)
+    const commissionRecord = await Commission.findByPk(id, {
+      transaction: t,
+    });
+
+    if (!commissionRecord) {
+      throw new Error("Commission not found");
+    }
+
+    const customerId = commissionRecord.customer_id;
+
+    // 2️⃣ Update commission
+    await Commission.update(
       {
         ...(commission !== undefined && { commission }),
         ...(status && { status }),
       },
       {
         where: { id },
+        transaction: t,
       },
     );
 
-    if (updatedRows === 0) {
-      throw new Error("Commission not found or no changes made");
+    // 3️⃣ Update Cost table
+    const costData = await Cost.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (costData) {
+      await costData.update(
+        {
+          ...(commission !== undefined && {
+            commission_cost: commission,
+          }),
+        },
+        { transaction: t },
+      );
     }
 
-    // 🔹 Fetch updated record (optional but useful)
-    const updatedCommission = await Commission.findByPk(id);
+    // 4️⃣ Fetch updated commission
+    const updatedCommission = await Commission.findByPk(id, {
+      transaction: t,
+    });
+
+    await t.commit();
 
     return {
       success: true,
-      message: "Commission updated successfully",
+      message: "Commission updated and cost synced successfully",
       data: updatedCommission,
     };
   } catch (error) {
+    await t.rollback();
     console.error("❌ Error updating commission:", error);
     throw error;
   }
 }
-
 async function updateSupervisorCommissionById(id, commission, status) {
+  const t = await sequelize.transaction();
+
   try {
     if (!id) {
       throw new Error("Commission ID is required");
     }
 
-    // Optional validation
     const allowedStatus = ["pending", "approved", "paid"];
     if (status && !allowedStatus.includes(status)) {
       throw new Error("Invalid status value");
     }
 
-    const [updatedRows] = await SupervisorCommission.update(
+    // 1️⃣ Get existing record
+    const record = await SupervisorCommission.findByPk(id, {
+      transaction: t,
+    });
+
+    if (!record) {
+      throw new Error("Commission not found");
+    }
+
+    const customerId = record.customer_id;
+
+    // 2️⃣ Update supervisor commission
+    await SupervisorCommission.update(
       {
         ...(commission !== undefined && { commission }),
         ...(status && { status }),
       },
       {
         where: { id },
+        transaction: t,
       },
     );
 
-    if (updatedRows === 0) {
-      throw new Error("Commission not found or no changes made");
+    // 3️⃣ Update Cost table
+    const costData = await Cost.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (costData) {
+      await costData.update(
+        {
+          ...(commission !== undefined && {
+            supervisor_commission: commission,
+          }),
+        },
+        { transaction: t },
+      );
     }
 
-    // 🔹 Fetch updated record (optional but useful)
-    const updatedCommission = await SupervisorCommission.findByPk(id);
+    // 4️⃣ Fetch updated record
+    const updatedCommission = await SupervisorCommission.findByPk(id, {
+      transaction: t,
+    });
+
+    await t.commit();
 
     return {
       success: true,
-      message: "Commission updated successfully",
+      message: "Supervisor commission updated & cost synced",
       data: updatedCommission,
     };
   } catch (error) {
-    console.error("❌ Error updating commission:", error);
+    await t.rollback();
+    console.error("❌ Error updating supervisor commission:", error);
     throw error;
   }
 }
-
 async function updateFabricatorCommissionById(id, commission, status) {
+  const t = await sequelize.transaction();
+
   try {
     if (!id) {
       throw new Error("Commission ID is required");
     }
 
-    // Optional validation
     const allowedStatus = ["pending", "approved", "paid"];
     if (status && !allowedStatus.includes(status)) {
       throw new Error("Invalid status value");
     }
 
-    const [updatedRows] = await FabricatorCommission.update(
+    // 1️⃣ Get record
+    const record = await FabricatorCommission.findByPk(id, {
+      transaction: t,
+    });
+
+    if (!record) {
+      throw new Error("Commission not found");
+    }
+
+    const customerId = record.customer_id;
+
+    // 2️⃣ Update fabricator commission
+    await FabricatorCommission.update(
       {
         ...(commission !== undefined && { commission }),
         ...(status && { status }),
       },
       {
         where: { id },
+        transaction: t,
       },
     );
 
-    if (updatedRows === 0) {
-      throw new Error("Commission not found or no changes made");
+    // 3️⃣ Update Cost table
+    const costData = await Cost.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (costData) {
+      await costData.update(
+        {
+          ...(commission !== undefined && {
+            fabricator_commission: commission,
+          }),
+        },
+        { transaction: t },
+      );
     }
 
-    // 🔹 Fetch updated record (optional but useful)
-    const updatedCommission = await FabricatorCommission.findByPk(id);
+    // 4️⃣ Fetch updated record
+    const updatedCommission = await FabricatorCommission.findByPk(id, {
+      transaction: t,
+    });
+
+    await t.commit();
 
     return {
       success: true,
-      message: "Commission updated successfully",
+      message: "Fabricator commission updated & cost synced",
       data: updatedCommission,
     };
   } catch (error) {
-    console.error("❌ Error updating commission:", error);
+    await t.rollback();
+    console.error("❌ Error updating fabricator commission:", error);
     throw error;
   }
 }

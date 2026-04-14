@@ -515,14 +515,27 @@ CREATE TABLE unused_inventory (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE cost (
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-    total_cost NUMERIC(12,2) DEFAULT 0 CHECK (total_cost >= 0),
+
+    customer_id INTEGER UNIQUE NOT NULL 
+        REFERENCES customers(id) ON DELETE CASCADE,
+
+    kit_cost NUMERIC(12,2) DEFAULT 0 CHECK (kit_cost >= 0),
+    wire_cost NUMERIC(12,2) DEFAULT 0 CHECK (wire_cost >= 0),
+    extra_cost NUMERIC(12,2) DEFAULT 0 CHECK (extra_cost >= 0),
+    commission_cost NUMERIC(12,2) DEFAULT 0 CHECK (commission_cost >= 0),
+    fabricator_commission NUMERIC(12,2) DEFAULT 0 CHECK (fabricator_commission >= 0),
+    supervisor_commission NUMERIC(12,2) DEFAULT 0 CHECK (supervisor_commission >= 0),
+
+    total_cost NUMERIC(12,2) 
+        GENERATED ALWAYS AS (kit_cost + wire_cost + extra_cost) STORED,
+
     remarks TEXT,
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
 
 CREATE TABLE supervisor (
     id SERIAL PRIMARY KEY,
@@ -558,7 +571,6 @@ users,
 leads,
 lead_sources,
 lead_delays,
-stages,
 customers,
 customer_stages,
 lead_cancellations,
@@ -566,11 +578,30 @@ customer_documents,
 customer_document_files,
 customer_registration,
 panel_serials,
+inverter_serials,
+dispatch,
 file_generation,
 name_change,
 kit_ready,
 customer_loan,
 loan_docs,
 brands,
-kit_items
+kit_items,
+fabricator,
+fabrication,
+wiring,
+wire_inventory,
+drivers,
+cars,
+wiring_items,
+wiring_docs,
+final_stage,
+web_leads,
+commission,
+supervisor_commission,
+unused_inventory,
+completion,
+supervisor,
+fabricator_
+commission
 RESTART IDENTITY CASCADE;

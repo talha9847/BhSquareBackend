@@ -37,6 +37,27 @@ const Cost = sequelize.define(
         min: 0,
       },
     },
+    commission_cost: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    fabricator_commission: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+    supervisor_commission: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
 
     extra_cost: {
       type: DataTypes.DECIMAL(12, 2),

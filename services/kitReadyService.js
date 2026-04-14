@@ -437,7 +437,6 @@ async function deleteInventory(id) {
     throw error;
   }
 }
-
 async function addKitItemsByCustomer(customerId) {
   const transaction = await sequelize.transaction();
 
@@ -446,7 +445,7 @@ async function addKitItemsByCustomer(customerId) {
       throw new Error("Customer ID is required");
     }
 
-    // 🔹 Find the kit for this customer (100% present)
+    // 🔹 Find kit
     const kit = await KitReady.findOne({
       where: { customer_id: customerId },
       attributes: ["id"],
@@ -457,7 +456,7 @@ async function addKitItemsByCustomer(customerId) {
       throw new Error("Kit not found for this customer");
     }
 
-    // 🔹 Check if kit items already exist for this kit
+    // 🔹 Check existing items
     const existing = await KitItems.findOne({
       where: { kit_id: kit.id },
       transaction,
@@ -468,12 +467,21 @@ async function addKitItemsByCustomer(customerId) {
       return { message: "Kit items already exist for this customer" };
     }
 
-    // 🔹 Inventory IDs to insert
-    const inventoryIds = [6, 7, 8, 9, 10];
+    // ✅ 🔥 Fetch inventory where category_id = 2
+    const inventories = await Inventory.findAll({
+      where: { category_id: 2 },
+      attributes: ["id"],
+      transaction,
+    });
 
-    const items = inventoryIds.map((invId) => ({
+    if (!inventories.length) {
+      throw new Error("No inventory found for category_id = 2");
+    }
+
+    // 🔹 Prepare items
+    const items = inventories.map((inv) => ({
       kit_id: kit.id,
-      inventory_id: invId,
+      inventory_id: inv.id,
       qty: 0,
       status: "pending",
     }));
