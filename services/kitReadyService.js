@@ -115,6 +115,53 @@ async function updateLoanStatus(loanRequired, customerId) {
     throw error;
   }
 }
+async function updateLoanStatusFromRegisration(loanRequired, customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (loanRequired) {
+      // 2️⃣ Update CustomerStage → Loan stage (id = 5)
+      await CustomerStage.update(
+        { status: "pending", started_at: new Date() },
+        {
+          where: {
+            customer_id: customerId,
+            stage_id: 5,
+          },
+          transaction: t,
+        },
+      );
+
+      // 3️⃣ Insert into Loan table if not exists
+      const existingLoan = await Loan.findOne({
+        where: { customer_id: customerId },
+        transaction: t,
+      });
+
+      if (!existingLoan) {
+        await Loan.create(
+          {
+            customer_id: customerId,
+            bank_name: "",
+            is_applied: false,
+            estimated: null,
+            loan_amount: null,
+            interest_rate: null,
+            bank_remarks: "",
+            is_approved: false,
+          },
+          { transaction: t },
+        );
+      }
+    }
+
+    await t.commit();
+    return true;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
 
 async function getAllBrands() {
   try {
@@ -1209,4 +1256,5 @@ module.exports = {
   createUnusedInventory,
   getUnusedInventoryByCustomerId,
   deleteUnusedInventory,
+  updateLoanStatusFromRegisration,
 };

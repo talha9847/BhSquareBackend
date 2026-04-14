@@ -12,6 +12,7 @@ const { CustomerStage } = require("../models/customerStageModel");
 const { Op } = require("sequelize");
 const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
+const { Loan } = require("../models/loanModel");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -60,23 +61,37 @@ async function getCustomersWithSummary() {
             "panel_qty",
             "status",
           ],
-          required: true, // only include customers with a registration
+          required: true,
           where: {
             status: {
               [Op.in]: ["pending", "approved"],
             },
           },
         },
+        {
+          model: Loan,
+          as: "loans",
+          attributes: ["id"], // only need id
+          required: false, // important
+        },
       ],
 
-      order: [
-        [sequelize.col("lead.created_at"), "DESC"], // order by lead creation date
-      ],
+      order: [[sequelize.col("lead.created_at"), "DESC"]],
     });
 
-    return customers;
+    // ✅ Append boolean flag
+    const result = customers.map((c) => {
+      const data = c.toJSON();
+
+      return {
+        ...data,
+        hasLoan: data.loans && data.loans.length > 0, // ✅ correct
+      };
+    });
+
+    return result;
   } catch (error) {
-    console.error("❌ Error fetching pending customers:", error);
+    console.error("❌ Error fetching customers:", error);
     throw error;
   }
 }
@@ -364,12 +379,15 @@ async function markRegistrationAsDone(
     });
 
     let isNewKit = false;
-
+    const loanExists = await Loan.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
     if (!kit) {
       kit = await KitReady.create(
         {
           customer_id: customerId,
-          loan_status: "pending",
+          loan_status: loanExists ? "required" : "pending", // ✅ condition applied
           status: "pending",
         },
         { transaction: t },

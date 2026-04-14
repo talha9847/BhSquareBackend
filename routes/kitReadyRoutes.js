@@ -12,6 +12,11 @@ router.post(
   kitReadyController.updateLoan,
 );
 router.post(
+  "/updateLoanFromRegistration",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateLoanFromRegistration,
+);
+router.post(
   "/createInventory",
   middleware.authMiddleware(["admin"]),
   kitReadyController.createInventory,
