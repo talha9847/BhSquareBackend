@@ -19,6 +19,7 @@ const { Wiring } = require("../models/wiringModel");
 const { WiringItem } = require("../models/wiringItemModel");
 const { WireInventory } = require("../models/wireInventoryModel");
 const { Supervisor } = require("../models/supervisorModel");
+const { SupervisorCommission } = require("../models/supervisorCommissionModel");
 
 async function getSources() {
   try {
@@ -239,7 +240,48 @@ async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
 
     fabrication.supervisor_id = supervisor_id;
     await fabrication.save({ transaction: t });
+    const customer = await Customer.findOne({
+      where: { id: customer_id },
+      include: [
+        {
+          model: Lead,
+          as: "lead",
+          attributes: ["id", "total_capacity", "installation_type"],
+        },
+      ],
+      transaction: t,
+    });
 
+    if (!customer || !customer.lead) {
+      throw new Error("Lead not found for this customer");
+    }
+
+    const total_kw = customer.lead.total_capacity / 1000;
+    const type = customer.lead.installation_type; // Residential / Commercial / Industrial
+
+    // 4️⃣ Check SupervisorCommission
+    let supervisorCommission = await SupervisorCommission.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!supervisorCommission) {
+      // ✅ CREATE
+      supervisorCommission = await SupervisorCommission.create(
+        {
+          supervisor_id,
+          customer_id,
+          total_kw,
+          type,
+          status: "pending",
+        },
+        { transaction: t },
+      );
+    } else {
+      // ✅ UPDATE only supervisor_id
+      supervisorCommission.supervisor_id = supervisor_id;
+      await supervisorCommission.save({ transaction: t });
+    }
     await t.commit();
 
     return {

@@ -255,6 +255,8 @@ const { Fabrication } = require("../models/fabricationModel");
 const { Commission } = require("../models/commissionModel");
 const { Source } = require("../models/sourceModel");
 const { UnusedInventory } = require("../models/UnusedInventoryModel");
+const { SupervisorCommission } = require("../models/supervisorCommissionModel");
+const { Supervisor } = require("../models/supervisorModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -913,6 +915,113 @@ async function moveToFinalStage(customerId, leadId) {
   }
 }
 
+async function createCompletionByCustomerId(customerId, transaction = null) {
+  const t = transaction || (await sequelize.transaction());
+  let external = !!transaction;
+
+  try {
+    // 🔹 check existing completion
+    const existing = await Completion.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // ✅ IMPORTANT: just skip, do NOT throw error
+    if (existing) {
+      return {
+        success: true,
+        skipped: true,
+        message: "Completion already exists",
+        data: existing,
+      };
+    }
+    /////////////////
+    ///// kit cost
+    /////////////
+
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!kit) {
+      throw new Error("Kit not found");
+    }
+
+    const kitItems = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["price"],
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!kitItems.length) {
+      throw new Error("No kit items found");
+    }
+
+    let kitCost = 0;
+
+    for (const item of kitItems) {
+      kitCost += Number(item.inventory?.price || 0) * Number(item.qty || 0);
+    }
+
+    /////////////
+    /// wire cost
+    ////////
+
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    let wireCost = 0;
+
+    if (wiring) {
+      const wiringItems = await WiringItem.findAll({
+        where: { wiring_id: wiring.id },
+        include: [
+          {
+            model: WireInventory,
+            as: "wire",
+            attributes: ["price"],
+          },
+        ],
+        transaction: t,
+      });
+
+      for (const w of wiringItems) {
+        wireCost += Number(w.wire?.price || 0) * Number(w.qty || 1);
+      }
+    }
+
+    const completion = await Completion.create(
+      {
+        customer_id: customerId,
+        kit_cost: kitCost,
+        wire_cost: wireCost,
+        remarks: "Auto generated",
+      },
+      { transaction: t },
+    );
+
+    if (!external) await t.commit();
+
+    return {
+      success: true,
+      skipped: false,
+      data: completion,
+    };
+  } catch (error) {
+    if (!external) await t.rollback();
+    throw error;
+  }
+}
+
 async function getWiringCustomerDetailsById(technicianId) {
   try {
     const wirings = await Wiring.findAll({
@@ -1115,6 +1224,89 @@ async function getPendingCommissions() {
     throw error;
   }
 }
+async function getPendingSupervisorCommissions() {
+  try {
+    const commissions = await SupervisorCommission.findAll({
+      where: {
+        status: "pending",
+      },
+
+      attributes: [
+        "id",
+        "total_kw",
+        "type",
+        "commission",
+        "status",
+        "created_at",
+      ],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number", "source_id"],
+            },
+          ],
+        },
+
+        {
+          model: Supervisor,
+          as: "supervisor",
+          attributes: [
+            "id",
+            "name",
+            "residential_commission",
+            "commercial_commission",
+          ],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    // 🔥 Compute commission dynamically
+    const result = commissions.map((item) => {
+      const type = item.type;
+      let rate = 0;
+
+      if (type === "Residential") {
+        rate = item.supervisor?.residential_commission;
+      } else if (type === "Industrial") {
+        rate = item.supervisor?.commercial_commission;
+      } else if (type === "Commercial") {
+        rate = item.supervisor?.commercial_commission;
+      }
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        type: item.type,
+        commission: item.commission,
+        status: item.status,
+        created_at: item.created_at,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        source_name: item.supervisor?.name,
+
+        // 🔥 ONLY ONE COMMISSION (calculated)
+        commission_per_kw: Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching commissions:", error);
+    throw error;
+  }
+}
 
 async function updateCommissionById(id, commission, status) {
   try {
@@ -1144,6 +1336,46 @@ async function updateCommissionById(id, commission, status) {
 
     // 🔹 Fetch updated record (optional but useful)
     const updatedCommission = await Commission.findByPk(id);
+
+    return {
+      success: true,
+      message: "Commission updated successfully",
+      data: updatedCommission,
+    };
+  } catch (error) {
+    console.error("❌ Error updating commission:", error);
+    throw error;
+  }
+}
+
+async function updateSupervisorCommissionById(id, commission, status) {
+  try {
+    if (!id) {
+      throw new Error("Commission ID is required");
+    }
+
+    // Optional validation
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (status && !allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const [updatedRows] = await SupervisorCommission.update(
+      {
+        ...(commission !== undefined && { commission }),
+        ...(status && { status }),
+      },
+      {
+        where: { id },
+      },
+    );
+
+    if (updatedRows === 0) {
+      throw new Error("Commission not found or no changes made");
+    }
+
+    // 🔹 Fetch updated record (optional but useful)
+    const updatedCommission = await SupervisorCommission.findByPk(id);
 
     return {
       success: true,
@@ -1410,4 +1642,6 @@ module.exports = {
   getCommissionsByStatus,
   getWiringCustomerDetailsByStatus,
   getWiringItemsByCustomerId,
+  getPendingSupervisorCommissions,
+  updateSupervisorCommissionById,
 };

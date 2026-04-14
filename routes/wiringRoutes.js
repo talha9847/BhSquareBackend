@@ -96,6 +96,11 @@ router.get(
   wiringController.getPendingCommissions,
 );
 router.get(
+  "/getPendingSupervisorCommissions",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getPendingSupervisorCommissions,
+);
+router.get(
   "/getFabricationDetailsById",
   middleware.authMiddleware(["fabricator"]),
   wiringController.getFabricationDetailsById,
@@ -104,6 +109,11 @@ router.put(
   "/updateCommission/:id",
   middleware.authMiddleware(["admin"]),
   wiringController.updateCommission,
+);
+router.put(
+  "/updateSupervisorCommission/:id",
+  middleware.authMiddleware(["admin"]),
+  wiringController.updateSupervisorCommission,
 );
 
 router.get(

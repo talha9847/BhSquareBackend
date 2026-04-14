@@ -477,7 +477,27 @@ CREATE TABLE commission (
     status VARCHAR(50), -- e.g. 'pending', 'paid'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-  
+
+
+  CREATE TABLE supervisor_commission (
+    id SERIAL PRIMARY KEY,
+
+    supervisor_id INT NOT NULL
+        REFERENCES supervisor(id) ON DELETE CASCADE,
+
+    customer_id INT
+        REFERENCES customers(id) ON DELETE CASCADE,
+
+    total_kw DECIMAL(10,2),
+
+    type VARCHAR(50), -- 'commercial' or 'residential'
+
+    commission DECIMAL(10,2),
+
+    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'paid'
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 
 CREATE TABLE unused_inventory (

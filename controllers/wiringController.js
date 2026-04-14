@@ -526,12 +526,49 @@ async function getPendingCommissions(req, res) {
     });
   }
 }
+async function getPendingSupervisorCommissions(req, res) {
+  try {
+    const result = await wiringService.getPendingSupervisorCommissions();
+
+    return res.json({
+      success: true,
+      message: "Pending commissions fetched successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending commissions",
+    });
+  }
+}
 async function updateCommission(req, res) {
   try {
     const { id } = req.params;
     const { commission, status } = req.body;
 
     const result = await wiringService.updateCommissionById(
+      id,
+      commission,
+      status,
+    );
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update commission",
+    });
+  }
+}
+async function updateSupervisorCommission(req, res) {
+  try {
+    const { id } = req.params;
+    const { commission, status } = req.body;
+
+    const result = await wiringService.updateSupervisorCommissionById(
       id,
       commission,
       status,
@@ -634,4 +671,6 @@ module.exports = {
   getCommissionsByStatus,
   getWiringCustomerDetailsByStatus,
   getWiringItemsByCustomerId,
+  getPendingSupervisorCommissions,
+  updateSupervisorCommission,
 };
