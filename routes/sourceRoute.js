@@ -9,9 +9,20 @@ router.get(
   sourceController.fetchSources,
 );
 router.get(
+  "/fetchSupervisor",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchSupervisor,
+);
+
+router.get(
   "/fetchAllSources",
   middleware.authMiddleware(["admin"]),
   sourceController.fetchAllSources,
+);
+router.get(
+  "/fetchAllSupervisor",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchAllSupervisor,
 );
 
 router.put(
@@ -19,10 +30,22 @@ router.put(
   middleware.authMiddleware(["admin"]),
   sourceController.updateSource,
 );
+
+router.put(
+  "/updateSupervisor/:id",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateSupervisor,
+);
+
 router.post(
   "/addSource",
   middleware.authMiddleware(["admin"]),
   sourceController.addSource,
+);
+router.post(
+  "/addSupervisor",
+  middleware.authMiddleware(["admin"]),
+  sourceController.addSupervisor,
 );
 router.get(
   "/getFinalStageCustomers",

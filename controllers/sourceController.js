@@ -15,19 +15,62 @@ async function fetchSources(req, res) {
     });
   }
 }
+async function fetchSupervisor(req, res) {
+  try {
+    const sources = await sourceService.getSupervisor();
+
+    return res.status(200).json({
+      success: true,
+      data: sources,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
 
 async function addSource(req, res) {
   try {
-    const { name } = req.body;
+    const { name, residential_commission, commercial_commission } = req.body;
 
-    if (!name) {
+    if (!name || !residential_commission || !commercial_commission) {
       return res.status(400).json({
         success: false,
-        message: "source_name is required",
+        message: "name, residential_commission,commercial_commission required",
       });
     }
 
-    const source = await sourceService.addSource(name);
+    return res.status(201).json({
+      success: true,
+      message: "Source added successfully",
+      data: source,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function addSupervisor(req, res) {
+  try {
+    const { name, residential_commission, commercial_commission } = req.body;
+
+    if (!name || !residential_commission || !commercial_commission) {
+      return res.status(400).json({
+        success: false,
+        message: "name, residential_commission,commercial_commission required",
+      });
+    }
+
+    const source = await sourceService.addSupervisor(
+      name,
+      residential_commission,
+      commercial_commission,
+    );
 
     return res.status(201).json({
       success: true,
@@ -45,6 +88,21 @@ async function addSource(req, res) {
 async function fetchAllSources(req, res) {
   try {
     const sources = await sourceService.getAllSources();
+    return res.status(200).json({
+      success: true,
+      data: sources,
+    });
+  } catch (error) {
+    console.error("Error fetching sources:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+async function fetchAllSupervisor(req, res) {
+  try {
+    const sources = await sourceService.getAllSupervisors();
     return res.status(200).json({
       success: true,
       data: sources,
@@ -260,6 +318,28 @@ async function updateSource(req, res) {
     const { name, commercial_commission, residential_commission } = req.body;
 
     const fabricator = await sourceService.updateSources(id, {
+      name,
+      commercial_commission,
+      residential_commission,
+    });
+    return res.status(200).json({
+      success: true,
+      data: fabricator,
+    });
+  } catch (error) {
+    console.error("Error updating fabricator:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update fabricator",
+    });
+  }
+}
+async function updateSupervisor(req, res) {
+  try {
+    const { id } = req.params;
+    const { name, commercial_commission, residential_commission } = req.body;
+
+    const fabricator = await sourceService.updateSupervisor(id, {
       name,
       commercial_commission,
       residential_commission,
@@ -572,4 +652,8 @@ module.exports = {
   getPaidCommissionBySourceId,
   getCompletionReport,
   updateExtraCost,
+  fetchSupervisor,
+  fetchAllSupervisor,
+  addSupervisor,
+  updateSupervisor,
 };

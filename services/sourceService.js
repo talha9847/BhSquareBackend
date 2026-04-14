@@ -18,6 +18,7 @@ const { Op } = require("sequelize");
 const { Wiring } = require("../models/wiringModel");
 const { WiringItem } = require("../models/wiringItemModel");
 const { WireInventory } = require("../models/wireInventoryModel");
+const { Supervisor } = require("../models/supervisorModel");
 
 async function getSources() {
   try {
@@ -31,8 +32,20 @@ async function getSources() {
     throw error;
   }
 }
+async function getSupervisor() {
+  try {
+    const sources = await Supervisor.findAll({
+      attributes: ["id", "name"],
+      order: [["id", "ASC"]],
+    });
 
-async function addSource(name) {
+    return sources;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function addSource(name, commercial_commission, residential_commission) {
   try {
     if (!name) {
       throw new Error("Source name is required");
@@ -40,6 +53,29 @@ async function addSource(name) {
 
     const source = await Source.create({
       name,
+      commercial_commission,
+      residential_commission,
+    });
+
+    return source;
+  } catch (error) {
+    throw error;
+  }
+}
+async function addSupervisor(
+  name,
+  residential_commission,
+  commercial_commission,
+) {
+  try {
+    if (!name) {
+      throw new Error("Supervisor name is required");
+    }
+
+    const source = await Supervisor.create({
+      name,
+      commercial_commission,
+      residential_commission,
     });
 
     return source;
@@ -59,6 +95,17 @@ async function getAllSources() {
     throw error;
   }
 }
+async function getAllSupervisors() {
+  try {
+    const fabricators = await Supervisor.findAll({
+      order: [["created_at", "DESC"]],
+    });
+    return fabricators;
+  } catch (error) {
+    console.error("Error fetching fabricators:", error);
+    throw error;
+  }
+}
 
 async function updateSources(
   id,
@@ -67,6 +114,34 @@ async function updateSources(
   const t = await sequelize.transaction();
   try {
     const fabricator = await Source.findByPk(id, { transaction: t });
+    if (!fabricator) {
+      throw new Error("Fabricator not found");
+    }
+
+    fabricator.name = name ?? fabricator.name;
+    fabricator.commercial_commission =
+      commercial_commission ?? fabricator.commercial_commission;
+    fabricator.residential_commission =
+      residential_commission ?? fabricator.residential_commission;
+
+    await fabricator.save({ transaction: t });
+    await t.commit();
+
+    return fabricator;
+  } catch (error) {
+    await t.rollback();
+    console.error("Error updating fabricator:", error);
+    throw error;
+  }
+}
+
+async function updateSupervisor(
+  id,
+  { name, commercial_commission, residential_commission },
+) {
+  const t = await sequelize.transaction();
+  try {
+    const fabricator = await Supervisor.findByPk(id, { transaction: t });
     if (!fabricator) {
       throw new Error("Fabricator not found");
     }
@@ -1268,4 +1343,8 @@ module.exports = {
   updateStage14,
   getCompletionReport,
   updateExtraCostById,
+  getSupervisor,
+  getAllSupervisors,
+  addSupervisor,
+  updateSupervisor,
 };
