@@ -21,6 +21,14 @@ const FinalStage = sequelize.define(
       },
       onDelete: "CASCADE",
     },
+    supervisor_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "supervisor",
+        key: "id",
+      },
+    },
 
     file_approved: {
       type: DataTypes.BOOLEAN,

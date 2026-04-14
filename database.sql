@@ -423,7 +423,7 @@ CREATE TABLE wiring_docs (
 
     customer_id INTEGER NOT NULL
         REFERENCES customers(id) ON DELETE CASCADE,
-
+supervisor_id INTEGER REFERENCES supervisor(id),
     file_approved BOOLEAN DEFAULT FALSE,
     file_uploaded BOOLEAN DEFAULT FALSE,
     inspection BOOLEAN DEFAULT FALSE,

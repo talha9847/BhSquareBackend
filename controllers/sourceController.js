@@ -143,6 +143,36 @@ async function getFinalStageCustomers(req, res) {
   }
 }
 
+async function updateSupervisorViaId(req, res) {
+  try {
+    const { customer_id, supervisor_id } = req.body;
+
+    if (!customer_id || !supervisor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "customer_id and fabricator_id are required",
+      });
+    }
+
+    const result = await sourceService.assignSupervisorByCustomerId({
+      customer_id,
+      supervisor_id,
+    });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error in updateFabricator controller:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to assign supervisor",
+    });
+  }
+}
+
 async function updateStage10(req, res) {
   try {
     const { customerId, flag } = req.body;
@@ -656,4 +686,5 @@ module.exports = {
   fetchAllSupervisor,
   addSupervisor,
   updateSupervisor,
+  updateSupervisorViaId,
 };

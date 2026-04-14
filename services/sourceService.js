@@ -189,6 +189,11 @@ async function getFinalStageCustomers() {
             },
           ],
         },
+        {
+          model: Supervisor,
+          as: "supervisor", // ✅ IMPORTANT (must match association alias)
+          attributes: ["id", "name"],
+        },
       ],
       order: [["created_at", "DESC"]],
     });
@@ -202,6 +207,9 @@ async function getFinalStageCustomers() {
       contact_number: f.customer?.lead?.contact_number || null,
       address: f.customer?.lead?.address || null,
 
+      supervisor_id: f.supervisor?.id || null,
+      supervisor_name: f.supervisor?.name || null,
+
       file_uploaded: f.file_uploaded,
       file_approved: f.file_approved,
       inspection: f.inspection,
@@ -213,6 +221,36 @@ async function getFinalStageCustomers() {
   } catch (error) {
     console.error("Error fetching final stage customers:", error);
     throw error;
+  }
+}
+
+async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
+  const t = await sequelize.transaction();
+  try {
+    // 1️⃣ Find the fabrication record by customer_id
+    const fabrication = await FinalStage.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!fabrication) {
+      throw new Error("Supervisor record not found for this customer");
+    }
+
+    fabrication.supervisor_id = supervisor_id;
+    await fabrication.save({ transaction: t });
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: `Supervisor assigned successfully for customer_id ${customer_id}`,
+      data: fabrication,
+    };
+  } catch (error) {
+    await t.rollback();
+    console.error("Error assigning Supervisor:", error);
+    return { success: false, message: error.message };
   }
 }
 
@@ -1347,4 +1385,5 @@ module.exports = {
   getAllSupervisors,
   addSupervisor,
   updateSupervisor,
+  assignSupervisorByCustomerId,
 };

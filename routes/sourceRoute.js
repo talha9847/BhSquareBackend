@@ -47,6 +47,12 @@ router.post(
   middleware.authMiddleware(["admin"]),
   sourceController.addSupervisor,
 );
+
+router.put(
+  "/updateSupervisorViaId",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateSupervisorViaId,
+);
 router.get(
   "/getFinalStageCustomers",
   middleware.authMiddleware(["admin"]),
