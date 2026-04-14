@@ -258,6 +258,7 @@ const { UnusedInventory } = require("../models/UnusedInventoryModel");
 const { SupervisorCommission } = require("../models/supervisorCommissionModel");
 const { Supervisor } = require("../models/supervisorModel");
 const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
+const { Cost } = require("../models/costModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -922,7 +923,7 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
 
   try {
     // 🔹 check existing completion
-    const existing = await Completion.findOne({
+    const existing = await Cost.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
@@ -1000,7 +1001,7 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
       }
     }
 
-    const completion = await Completion.create(
+    const completion = await Cost.create(
       {
         customer_id: customerId,
         kit_cost: kitCost,

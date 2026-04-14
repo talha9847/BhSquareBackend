@@ -2,8 +2,8 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 const { Customer } = require("./customerModel");
 
-const Completion = sequelize.define(
-  "Completion",
+const Cost = sequelize.define(
+  "Cost",
   {
     id: {
       type: DataTypes.INTEGER,
@@ -59,9 +59,9 @@ const Completion = sequelize.define(
     },
   },
   {
-    tableName: "completion",
+    tableName: "cost",
     timestamps: false,
   },
 );
 
-module.exports = { Completion };
+module.exports = { Cost };

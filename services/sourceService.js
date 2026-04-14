@@ -1,6 +1,6 @@
 const sequelize = require("../config/db");
 const { Commission } = require("../models/commissionModel");
-const { Completion } = require("../models/completionModel");
+const {  Cost } = require("../models/costModel");
 const { Customer } = require("../models/customerModel");
 const { CustomerStage } = require("../models/customerStageModel");
 const { Fabricator } = require("../models/fabricatorModel");
@@ -908,7 +908,7 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
 
   try {
     // 🔹 check existing completion
-    const existing = await Completion.findOne({
+    const existing = await Cost.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
@@ -986,7 +986,7 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
       }
     }
 
-    const completion = await Completion.create(
+    const completion = await Cost.create(
       {
         customer_id: customerId,
         kit_cost: kitCost,
@@ -1324,7 +1324,7 @@ async function getCompletionReport({ startDate, endDate }) {
       [Op.between]: [startDate, endDate],
     };
 
-    const completions = await Completion.findAll({
+    const completions = await Cost.findAll({
       where: whereCondition,
       include: [
         {
@@ -1378,7 +1378,7 @@ async function updateExtraCostById(id, extraCost) {
     }
 
     // 🔹 find completion
-    const completion = await Completion.findByPk(id);
+    const completion = await Cost.findByPk(id);
 
     if (!completion) {
       return {

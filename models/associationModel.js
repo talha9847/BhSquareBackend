@@ -33,7 +33,7 @@ const { Permission } = require("./permissionModel");
 const { Page } = require("./pageModel");
 const { Commission } = require("./commissionModel");
 const { UnusedInventory } = require("./UnusedInventoryModel");
-const { Completion } = require("./completionModel");
+const { Cost } = require("./costModel");
 const { Supervisor } = require("./supervisorModel");
 const { SupervisorCommission } = require("./supervisorCommissionModel");
 const { FabricatorCommission } = require("./fabricatorCommissionModel");
@@ -332,13 +332,13 @@ Inventory.hasMany(UnusedInventory, {
   as: "unused_inventory",
 });
 
-Completion.belongsTo(Customer, {
+Cost.belongsTo(Customer, {
   foreignKey: "customer_id",
   as: "customer",
 });
-Customer.hasOne(Completion, {
+Customer.hasOne(Cost, {
   foreignKey: "customer_id",
-  as: "completion",
+  as: "cost",
 });
 
 FinalStage.belongsTo(Supervisor, {
@@ -427,7 +427,6 @@ module.exports = {
   Permission,
   Commission,
   UnusedInventory,
-  Completion,
   Supervisor,
   SupervisorCommission,
   FabricatorCommission,

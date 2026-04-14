@@ -515,7 +515,7 @@ CREATE TABLE unused_inventory (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE completion (
+CREATE TABLE cost (
     id SERIAL PRIMARY KEY,
     customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     total_cost NUMERIC(12,2) DEFAULT 0 CHECK (total_cost >= 0),
