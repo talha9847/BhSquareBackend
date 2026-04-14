@@ -849,16 +849,20 @@ async function updateStage14(customerId, flag) {
       // );
 
       // 🔥 IMPORTANT: await + pass transaction
-      const completionResult = await createCompletionByCustomerId(
-        customerId,
-        t,
-      );
+      // const completionResult = await createCompletionByCustomerId(
+      //   customerId,
+      //   t,
+      // );
 
-      if (!completionResult?.success) {
-        throw new Error(
-          completionResult?.message || "Completion creation failed",
-        );
-      }
+      // if (!completionResult?.success) {
+      //   throw new Error(
+      //     completionResult?.message || "Completion creation failed",
+      //   );
+      // }
+
+
+
+
       await finalStage.update(
         {
           disbursal: true,
@@ -902,6 +906,7 @@ async function updateStage14(customerId, flag) {
     throw error;
   }
 }
+
 async function createCompletionByCustomerId(customerId, transaction = null) {
   const t = transaction || (await sequelize.transaction());
   let external = !!transaction;

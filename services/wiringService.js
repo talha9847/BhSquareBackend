@@ -259,6 +259,7 @@ const { SupervisorCommission } = require("../models/supervisorCommissionModel");
 const { Supervisor } = require("../models/supervisorModel");
 const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
 const { Cost } = require("../models/costModel");
+const { KitReady } = require("../models/kitReadyModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -362,6 +363,7 @@ async function addWiringItem({ wiring_id, wire_inventory_id, qty }) {
     };
   }
 }
+
 async function getIssuedWiresByWiringId(wiring_id) {
   try {
     if (!wiring_id) {
@@ -451,6 +453,113 @@ async function updateWiringTechnician(wiringId, technicianId) {
     await t.rollback();
     console.error("Error updating technician:", error);
     return { success: false, message: error.message };
+  }
+}
+
+async function createCompletionByCustomerId(customerId, transaction = null) {
+  const t = transaction || (await sequelize.transaction());
+  let external = !!transaction;
+
+  try {
+    // 🔹 check existing completion
+    const existing = await Cost.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // ✅ IMPORTANT: just skip, do NOT throw error
+    if (existing) {
+      return {
+        success: true,
+        skipped: true,
+        message: "Completion already exists",
+        data: existing,
+      };
+    }
+    /////////////////
+    ///// kit cost
+    /////////////
+
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!kit) {
+      throw new Error("Kit not found");
+    }
+
+    const kitItems = await KitItems.findAll({
+      where: { kit_id: kit.id },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["price"],
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!kitItems.length) {
+      throw new Error("No kit items found");
+    }
+
+    let kitCost = 0;
+
+    for (const item of kitItems) {
+      kitCost += Number(item.inventory?.price || 0) * Number(item.qty || 0);
+    }
+
+    /////////////
+    /// wire cost
+    ////////
+
+    const wiring = await Wiring.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    let wireCost = 0;
+
+    if (wiring) {
+      const wiringItems = await WiringItem.findAll({
+        where: { wiring_id: wiring.id },
+        include: [
+          {
+            model: WireInventory,
+            as: "wire",
+            attributes: ["price"],
+          },
+        ],
+        transaction: t,
+      });
+
+      for (const w of wiringItems) {
+        wireCost += Number(w.wire?.price || 0) * Number(w.qty || 1);
+      }
+    }
+
+    const completion = await Cost.create(
+      {
+        customer_id: customerId,
+        kit_cost: kitCost,
+        wire_cost: wireCost,
+        remarks: "Auto generated",
+      },
+      { transaction: t },
+    );
+
+    if (!external) await t.commit();
+
+    return {
+      success: true,
+      skipped: false,
+      data: completion,
+    };
+  } catch (error) {
+    if (!external) await t.rollback();
+    throw error;
   }
 }
 
@@ -619,6 +728,17 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
           inverter_quantity: inverterQty,
         },
         { transaction: t },
+      );
+    }
+    console.log("here kdj kjlk sdf", wiring.customer_id);
+    const completionResult = await createCompletionByCustomerId(
+      wiring.customer_id,
+      t,
+    );
+
+    if (!completionResult?.success) {
+      throw new Error(
+        completionResult?.message || "Completion creation failed",
       );
     }
 
@@ -913,113 +1033,6 @@ async function moveToFinalStage(customerId, leadId) {
     await t.rollback();
     console.error("❌ Error moving to final stage:", error);
 
-    throw error;
-  }
-}
-
-async function createCompletionByCustomerId(customerId, transaction = null) {
-  const t = transaction || (await sequelize.transaction());
-  let external = !!transaction;
-
-  try {
-    // 🔹 check existing completion
-    const existing = await Cost.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    // ✅ IMPORTANT: just skip, do NOT throw error
-    if (existing) {
-      return {
-        success: true,
-        skipped: true,
-        message: "Completion already exists",
-        data: existing,
-      };
-    }
-    /////////////////
-    ///// kit cost
-    /////////////
-
-    const kit = await KitReady.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    if (!kit) {
-      throw new Error("Kit not found");
-    }
-
-    const kitItems = await KitItems.findAll({
-      where: { kit_id: kit.id },
-      include: [
-        {
-          model: Inventory,
-          as: "inventory",
-          attributes: ["price"],
-        },
-      ],
-      transaction: t,
-    });
-
-    if (!kitItems.length) {
-      throw new Error("No kit items found");
-    }
-
-    let kitCost = 0;
-
-    for (const item of kitItems) {
-      kitCost += Number(item.inventory?.price || 0) * Number(item.qty || 0);
-    }
-
-    /////////////
-    /// wire cost
-    ////////
-
-    const wiring = await Wiring.findOne({
-      where: { customer_id: customerId },
-      transaction: t,
-    });
-
-    let wireCost = 0;
-
-    if (wiring) {
-      const wiringItems = await WiringItem.findAll({
-        where: { wiring_id: wiring.id },
-        include: [
-          {
-            model: WireInventory,
-            as: "wire",
-            attributes: ["price"],
-          },
-        ],
-        transaction: t,
-      });
-
-      for (const w of wiringItems) {
-        wireCost += Number(w.wire?.price || 0) * Number(w.qty || 1);
-      }
-    }
-
-    const completion = await Cost.create(
-      {
-        customer_id: customerId,
-        kit_cost: kitCost,
-        wire_cost: wireCost,
-        remarks: "Auto generated",
-      },
-      { transaction: t },
-    );
-
-    if (!external) await t.commit();
-
-    return {
-      success: true,
-      skipped: false,
-      data: completion,
-    };
-  } catch (error) {
-    if (!external) await t.rollback();
     throw error;
   }
 }
