@@ -1477,6 +1477,93 @@ async function getCommissionsByStatus(status) {
   }
 }
 
+async function getSupervisorCommissionsByStatus(status) {
+  try {
+    if (!status) {
+      throw new Error("Status is required");
+    }
+
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (!allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const commissions = await SupervisorCommission.findAll({
+      where: { status },
+
+      attributes: [
+        "id",
+        "total_kw",
+        "type",
+        "commission",
+        "status",
+        "created_at",
+      ],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number"],
+            },
+          ],
+        },
+        {
+          model: Supervisor,
+          as: "supervisor",
+          attributes: [
+            "id",
+            "name",
+            "residential_commission",
+            "commercial_commission",
+          ],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    const result = commissions.map((item) => {
+      let rate = 0;
+
+      if (item.type === "Residential") {
+        rate = item.supervisor?.residential_commission;
+      } else if (item.type === "Commercial") {
+        rate = item.supervisor?.commercial_commission;
+      } else if (item.type === "Industrial") {
+        rate = item.supervisor?.commercial_commission || 0;
+      }
+
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        type: item.type,
+        status: item.status,
+        created_at: item.created_at,
+        commission: item.commission,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        source_name: item.supervisor?.name, // ✅ fixed naming
+        commission_per_kw: Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching commissions by status:", error);
+    throw error;
+  }
+}
+
 async function getWiringCustomerDetailsByStatus(status) {
   try {
     if (!status) {
@@ -1644,4 +1731,5 @@ module.exports = {
   getWiringItemsByCustomerId,
   getPendingSupervisorCommissions,
   updateSupervisorCommissionById,
+  getSupervisorCommissionsByStatus,
 };

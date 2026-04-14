@@ -596,6 +596,20 @@ async function getCommissionsByStatus(req, res) {
     });
   }
 }
+async function getSupervisorCommissionsByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    const result = await wiringService.getSupervisorCommissionsByStatus(status);
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch commissions",
+    });
+  }
+}
 
 async function getWiringCustomerDetailsByStatus(req, res) {
   try {
@@ -673,4 +687,5 @@ module.exports = {
   getWiringItemsByCustomerId,
   getPendingSupervisorCommissions,
   updateSupervisorCommission,
+  getSupervisorCommissionsByStatus,
 };

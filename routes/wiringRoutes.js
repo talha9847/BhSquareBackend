@@ -122,6 +122,11 @@ router.get(
   wiringController.getCommissionsByStatus,
 );
 router.get(
+  "/getSupervisorCommissionsByStatus",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getSupervisorCommissionsByStatus,
+);
+router.get(
   "/getWiringCustomerDetailsByStatus",
   middleware.authMiddleware(["admin"]),
   wiringController.getWiringCustomerDetailsByStatus,
