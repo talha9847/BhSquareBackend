@@ -605,7 +605,6 @@ async function updateFabricatorCommission(req, res) {
     const { id } = req.params;
     const { commission, status } = req.body;
 
-
     const result = await wiringService.updateFabricatorCommissionById(
       id,
       commission,
@@ -639,6 +638,20 @@ async function getSupervisorCommissionsByStatus(req, res) {
     const { status } = req.query;
 
     const result = await wiringService.getSupervisorCommissionsByStatus(status);
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch commissions",
+    });
+  }
+}
+async function getFabricatorCommissionsByStatus(req, res) {
+  try {
+    const { status } = req.query;
+
+    const result = await wiringService.getFabricatorCommissionsByStatus(status);
 
     return res.json(result);
   } catch (error) {
@@ -728,4 +741,5 @@ module.exports = {
   getSupervisorCommissionsByStatus,
   getPendingFabricatorCommissions,
   updateFabricatorCommission,
+  getFabricatorCommissionsByStatus,
 };

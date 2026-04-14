@@ -137,6 +137,11 @@ router.get(
   wiringController.getSupervisorCommissionsByStatus,
 );
 router.get(
+  "/getFabricatorCommissionsByStatus",
+  middleware.authMiddleware(["admin"]),
+  wiringController.getFabricatorCommissionsByStatus,
+);
+router.get(
   "/getWiringCustomerDetailsByStatus",
   middleware.authMiddleware(["admin"]),
   wiringController.getWiringCustomerDetailsByStatus,

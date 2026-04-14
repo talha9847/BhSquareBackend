@@ -1667,6 +1667,74 @@ async function getSupervisorCommissionsByStatus(status) {
   }
 }
 
+async function getFabricatorCommissionsByStatus(status) {
+  try {
+    if (!status) {
+      throw new Error("Status is required");
+    }
+
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (!allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const commissions = await FabricatorCommission.findAll({
+      where: { status },
+
+      attributes: ["id", "total_kw", "commission", "status", "created_at"],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number"],
+            },
+          ],
+        },
+
+        {
+          model: Fabricator,
+          as: "fabricator",
+          attributes: ["id", "name", "commission_rate"],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    const result = commissions.map((item) => {
+      let rate = item.fabricator?.commission_rate;
+
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        status: item.status,
+        created_at: item.created_at,
+        commission: item.commission,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        fabricator_name: item.fabricator?.name,
+
+        commission_per_kw: Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching fabricator commissions:", error);
+    throw error;
+  }
+}
+
 async function getWiringCustomerDetailsByStatus(status) {
   try {
     if (!status) {
@@ -1837,4 +1905,5 @@ module.exports = {
   getSupervisorCommissionsByStatus,
   getPendingFabricatorCommissions,
   updateFabricatorCommissionById,
+  getFabricatorCommissionsByStatus,
 };
