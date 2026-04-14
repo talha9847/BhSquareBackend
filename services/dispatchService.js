@@ -10,6 +10,7 @@ const { Inventory } = require("../models/inventoryModel");
 const { Car } = require("../models/carModel");
 const { Driver } = require("../models/driverModel");
 const { KitItems } = require("../models/kitItemsModels");
+const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
 
 async function getAllDispatches() {
   try {
@@ -158,7 +159,7 @@ async function getAllFabricators() {
     throw error;
   }
 }
-
+//commission_rate
 async function addFabricator({ name }) {
   try {
     const [fabricator, created] = await Fabricator.findOrCreate({
@@ -177,7 +178,7 @@ async function addFabricator({ name }) {
   }
 }
 
-async function updateFabricator(id, { name }) {
+async function updateFabricator(id, { name, commission_rate }) {
   const t = await sequelize.transaction();
   try {
     const fabricator = await Fabricator.findByPk(id, { transaction: t });
@@ -186,6 +187,7 @@ async function updateFabricator(id, { name }) {
     }
 
     fabricator.name = name ?? fabricator.name;
+    fabricator.commission_rate = commission_rate ?? fabricator.commission_rate;
 
     await fabricator.save({ transaction: t });
     await t.commit();
@@ -311,6 +313,7 @@ async function getFabricationsByStatus(status) {
 
 async function updateFabricationByCustomerId({ customer_id }) {
   const t = await sequelize.transaction();
+
   try {
     const fabrication = await Fabrication.findOne({
       where: { customer_id },
@@ -321,42 +324,97 @@ async function updateFabricationByCustomerId({ customer_id }) {
       throw new Error("Fabrication record not found for this customer");
     }
 
-    // 2️⃣ Only proceed if a fabricator is assigned
-    if (fabrication.fabricator_id && Number(fabrication.fabricator_id) > 0) {
-      // 3️⃣ Always set fabrication status to 'done'
-      fabrication.status = "done";
-      await fabrication.save({ transaction: t });
+    // ✅ check fabricator assigned
+    if (!fabrication.fabricator_id) {
+      throw new Error("Assign Fabricator");
+    }
 
-      // 4️⃣ Create wiring record for this customer
+    // 1️⃣ Check FabricatorCommission
+    let commission = await FabricatorCommission.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!commission) {
+      // 2️⃣ Get total_kw from lead
+      const customer = await Customer.findOne({
+        where: { id: customer_id },
+        include: [
+          {
+            model: Lead,
+            as: "lead",
+            attributes: ["total_capacity", "installation_type"],
+          },
+        ],
+        transaction: t,
+      });
+
+      if (!customer || !customer.lead) {
+        throw new Error("Lead not found for this customer");
+      }
+
+      const total_kw = customer.lead.total_capacity / 1000;
+
+      // 3️⃣ Get fabricator commission rate
+      const fabricator = await Fabricator.findByPk(fabrication.fabricator_id, {
+        transaction: t,
+      });
+
+      const calculatedCommission = total_kw * fabricator.commission_rate;
+
+      // ✅ CREATE commission (correct place)
+      commission = await FabricatorCommission.create(
+        {
+          customer_id,
+          fabricator_id: fabrication.fabricator_id,
+          total_kw,
+          commission: calculatedCommission,
+          status: "pending",
+        },
+        { transaction: t },
+      );
+    }
+
+    // 4️⃣ Mark fabrication done
+    fabrication.status = "done";
+    await fabrication.save({ transaction: t });
+
+    // 5️⃣ Avoid duplicate wiring
+    const existingWiring = await Wiring.findOne({
+      where: { customer_id },
+      transaction: t,
+    });
+
+    if (!existingWiring) {
       await Wiring.create(
         { customer_id, status: "pending" },
         { transaction: t },
       );
-
-      // 5️⃣ Update customer stages
-      await CustomerStage.update(
-        { status: "done", completed_at: new Date() },
-        { where: { customer_id, stage_id: 8 }, transaction: t },
-      );
-      await CustomerStage.update(
-        { status: "pending", started_at: new Date() },
-        { where: { customer_id, stage_id: 9 }, transaction: t },
-      );
-
-      // 6️⃣ Commit transaction
-      await t.commit();
-
-      return {
-        message:
-          "Fabrication updated, wiring record created, and inventory updated successfully",
-        data: fabrication,
-      };
-    } else {
-      throw new Error("Assign Fabricator");
     }
+
+    // 6️⃣ Update stages
+    await CustomerStage.update(
+      { status: "done", completed_at: new Date() },
+      { where: { customer_id, stage_id: 8 }, transaction: t },
+    );
+
+    await CustomerStage.update(
+      { status: "pending", started_at: new Date() },
+      { where: { customer_id, stage_id: 9 }, transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      message: "Fabrication completed + commission created successfully",
+      data: {
+        fabrication,
+        commission,
+      },
+    };
   } catch (error) {
     await t.rollback();
-    console.error("Error updating fabrication or inventory:", error);
+    console.error("Error:", error);
     throw error;
   }
 }

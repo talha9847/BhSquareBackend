@@ -319,7 +319,9 @@ CREATE TABLE kit_items (
 
 CREATE TABLE fabricator (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,   
+    commercial_commission DECIMAL(10,2) DEFAULT 0,
+    residential_commission DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -529,6 +531,27 @@ CREATE TABLE supervisor (
     residential_commission DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+CREATE TABLE fabricator_commission ( 
+    id SERIAL PRIMARY KEY,
+
+    customer_id INT UNIQUE
+        REFERENCES customers(id) ON DELETE CASCADE,
+
+    fabricator_id INT
+        REFERENCES fabricator(id) ON DELETE CASCADE,
+
+    total_kw DECIMAL(10,2),
+
+    commission DECIMAL(10,2),
+
+    status VARCHAR(50) DEFAULT 'pending', -- pending, approved, paid
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 TRUNCATE TABLE
 users,

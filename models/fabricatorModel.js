@@ -14,6 +14,10 @@ const Fabricator = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    commission_rate: {
+      type: DataTypes.DECIMAL(10, 2),
+      defaultValue: 0,
+    },
 
     created_at: {
       type: DataTypes.DATE,

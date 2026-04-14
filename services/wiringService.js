@@ -257,6 +257,7 @@ const { Source } = require("../models/sourceModel");
 const { UnusedInventory } = require("../models/UnusedInventoryModel");
 const { SupervisorCommission } = require("../models/supervisorCommissionModel");
 const { Supervisor } = require("../models/supervisorModel");
+const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
 async function getAvailableWireInventoryForWiring(wiring_id) {
   try {
     // 1️⃣ Get all wire_inventory_ids already assigned to this wiring
@@ -1224,6 +1225,7 @@ async function getPendingCommissions() {
     throw error;
   }
 }
+
 async function getPendingSupervisorCommissions() {
   try {
     const commissions = await SupervisorCommission.findAll({
@@ -1308,6 +1310,67 @@ async function getPendingSupervisorCommissions() {
   }
 }
 
+async function getPendingFabricatorCommissions() {
+  try {
+    const commissions = await FabricatorCommission.findAll({
+      where: {
+        status: "pending",
+      },
+
+      attributes: ["id", "total_kw", "commission", "status", "created_at"],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "contact_number", "source_id"],
+            },
+          ],
+        },
+
+        {
+          model: Fabricator,
+          as: "fabricator",
+          attributes: ["id", "name", "commission_rate"],
+        },
+      ],
+
+      order: [["created_at", "DESC"]],
+    });
+
+    // 🔥 compute rate dynamically
+    const result = commissions.map((item) => {
+      let rate = item.fabricator?.commission_rate;
+      return {
+        id: item.id,
+        total_kw: item.total_kw,
+        commission: item.commission,
+        status: item.status,
+        created_at: item.created_at,
+
+        customer_name: item.customer?.lead?.customer_name,
+        mobile: item.customer?.lead?.contact_number,
+        fabricator_name: item.fabricator?.name,
+
+        commission_per_kw: Number(rate),
+      };
+    });
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching fabricator commissions:", error);
+    throw error;
+  }
+}
+
 async function updateCommissionById(id, commission, status) {
   try {
     if (!id) {
@@ -1376,6 +1439,46 @@ async function updateSupervisorCommissionById(id, commission, status) {
 
     // 🔹 Fetch updated record (optional but useful)
     const updatedCommission = await SupervisorCommission.findByPk(id);
+
+    return {
+      success: true,
+      message: "Commission updated successfully",
+      data: updatedCommission,
+    };
+  } catch (error) {
+    console.error("❌ Error updating commission:", error);
+    throw error;
+  }
+}
+
+async function updateFabricatorCommissionById(id, commission, status) {
+  try {
+    if (!id) {
+      throw new Error("Commission ID is required");
+    }
+
+    // Optional validation
+    const allowedStatus = ["pending", "approved", "paid"];
+    if (status && !allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const [updatedRows] = await FabricatorCommission.update(
+      {
+        ...(commission !== undefined && { commission }),
+        ...(status && { status }),
+      },
+      {
+        where: { id },
+      },
+    );
+
+    if (updatedRows === 0) {
+      throw new Error("Commission not found or no changes made");
+    }
+
+    // 🔹 Fetch updated record (optional but useful)
+    const updatedCommission = await FabricatorCommission.findByPk(id);
 
     return {
       success: true,
@@ -1732,4 +1835,6 @@ module.exports = {
   getPendingSupervisorCommissions,
   updateSupervisorCommissionById,
   getSupervisorCommissionsByStatus,
+  getPendingFabricatorCommissions,
+  updateFabricatorCommissionById,
 };
