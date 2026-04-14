@@ -37,6 +37,7 @@ async function createUser(email, password, role, role_id) {
     if (!email || !password || !role || !role_id) {
       throw new Error("email, password and role are required");
     }
+    email = email.toLowerCase();
 
     const existingUser = await User.findOne({ where: { email } });
 

@@ -298,7 +298,7 @@ async function getLeadById(id) {
       panel_wattage: lead.panel_wattage,
       number_of_panels: lead.number_of_panels,
       total_capacity: lead.total_capacity,
-      source: lead.source?.source_name || null,
+      source: lead.source?.name || null,
       notes: lead.notes,
       created_at: lead.created_at,
     };

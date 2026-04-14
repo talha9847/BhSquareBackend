@@ -63,7 +63,7 @@ router.get(
 );
 router.put(
   "/updateInventoryStatus/:wiringId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.updateInventoryStatus,
 );
 router.post(
