@@ -42,6 +42,12 @@ async function addSource(req, res) {
       });
     }
 
+    const source = await sourceService.addSource(
+      name,
+      residential_commission,
+      commercial_commission,
+    );
+
     return res.status(201).json({
       success: true,
       message: "Source added successfully",
