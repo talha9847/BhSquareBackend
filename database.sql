@@ -566,6 +566,22 @@ CREATE TABLE fabricator_commission (
 );
 
 
+
+CREATE TABLE completion (
+    id SERIAL PRIMARY KEY,
+
+    customer_id INTEGER NOT NULL
+        REFERENCES customers(id) ON DELETE CASCADE,
+
+    lead_id INTEGER NOT NULL
+        REFERENCES leads(id) ,
+
+    days INTEGER DEFAULT 0 CHECK (days >= 0),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 TRUNCATE TABLE
 users,
 leads,
@@ -600,8 +616,8 @@ web_leads,
 commission,
 supervisor_commission,
 unused_inventory,
-completion,
+cost,
 supervisor,
-fabricator_
-commission
+fabricator_commission,
+completion
 RESTART IDENTITY CASCADE;

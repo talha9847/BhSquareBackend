@@ -55,7 +55,11 @@ const FinalStage = sequelize.define(
       defaultValue: false,
     },
     status: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(10),
+      defaultValue: "pending",
+      validate: {
+        isIn: [["pending", "done"]],
+      },
     },
 
     created_at: {

@@ -632,6 +632,38 @@ async function updateExtraCost(req, res) {
   }
 }
 
+async function completeFinalStage(req, res) {
+  try {
+    const { finalStageId, customerId, leadId } = req.body;
+
+    if (!finalStageId || !customerId || !leadId) {
+      return res.status(400).json({
+        success: false,
+        message: "finalStageId, customerId, leadId are required",
+      });
+    }
+
+    const result = await sourceService.completeFinalStage(
+      finalStageId,
+      customerId,
+      leadId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Final stage completed successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("❌ Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -659,4 +691,5 @@ module.exports = {
   addSupervisor,
   updateSupervisor,
   updateSupervisorViaId,
+  completeFinalStage,
 };

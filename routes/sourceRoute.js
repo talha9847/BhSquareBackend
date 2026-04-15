@@ -134,5 +134,10 @@ router.put(
   middleware.authMiddleware(["admin"]),
   sourceController.updateExtraCost,
 );
+router.put(
+  "/completeFinalStage",
+  middleware.authMiddleware(["admin"]),
+  sourceController.completeFinalStage,
+);
 router.post("/addWebLead", sourceController.addWebLead);
 module.exports = router;

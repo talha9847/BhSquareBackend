@@ -37,6 +37,7 @@ const { Cost } = require("./costModel");
 const { Supervisor } = require("./supervisorModel");
 const { SupervisorCommission } = require("./supervisorCommissionModel");
 const { FabricatorCommission } = require("./fabricatorCommissionModel");
+const { Completion } = require("./completionModel");
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -397,6 +398,16 @@ FabricatorCommission.belongsTo(Customer, {
   foreignKey: "customer_id",
   as: "customer",
 });
+
+Customer.hasOne(Completion, {
+  foreignKey: "customer_id",
+  as: "completion",
+});
+
+Completion.belongsTo(Customer, {
+  foreignKey: "customer_id",
+  as: "customer",
+});
 module.exports = {
   Customer,
   Lead,
@@ -430,4 +441,5 @@ module.exports = {
   Supervisor,
   SupervisorCommission,
   FabricatorCommission,
+  Completion,
 };

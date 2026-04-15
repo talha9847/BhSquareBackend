@@ -20,6 +20,7 @@ const { WiringItem } = require("../models/wiringItemModel");
 const { WireInventory } = require("../models/wireInventoryModel");
 const { Supervisor } = require("../models/supervisorModel");
 const { SupervisorCommission } = require("../models/supervisorCommissionModel");
+const { Completion } = require("../models/completionModel");
 
 async function getSources() {
   try {
@@ -167,6 +168,7 @@ async function updateSupervisor(
 async function getFinalStageCustomers() {
   try {
     const finalStages = await FinalStage.findAll({
+      where: { status: "pending" },
       attributes: [
         "id",
         "customer_id",
@@ -175,6 +177,7 @@ async function getFinalStageCustomers() {
         "inspection",
         "redeem",
         "disbursal",
+        "status",
         "created_at",
       ],
       include: [
@@ -216,6 +219,7 @@ async function getFinalStageCustomers() {
       inspection: f.inspection,
       redeem: f.redeem,
       disbursal: f.disbursal,
+      status: f.status,
 
       created_at: f.created_at,
     }));
@@ -337,11 +341,9 @@ async function updateStage10(customerId, flag) {
       lock: t.LOCK.UPDATE,
     });
 
-
     if (!finalStage.supervisor_id) {
       throw new Error("Supervisor not assigned. Cannot proceed.");
     }
-
 
     if (flag === true) {
       await stage10.update(
@@ -1412,6 +1414,74 @@ async function updateExtraCostById(id, extraCost) {
     throw error;
   }
 }
+
+async function completeFinalStage(finalStageId, customerId, leadId) {
+  const t = await sequelize.transaction();
+
+  try {
+    const finalStage = await FinalStage.findOne({
+      where: { id: finalStageId, customer_id: customerId },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!finalStage) {
+      throw new Error("Final stage not found");
+    }
+
+    await finalStage.update({ status: "done" }, { transaction: t });
+
+    const stage1 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 1 },
+      transaction: t,
+    });
+
+    const stage14 = await CustomerStage.findOne({
+      where: { customer_id: customerId, stage_id: 14 },
+      transaction: t,
+    });
+
+    if (!stage1 || !stage14) {
+      throw new Error("Required stages not found");
+    }
+
+    const startDate = stage1.started_at || stage1.created_at;
+    const endDate = stage14.completed_at || stage14.updated_at;
+
+    const diffTime = new Date(endDate) - new Date(startDate);
+    const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    const [completion] = await Completion.findOrCreate({
+      where: { customer_id: customerId },
+      defaults: {
+        customer_id: customerId,
+        lead_id: leadId,
+        days,
+      },
+      transaction: t,
+    });
+
+    await completion.update(
+      {
+        days,
+      },
+      { transaction: t },
+    );
+
+    await t.commit();
+
+    return {
+      success: true,
+      customer_id: customerId,
+      lead_id: leadId,
+      days,
+    };
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getSources,
   addSource,
@@ -1439,4 +1509,5 @@ module.exports = {
   addSupervisor,
   updateSupervisor,
   assignSupervisorByCustomerId,
+  completeFinalStage,
 };
