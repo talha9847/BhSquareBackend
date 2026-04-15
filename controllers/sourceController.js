@@ -612,6 +612,25 @@ async function getPaidCommissionBySourceId(req, res) {
     });
   }
 }
+async function getPaidCommissionByFabricatorId(req, res) {
+  try {
+    const sourceId = req.user.role_id;
+
+    const result =
+      await sourceService.getPaidCommissionByFabricatorId(sourceId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Paid commission fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
 
 async function getCompletionReport(req, res) {
   try {
@@ -744,4 +763,5 @@ module.exports = {
   completeFinalStage,
   getCompletionSummary,
   getFinalStageCustomersByStatus,
+  getPaidCommissionByFabricatorId,
 };

@@ -21,6 +21,7 @@ const { WireInventory } = require("../models/wireInventoryModel");
 const { Supervisor } = require("../models/supervisorModel");
 const { SupervisorCommission } = require("../models/supervisorCommissionModel");
 const { Completion } = require("../models/completionModel");
+const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
 
 async function getSources() {
   try {
@@ -1385,6 +1386,53 @@ async function getPaidCommissionBySourceId(sourceId) {
   }
 }
 
+async function getPaidCommissionByFabricatorId(sourceId) {
+  try {
+    if (!sourceId) {
+      throw new Error("sourceId is required");
+    }
+
+    const commissions = await FabricatorCommission.findAll({
+      where: {
+        fabricator_id: sourceId,
+        status: "paid",
+      },
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "address"],
+            },
+          ],
+        },
+      ],
+      attributes: ["id", "customer_id", "total_kw", "commission", "created_at"],
+    });
+
+    if (!commissions || commissions.length === 0) {
+      return [];
+    }
+
+    // 🔹 format response
+    return commissions.map((item) => ({
+      id: item.id,
+      customer_id: item.customer_id,
+      customer_name: item.customer?.lead?.customer_name || null,
+      address: item.customer?.lead?.address || null,
+      total_kw: item.total_kw,
+      commission: item.commission,
+      created_at: item.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function getCompletionReport({ startDate, endDate }) {
   try {
     let whereCondition = {};
@@ -1646,4 +1694,5 @@ module.exports = {
   completeFinalStage,
   getCompletionSummary,
   getFinalStageCustomersByStatus,
+  getPaidCommissionByFabricatorId,
 };
