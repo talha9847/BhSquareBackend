@@ -337,6 +337,12 @@ async function updateStage10(customerId, flag) {
       lock: t.LOCK.UPDATE,
     });
 
+
+    if (!finalStage.supervisor_id) {
+      throw new Error("Supervisor not assigned. Cannot proceed.");
+    }
+
+
     if (flag === true) {
       await stage10.update(
         {
@@ -707,7 +713,7 @@ async function updateStage13(customerId, flag) {
     });
 
     if (!prevStage || prevStage.status !== "done") {
-      throw new Error("Stage 11 must be completed before Stage 12");
+      throw new Error("Stage 12 must be completed before Stage 13");
     }
     if (flag === true) {
       await stage13.update(

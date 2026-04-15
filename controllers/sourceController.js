@@ -99,7 +99,6 @@ async function fetchAllSources(req, res) {
       data: sources,
     });
   } catch (error) {
-    console.error("Error fetching sources:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -114,7 +113,6 @@ async function fetchAllSupervisor(req, res) {
       data: sources,
     });
   } catch (error) {
-    console.error("Error fetching sources:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -140,8 +138,6 @@ async function getFinalStageCustomers(req, res) {
       data,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
     return res.status(500).json({
       message: "Internal server error",
       error: error.message,
@@ -171,7 +167,6 @@ async function updateSupervisorViaId(req, res) {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Error in updateFabricator controller:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to assign supervisor",
@@ -195,17 +190,14 @@ async function updateStage10(req, res) {
       message: result.message,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
-    if (error.message.includes("not found")) {
+    if (error.message?.includes("not found")) {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 }
@@ -226,17 +218,14 @@ async function updateStage11(req, res) {
       message: result.message,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
-    if (error.message.includes("not found")) {
+    if (error.message?.includes("not found")) {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 }
@@ -257,17 +246,14 @@ async function updateStage12(req, res) {
       message: result.message,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
-    if (error.message.includes("not found")) {
+    if (error.message?.includes("not found")) {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 }
@@ -288,17 +274,14 @@ async function updateStage13(req, res) {
       message: result.message,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
-    if (error.message.includes("not found")) {
+    if (error.message?.includes("not found")) {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 }
@@ -318,17 +301,14 @@ async function updateStage14(req, res) {
       message: result.message,
     });
   } catch (error) {
-    console.error("❌ Controller Error:", error);
-
-    if (error.message.includes("not found")) {
+    if (error.message?.includes("not found")) {
       return res.status(400).json({
         message: error.message,
       });
     }
 
     return res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 }
@@ -363,7 +343,6 @@ async function updateSource(req, res) {
       data: fabricator,
     });
   } catch (error) {
-    console.error("Error updating fabricator:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update fabricator",
@@ -385,7 +364,6 @@ async function updateSupervisor(req, res) {
       data: fabricator,
     });
   } catch (error) {
-    console.error("Error updating fabricator:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update fabricator",
@@ -410,8 +388,6 @@ async function getCustomersBySource(req, res) {
       data,
     });
   } catch (error) {
-    console.error("Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -441,8 +417,6 @@ async function getPermissions(req, res) {
       data: permissions,
     });
   } catch (error) {
-    console.error("Controller Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to fetch permissions",
@@ -481,8 +455,6 @@ async function updatePermission(req, res) {
       data: updatedPermission,
     });
   } catch (error) {
-    console.error("Controller Error:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to update permission",
@@ -562,8 +534,6 @@ async function fetchAllWebLeads(req, res) {
       data: leads,
     });
   } catch (error) {
-    console.error("Error fetching web leads:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -632,8 +602,6 @@ async function getCompletionReport(req, res) {
       data: result,
     });
   } catch (error) {
-    console.error("Error fetching completion report:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
@@ -657,8 +625,6 @@ async function updateExtraCost(req, res) {
       data: result.data,
     });
   } catch (error) {
-    console.error("Error updating extra cost:", error);
-
     return res.status(500).json({
       success: false,
       message: error.message || "Something went wrong",
