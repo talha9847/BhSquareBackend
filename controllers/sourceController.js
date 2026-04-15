@@ -664,6 +664,29 @@ async function completeFinalStage(req, res) {
   }
 }
 
+async function getCompletionSummary(req, res) {
+  try {
+    let { startDate, endDate } = req.query;
+
+    // 🔹 Call service (handles default current month internally)
+    const result = await sourceService.getCompletionSummary({
+      startDate,
+      endDate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Completion summary fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -692,4 +715,5 @@ module.exports = {
   updateSupervisor,
   updateSupervisorViaId,
   completeFinalStage,
+  getCompletionSummary,
 };

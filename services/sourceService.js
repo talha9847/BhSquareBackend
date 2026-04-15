@@ -1380,6 +1380,71 @@ async function getCompletionReport({ startDate, endDate }) {
   }
 }
 
+async function getCompletionSummary({ startDate, endDate }) {
+  try {
+    let whereCondition = {};
+
+    // 🔹 Default = current month
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+      startDate = start;
+      endDate = end;
+    }
+
+    whereCondition.created_at = {
+      [Op.between]: [startDate, endDate],
+    };
+
+    const completions = await Completion.findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "total_capacity", // ✅ from leads table
+              ],
+            },
+          ],
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    if (!completions.length) return [];
+
+    return completions.map((c) => ({
+      id: c.id,
+      customerId: c.customer?.id,
+      leadId: c.customer?.lead?.id,
+
+      customer_name: c.customer?.lead?.customer_name || null,
+      mobile: c.customer?.lead?.contact_number || null,
+      address: c.customer?.lead?.address || null,
+
+      total_capacity: Number(c.customer?.lead?.total_capacity || 0),
+
+      days: c.days || 0,
+
+      created_at: c.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function updateExtraCostById(id, extraCost) {
   try {
     if (!id) {
@@ -1510,4 +1575,5 @@ module.exports = {
   updateSupervisor,
   assignSupervisorByCustomerId,
   completeFinalStage,
+  getCompletionSummary,
 };

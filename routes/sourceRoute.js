@@ -129,6 +129,11 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.getCompletionReport,
 );
+router.get(
+  "/getCompletionSummary",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getCompletionSummary,
+);
 router.put(
   "/updateExtraCost",
   middleware.authMiddleware(["admin"]),
