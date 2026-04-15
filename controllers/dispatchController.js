@@ -52,8 +52,11 @@ async function updateDispatch(req, res) {
 
 async function createFabricator(req, res) {
   try {
-    const { name } = req.body;
-    const fabricator = await dispatchService.addFabricator({ name });
+    const { name, commission_rate } = req.body;
+    const fabricator = await dispatchService.addFabricator({
+      name,
+      commission_rate,
+    });
     return res.status(201).json({
       success: true,
       data: fabricator,

@@ -160,11 +160,11 @@ async function getAllFabricators() {
   }
 }
 //commission_rate
-async function addFabricator({ name }) {
+async function addFabricator({ name, commission_rate }) {
   try {
     const [fabricator, created] = await Fabricator.findOrCreate({
       where: { name },
-      defaults: { name },
+      defaults: { name, commission_rate },
     });
 
     if (!created) {
