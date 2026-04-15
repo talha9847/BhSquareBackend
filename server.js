@@ -31,6 +31,21 @@ app.use(
     credentials: true,
   }),
 );
+
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  console.log(`➡️ ${req.method} ${req.url}`);
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    console.log(
+      `⬅️ ${req.method} ${req.url} ${res.statusCode} - ${duration}ms`,
+    );
+  });
+
+  next();
+});
 app.use("/api/users", userRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/sources", sourceRoutes);
