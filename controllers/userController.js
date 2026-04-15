@@ -49,6 +49,8 @@ async function logout(req, res) {
       message: "User logged out successfully",
     });
   } catch (error) {
+    console.error(error);
+
     return res.json({
       success: false,
       message: "Error while logging out",
@@ -60,6 +62,7 @@ async function me(req, res) {
   try {
     res.status(200).json({ email: req.user.email, role: req.user.role });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({
       message: "Internal server error",
     });
