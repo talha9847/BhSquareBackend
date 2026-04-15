@@ -145,6 +145,33 @@ async function getFinalStageCustomers(req, res) {
   }
 }
 
+async function getFinalStageCustomersByStatus(req, res) {
+  try {
+    const { status } = req.query; // 🔹 pending / done
+
+    // 🔹 Call service
+    const data = await sourceService.getFinalStageCustomersByStatus(status);
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        message: "No final stage customers found",
+        data: [],
+      });
+    }
+
+    return res.status(200).json({
+      message: "Final stage customers fetched successfully",
+      count: data.length,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
 async function updateSupervisorViaId(req, res) {
   try {
     const { customer_id, supervisor_id } = req.body;
@@ -716,4 +743,5 @@ module.exports = {
   updateSupervisorViaId,
   completeFinalStage,
   getCompletionSummary,
+  getFinalStageCustomersByStatus,
 };

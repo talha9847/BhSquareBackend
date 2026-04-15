@@ -1679,7 +1679,7 @@ async function getCommissionsByStatus(status) {
             {
               model: Lead,
               as: "lead",
-              attributes: ["customer_name", "contact_number"],
+              attributes: ["id", "customer_name", "contact_number"],
             },
           ],
         },
@@ -1717,6 +1717,8 @@ async function getCommissionsByStatus(status) {
         created_at: item.created_at,
         commission: item.commission,
 
+        customer_id: item.customer?.id,
+        lead_id: item.customer?.lead?.id,
         customer_name: item.customer?.lead?.customer_name,
         mobile: item.customer?.lead?.contact_number,
         source_name: item.source?.name,

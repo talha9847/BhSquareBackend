@@ -228,6 +228,75 @@ async function getFinalStageCustomers() {
     throw error;
   }
 }
+async function getFinalStageCustomersByStatus(status) {
+  try {
+    let whereCondition = {};
+
+    // 🔹 Filter by status if provided (pending / done)
+    if (status) {
+      whereCondition.status = status;
+    }
+
+    const records = await FinalStage.findAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "total_capacity",
+              ],
+            },
+          ],
+        },
+        {
+          model: Supervisor,
+          as: "supervisor",
+          attributes: ["id", "name"], // ✅ fetch supervisor name
+        },
+      ],
+      order: [["created_at", "DESC"]],
+    });
+
+    if (!records.length) return [];
+
+    return records.map((r) => ({
+      id: r.id,
+      customerId: r.customer?.id,
+      leadId: r.customer?.lead?.id,
+
+      customer_name: r.customer?.lead?.customer_name || null,
+      mobile: r.customer?.lead?.contact_number || null,
+      address: r.customer?.lead?.address || null,
+
+      total_capacity: Number(r.customer?.lead?.total_capacity || 0),
+
+      // 🔹 Supervisor
+      supervisor_id: r.supervisor?.id || null,
+      supervisor_name: r.supervisor?.name || null,
+
+      file_approved: r.file_approved,
+      file_uploaded: r.file_uploaded,
+      inspection: r.inspection,
+      redeem: r.redeem,
+      disbursal: r.disbursal,
+
+      status: r.status,
+      created_at: r.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
 
 async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
   const t = await sequelize.transaction();
@@ -1576,4 +1645,5 @@ module.exports = {
   assignSupervisorByCustomerId,
   completeFinalStage,
   getCompletionSummary,
+  getFinalStageCustomersByStatus,
 };

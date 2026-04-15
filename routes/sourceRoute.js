@@ -58,6 +58,11 @@ router.get(
   middleware.authMiddleware(["admin"]),
   sourceController.getFinalStageCustomers,
 );
+router.get(
+  "/getFinalStageCustomersByStatus",
+  middleware.authMiddleware(["admin"]),
+  sourceController.getFinalStageCustomersByStatus,
+);
 router.post(
   "/updateStage10",
   middleware.authMiddleware(["admin"]),
