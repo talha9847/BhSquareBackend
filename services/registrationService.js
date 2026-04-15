@@ -618,16 +618,29 @@ async function getFileGenerationData(registrationId) {
     throw error;
   }
 }
-
-async function getCustomersByStatus(status) {
+async function getCustomersByStatus(fileGenStatus) {
   try {
-    if (!status || !["pending", "done"].includes(status)) {
-      throw new Error("Invalid status. Must be 'pending' or 'done'.");
+    if (!fileGenStatus || !["pending", "done"].includes(fileGenStatus)) {
+      throw new Error("Invalid status. Must be 'pending' or 'done'");
     }
 
-    // Step 1: Fetch all CustomerRegistrations with given status
+    // 1️⃣ Get customer_ids from KitReady
+    const kits = await KitReady.findAll({
+      where: { file_gen: fileGenStatus },
+      attributes: ["customer_id"],
+    });
+
+    const customerIds = kits.map((k) => k.customer_id);
+
+    if (!customerIds.length) {
+      return [];
+    }
+
+    // 2️⃣ Fetch registrations for those customers
     const registrations = await CustomerRegistration.findAll({
-      where: { status },
+      where: {
+        customer_id: customerIds,
+      },
       attributes: [
         "id",
         "customer_id",
@@ -643,7 +656,7 @@ async function getCustomersByStatus(status) {
         {
           model: Customer,
           as: "customer",
-          attributes: ["id", "status"], // status in Customer table if needed
+          attributes: ["id", "status"],
           include: [
             {
               model: Lead,
@@ -666,7 +679,7 @@ async function getCustomersByStatus(status) {
       order: [["created_at", "DESC"]],
     });
 
-    // Step 2: Map to friendly format
+    // 3️⃣ Format response
     const result = registrations.map((reg) => ({
       registration_id: reg.id,
       registration_status: reg.status,
@@ -674,12 +687,15 @@ async function getCustomersByStatus(status) {
       agreement_date: reg.agreement_date,
       panel_qty: reg.panel_qty,
       inverter_qty: reg.inverter_qty,
+
       customer_id: reg.customer?.id || null,
       customer_status: reg.customer?.status || null,
+
       lead_id: reg.customer?.lead?.id || null,
       customer_name: reg.customer?.lead?.customer_name || null,
       contact_number: reg.customer?.lead?.contact_number || null,
       address: reg.customer?.lead?.address || null,
+
       number_of_panels: reg.customer?.lead?.number_of_panels || null,
       panel_wattage: reg.customer?.lead?.panel_wattage || null,
       inverter_kw: reg.customer?.lead?.inverter_kw || null,
@@ -688,7 +704,7 @@ async function getCustomersByStatus(status) {
 
     return result;
   } catch (error) {
-    console.error("❌ Error fetching customers by registration status:", error);
+    console.error("❌ Error fetching customers by file_gen:", error);
     throw error;
   }
 }
