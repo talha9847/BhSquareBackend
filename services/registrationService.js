@@ -290,10 +290,75 @@ async function renameCustomerFolder(
   }
 }
 
+async function completeRegistration(registrationId, customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    // 1️⃣ Find registration
+    const registration = await CustomerRegistration.findOne({
+      where: { id: registrationId },
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Registration not found");
+    }
+
+    // 2️⃣ Validate
+    if (registration.status !== "approved") {
+      throw new Error("Registration is not approved");
+    }
+
+    // 3️⃣ Update registration
+    await registration.update({ status: "done" }, { transaction: t });
+
+    // 4️⃣ Update stage
+    await CustomerStage.update(
+      {
+        status: "done",
+        completed_at: new Date(),
+      },
+      {
+        where: {
+          customer_id: customerId,
+          stage_id: 4,
+        },
+        transaction: t,
+      },
+    );
+
+    let kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (!kit) {
+      kit = await KitReady.create(
+        {
+          customer_id: customerId,
+          loan_status: "pending", // ✅ condition applied
+          status: "pending",
+          file_gen: "pending",
+        },
+        { transaction: t },
+      );
+    }
+
+    await t.commit();
+
+    return registration;
+  } catch (error) {
+    await t.rollback();
+    console.error("❌ completeRegistration error:", error);
+    throw error;
+  }
+}
+
 async function markRegistrationAsDone(
   registrationId,
   customerId,
   leadId,
+  kitId,
   data,
 ) {
   const t = await sequelize.transaction();
@@ -319,7 +384,7 @@ async function markRegistrationAsDone(
       throw new Error(`Registration not found`);
     }
 
-    if (registration.status !== "approved") {
+    if (registration.status !== "done") {
       return { success: false, message: "Status is not 'approved'" };
     }
 
@@ -378,45 +443,25 @@ async function markRegistrationAsDone(
       transaction: t,
     });
 
-    let isNewKit = false;
-    const loanExists = await Loan.findOne({
-      where: { customer_id: customerId },
+    // ✅ NEW: Insert category_id = 2 items with qty = 0
+    const categoryItems = await Inventory.findAll({
+      where: { category_id: 2 },
+      attributes: ["id"],
       transaction: t,
     });
-    if (!kit) {
-      kit = await KitReady.create(
-        {
-          customer_id: customerId,
-          loan_status: loanExists ? "required" : "pending", // ✅ condition applied
-          status: "pending",
-        },
-        { transaction: t },
-      );
 
-      isNewKit = true;
-    }
+    const bulkData = categoryItems.map((item) => ({
+      kit_id: kit.id,
+      inventory_id: item.id,
+      qty: 0,
+      status: "pending",
+    }));
 
-    // ✅ NEW: Insert category_id = 2 items with qty = 0
-    if (isNewKit) {
-      const categoryItems = await Inventory.findAll({
-        where: { category_id: 2 },
-        attributes: ["id"],
+    if (bulkData.length > 0) {
+      await KitItems.bulkCreate(bulkData, {
         transaction: t,
+        ignoreDuplicates: true,
       });
-
-      const bulkData = categoryItems.map((item) => ({
-        kit_id: kit.id,
-        inventory_id: item.id,
-        qty: 0,
-        status: "pending",
-      }));
-
-      if (bulkData.length > 0) {
-        await KitItems.bulkCreate(bulkData, {
-          transaction: t,
-          ignoreDuplicates: true,
-        });
-      }
     }
 
     // 🔹 Allocate panel + inverter
@@ -513,6 +558,14 @@ async function markRegistrationAsDone(
           agreement_date: registration?.agreement_date || null,
         },
         { transaction: t },
+      );
+
+      await KitReady.update(
+        { file_gen: "done" },
+        {
+          where: { id: kitId },
+          transaction: t,
+        },
       );
     }
 
@@ -773,4 +826,5 @@ module.exports = {
   getInventoryByCategory,
   getFileGenerationBasicDetails,
   updateFileGenerationAndLead,
+  completeRegistration,
 };

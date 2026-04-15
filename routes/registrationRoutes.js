@@ -19,6 +19,11 @@ router.post(
   registrationController.markRegistrationAsDone,
 );
 router.post(
+  "/completeRegistration",
+  middleware.authMiddleware(["admin"]),
+  registrationController.completeRegistration,
+);
+router.post(
   "/getFileGeneration",
   middleware.authMiddleware(["admin"]),
   registrationController.getFileGeneration,

@@ -20,27 +20,48 @@ const { UnusedInventory } = require("../models/UnusedInventoryModel");
 async function getKitReadyCustomers() {
   try {
     const data = await KitReady.findAll({
-      attributes: ["id", "loan_status", "status"],
+      attributes: ["id", "loan_status", "status", "file_gen"],
+
       where: { status: "pending" },
+
       include: [
         {
           model: Customer,
-          as: "customer", // ✅ must match association
+          as: "customer",
           attributes: ["id", "status"],
+
           include: [
             {
               model: Lead,
-              as: "lead", // ✅ must match association
-              attributes: ["id", "customer_name", "contact_number", "address"],
+              as: "lead",
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "panel_wattage",
+                "number_of_panels",
+                "number_of_inverters",
+                "inverter_capacity",
+              ],
+            },
+
+            // ✅ ADD THIS
+            {
+              model: CustomerRegistration,
+              as: "registration",
+              attributes: ["id"],
             },
           ],
         },
       ],
+
       order: [["id", "ASC"]],
     });
 
     return data;
   } catch (error) {
+    console.error("❌ Error fetching kit ready customers:", error);
     throw error;
   }
 }

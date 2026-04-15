@@ -71,12 +71,12 @@ async function registration(req, res) {
 
 async function markRegistrationAsDone(req, res) {
   try {
-    const { registrationId, customerId, leadId, data } = req.body;
+    const { registrationId, customerId, leadId, kitId, data } = req.body;
 
     // 🔴 Basic validation
-    if (!registrationId || !customerId || !leadId) {
+    if (!registrationId || !customerId || !leadId || !kitId) {
       return res.status(400).json({
-        message: "registrationId, customerId, and leadId are required",
+        message: "registrationId, customerId,kitId and leadId are required",
       });
     }
 
@@ -101,6 +101,7 @@ async function markRegistrationAsDone(req, res) {
       registrationId,
       customerId,
       leadId,
+      kitId,
       data,
     );
 
@@ -323,6 +324,26 @@ async function updateFileGenerationAndLead(req, res) {
     });
   }
 }
+async function completeRegistration(req, res) {
+  try {
+    const { registrationId, customerId } = req.body;
+
+    const data = await registrationService.completeRegistration(
+      registrationId,
+      customerId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
 module.exports = {
   getCustomersWithSummary,
   registration,
@@ -333,4 +354,5 @@ module.exports = {
   getInventoryByCategoryThree,
   getFileGenerationBasicDetails,
   updateFileGenerationAndLead,
+  completeRegistration,
 };

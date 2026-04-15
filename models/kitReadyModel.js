@@ -36,6 +36,13 @@ const KitReady = sequelize.define(
         isIn: [["pending", "done"]],
       },
     },
+    file_gen: {
+      type: DataTypes.STRING(20),
+      defaultValue: "pending",
+      validate: {
+        isIn: [["pending", "done"]],
+      },
+    },
   },
   {
     tableName: "kit_ready",
