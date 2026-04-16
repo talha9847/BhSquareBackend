@@ -9,6 +9,8 @@ const { CustomerStage } = require("../models/customerStageModel");
 const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const sequelize = require("../config/db");
 const { Op } = require("sequelize");
+const { exec } = require("child_process");
+const { Backup } = require("../models/backupModel");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -37,7 +39,6 @@ async function getOrCreateCustomerFolder(
   if (existing.data.files.length > 0) {
     folderId = existing.data.files[0].id;
   } else {
-
     const folder = await drive.files.create({
       requestBody: {
         name: folderName,
@@ -95,14 +96,13 @@ async function uploadBulkFiles(
       customerDoc = await CustomerDocument.findOne({
         where: { customer_id: customerId },
       });
-     
+
       if (!customerDoc) {
         throw new Error(`No document found for customerId: ${customerId}`);
       }
 
       // 🔥 Set docId from DB
       docId = customerDoc.id;
-    
     } else {
       // ✅ If docId is provided → validate it belongs to customer
       customerDoc = await CustomerDocument.findOne({
@@ -239,7 +239,7 @@ async function upsertCustomerDocument(customer_id, data) {
     if (!customer_id) throw new Error("customer_id is required");
 
     let document = await CustomerDocument.findOne({ where: { customer_id } });
-    
+
     if (document) {
       await document.update(data);
     } else {
@@ -441,6 +441,105 @@ async function getCustomerDocumentsWithFiles(customerId) {
   }
 }
 
+const BACKUP_FOLDER_ID = "1pnk1TMq43xCyWQM2yg1LFr9vfTLz-vag";
+
+function createDBDumpStream() {
+  const dbUrl = process.env.DATABASE_URL;
+
+  const child = exec(`pg_dump "${dbUrl}"`, {
+    maxBuffer: 1024 * 1024 * 50,
+  });
+
+  return child.stdout;
+}
+
+async function uploadToDrive(stream, fileName) {
+  const response = await drive.files.create({
+    requestBody: {
+      name: fileName,
+      parents: [BACKUP_FOLDER_ID],
+    },
+    media: {
+      mimeType: "application/sql",
+      body: stream,
+    },
+    fields: "id, webViewLink",
+  });
+
+  return {
+    fileId: response.data.id,
+    fileUrl: response.data.webViewLink,
+  };
+}
+
+async function createOrUpdateBackup() {
+  try {
+    const now = new Date();
+
+    const fileName = `backup_${now.toISOString().replace(/[:.]/g, "-")}.sql`;
+    const stream = createDBDumpStream();
+
+    const driveResult = await uploadToDrive(stream, fileName);
+
+    const existing = await Backup.findOne({
+      where: { id: 1 },
+    });
+
+    if (existing) {
+      // 🔥 UPDATE existing row
+      await Backup.update(
+        {
+          backup_datetime: new Date(),
+          file_url: driveResult.fileUrl,
+          updated_at: new Date(),
+        },
+        {
+          where: { id: 1 },
+        },
+      );
+    } else {
+      // 🔥 INSERT new row
+      await Backup.create({
+        id: 1,
+        backup_datetime: new Date(),
+        file_url: driveResult.fileUrl,
+      });
+    }
+
+    return {
+      fileUrl: driveResult.fileUrl,
+      message: "Backup completed successfully",
+    };
+  } catch (error) {
+    console.error("Backup Error:", error);
+    throw error;
+  }
+}
+
+async function getBackup() {
+  try {
+    const backup = await Backup.findOne({
+      where: { id: 1 },
+    });
+
+    if (!backup) {
+      return {
+        id: null,
+        backup_datetime: null,
+        file_url: null,
+      };
+    }
+
+    return {
+      id: backup.id,
+      backup_datetime: backup.updated_at,
+      file_url: backup.file_url,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
@@ -451,4 +550,6 @@ module.exports = {
   checkDocumentCollectionAccess,
   checkDocAccess,
   getCustomerDocumentsWithFiles,
+  createOrUpdateBackup,
+  getBackup,
 };

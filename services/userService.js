@@ -1,6 +1,41 @@
 const sequelize = require("../config/db");
 const { User } = require("../models/userModel");
 const bcrypt = require("bcrypt");
+const { exec } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+
+const backupDir = path.join(process.cwd(), "backups");
+const backupFilePath = path.join(backupDir, "latest_backup.sql");
+
+// ensure folder exists
+if (!fs.existsSync(backupDir)) {
+  fs.mkdirSync(backupDir, { recursive: true });
+}
+async function createDBBackup() {
+  return new Promise((resolve, reject) => {
+    const dbUrl = process.env.DATABASE_URL;
+
+    if (!dbUrl) {
+      return reject(new Error("DATABASE_URL not found"));
+    }
+
+    // overwrite same file every time
+    const command = `pg_dump "${dbUrl}" > "${backupFilePath}"`;
+
+    exec(command, (error) => {
+      if (error) {
+        return reject(error);
+      }
+
+      resolve({
+        filePath: backupFilePath,
+        fileName: "latest_backup.sql",
+      });
+    });
+  });
+}
+
 async function login(email, pass) {
   try {
     const user = await User.findOne({

@@ -573,9 +573,30 @@ async function getCustomerReport({ startDate, endDate }) {
   }
 }
 
+
+
 async function getPendingStageCapacity() {
   try {
-    const query = `
+    // 1️⃣ Leads = Stage 1
+    const leadQuery = `
+      SELECT 
+        COUNT(*) as pending_count,
+        COALESCE(SUM(total_capacity), 0) as pending_capacity_kw
+      FROM leads
+      WHERE status = 'pending';
+    `;
+
+    const leadResult = await sequelize.query(leadQuery, {
+      type: sequelize.QueryTypes.SELECT,
+    });
+
+    const leadData = leadResult?.[0] || {
+      pending_count: 0,
+      pending_capacity_kw: 0,
+    };
+
+    // 2️⃣ Get all customer stages (original logic)
+    const stageQuery = `
       SELECT 
         s.id as stage_id,
         s.stage_name as stage_name,
@@ -606,30 +627,51 @@ async function getPendingStageCapacity() {
       ORDER BY s.id ASC;
     `;
 
-    const result = await sequelize.query(query, {
+    const result = await sequelize.query(stageQuery, {
       type: sequelize.QueryTypes.SELECT,
     });
 
-    // 🔹 Stage → URL mapping
+    // 3️⃣ Shift all stages by +1
+    const shiftedStages = result.map((item) => ({
+      stage_id: item.stage_id + 1,
+      stage_name: item.stage_name,
+      pending_count: Number(item.pending_count || 0),
+      pending_capacity_kw: Number(item.pending_capacity_kw || 0),
+    }));
+
+    // 4️⃣ Final merge (Leads + shifted stages)
+    const finalResult = [
+      {
+        stage_id: 1,
+        stage_name: "Leads",
+        pending_count: Number(leadData.pending_count),
+        pending_capacity_kw: Number(leadData.pending_capacity_kw),
+        url: "/leads",
+      },
+      ...shiftedStages,
+    ];
+
+    // 5️⃣ URL mapping (shifted)
     const stageUrlMap = {
-      1: "/customers",
-      2: "/name-change",
-      3: "/document-collection",
-      4: "/registration",
-      5: "/loan",
-      6: "/kit-ready",
-      7: "/dispatch",
-      8: "/fabrication",
-      9: "/wiring",
-      10: "/finalstage",
+      1: "/leads",
+      2: "/customers",
+      3: "/name-change",
+      4: "/customers",
+      5: "/registration",
+      6: "/loan",
+      7: "/kit-ready",
+      8: "/dispatch",
+      9: "/fabrication",
+      10: "/wiring",
       11: "/finalstage",
       12: "/finalstage",
       13: "/finalstage",
       14: "/finalstage",
+      15: "/finalstage",
     };
 
-    // 🔹 Append URL
-    return result.map((item) => ({
+    // 6️⃣ Attach URLs
+    return finalResult.map((item) => ({
       ...item,
       url: stageUrlMap[item.stage_id] || null,
     }));
@@ -637,7 +679,6 @@ async function getPendingStageCapacity() {
     throw error;
   }
 }
-
 module.exports = {
   addLead,
   getPendingLeads,

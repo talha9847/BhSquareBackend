@@ -224,6 +224,44 @@ async function fetchCustomerDocuments(req, res) {
   }
 }
 
+async function backup(req, res) {
+  try {
+    const result = await docCollectService.createOrUpdateBackup();
+
+    return res.status(200).json({
+      success: true,
+      message: "Backup created successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Backup Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Backup failed",
+    });
+  }
+}
+
+async function getBackup(req, res) {
+  try {
+    const result = await docCollectService.getBackup();
+
+    return res.status(200).json({
+      success: true,
+      message: "Backup fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get Backup Controller Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch backup",
+    });
+  }
+}
+
 module.exports = {
   getLeadDetailFromCustomerId,
   getCustomerDocumentByCustomerId,
@@ -233,4 +271,6 @@ module.exports = {
   checkDocumentCollectionAccess,
   checkDocAccess,
   fetchCustomerDocuments,
+  backup,
+  getBackup,
 };

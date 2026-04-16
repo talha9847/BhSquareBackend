@@ -581,7 +581,11 @@
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-
+CREATE TABLE backup (
+    id SERIAL PRIMARY KEY,
+    backup_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    file_url TEXT NOT NULL
+); 
     TRUNCATE TABLE
     users,
     leads,
@@ -617,6 +621,7 @@
     supervisor_commission,
     unused_inventory,
     cost,
+    technician,
     supervisor,
     fabricator_commission,
     completion

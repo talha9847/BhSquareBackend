@@ -48,5 +48,15 @@ router.get(
   middleware.authMiddleware(["admin"]),
   docCollectController.fetchCustomerDocuments,
 );
+router.post(
+  "/backup",
+  middleware.authMiddleware(["admin"]),
+  docCollectController.backup,
+);
+router.get(
+  "/getBackup",
+  middleware.authMiddleware(["admin"]),
+  docCollectController.getBackup,
+);
 
 module.exports = router;
