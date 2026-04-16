@@ -299,21 +299,30 @@ async function getFinalStageCustomersByStatus(status) {
   }
 }
 
+
 async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
   const t = await sequelize.transaction();
   try {
-    // 1️⃣ Find the fabrication record by customer_id
-    const fabrication = await FinalStage.findOne({
+    // 1️⃣ Find final stage record
+    const finalStage = await FinalStage.findOne({
       where: { customer_id },
       transaction: t,
     });
 
-    if (!fabrication) {
+    if (!finalStage) {
       throw new Error("Supervisor record not found for this customer");
     }
 
-    fabrication.supervisor_id = supervisor_id;
-    await fabrication.save({ transaction: t });
+    // ❌ Restrict update if file already approved
+    if (finalStage.file_approved) {
+      throw new Error("Cannot update supervisor after file is approved");
+    }
+
+    // ✅ Update supervisor
+    finalStage.supervisor_id = supervisor_id;
+    await finalStage.save({ transaction: t });
+
+    // 2️⃣ Get customer + lead
     const customer = await Customer.findOne({
       where: { id: customer_id },
       include: [
@@ -331,17 +340,16 @@ async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
     }
 
     const total_kw = customer.lead.total_capacity / 1000;
-    const type = customer.lead.installation_type; // Residential / Commercial / Industrial
+    const type = customer.lead.installation_type;
 
-    // 4️⃣ Check SupervisorCommission
+    // 3️⃣ Handle Supervisor Commission
     let supervisorCommission = await SupervisorCommission.findOne({
       where: { customer_id },
       transaction: t,
     });
 
     if (!supervisorCommission) {
-      // ✅ CREATE
-      supervisorCommission = await SupervisorCommission.create(
+      await SupervisorCommission.create(
         {
           supervisor_id,
           customer_id,
@@ -352,16 +360,16 @@ async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
         { transaction: t },
       );
     } else {
-      // ✅ UPDATE only supervisor_id
       supervisorCommission.supervisor_id = supervisor_id;
       await supervisorCommission.save({ transaction: t });
     }
+
     await t.commit();
 
     return {
       success: true,
       message: `Supervisor assigned successfully for customer_id ${customer_id}`,
-      data: fabrication,
+      data: finalStage,
     };
   } catch (error) {
     await t.rollback();

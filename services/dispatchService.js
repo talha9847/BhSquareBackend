@@ -886,7 +886,6 @@ async function getDispatchByCustomerId(customerId) {
     throw error;
   }
 }
-
 async function getFabricationByCustomerId(customerId) {
   try {
     if (!customerId) {
@@ -912,10 +911,15 @@ async function getFabricationByCustomerId(customerId) {
       ],
     });
 
-    // 🔹 if not found → return null
     if (!fabrication) {
       return null;
     }
+
+    // ✅ Fetch Fabricator Commission separately
+    const commission = await FabricatorCommission.findOne({
+      where: { customer_id: customerId },
+      attributes: ["id", "commission", "total_kw", "status"],
+    });
 
     return {
       id: fabrication.id,
@@ -925,6 +929,11 @@ async function getFabricationByCustomerId(customerId) {
       fabricator_name: fabrication.fabricator?.name || null,
 
       status: fabrication.status,
+
+      // ✅ Added commission data
+      fabricator_commission: commission?.commission || 0,
+      total_kw: commission?.total_kw || 0,
+      commission_status: commission?.status || null,
 
       created_at: fabrication.created_at,
       updated_at: fabrication.updated_at,
