@@ -553,7 +553,7 @@ async function upsertCustomerDocumentFile(doc_id, name) {
       document_id: doc_id,
       file_name: name,
       file_url:
-        "https://drive.google.com/file/d/1QfWNjUm7C3bDOpjbZkbSBSilGgJG0hou/view",
+        "https://drive.google.com/file/d/1fhDNYWcZA_hejGC2p59aty0UOTnNMip4/view?usp=drive_link",
       is_got: true,
     });
 
