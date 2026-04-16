@@ -573,8 +573,6 @@ async function getCustomerReport({ startDate, endDate }) {
   }
 }
 
-
-
 async function getPendingStageCapacity() {
   try {
     // 1️⃣ Leads = Stage 1
@@ -655,11 +653,11 @@ async function getPendingStageCapacity() {
     const stageUrlMap = {
       1: "/leads",
       2: "/customers",
-      3: "/name-change",
+      3: "/customers",
       4: "/customers",
       5: "/registration",
-      6: "/loan",
-      7: "/kit-ready",
+      6: "/kitready",
+      7: "/kitready",
       8: "/dispatch",
       9: "/fabrication",
       10: "/wiring",

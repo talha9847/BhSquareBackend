@@ -11,6 +11,7 @@ const sequelize = require("../config/db");
 const { Op } = require("sequelize");
 const { exec } = require("child_process");
 const { Backup } = require("../models/backupModel");
+const { spawn } = require("child_process");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -443,14 +444,22 @@ async function getCustomerDocumentsWithFiles(customerId) {
 
 const BACKUP_FOLDER_ID = "1pnk1TMq43xCyWQM2yg1LFr9vfTLz-vag";
 
-function createDBDumpStream() {
-  const dbUrl = process.env.DATABASE_URL;
+async function createDBDumpStream(sequelize) {
+  const tables = await sequelize.getQueryInterface().showAllTables();
 
-  const child = exec(`pg_dump "${dbUrl}"`, {
-    maxBuffer: 1024 * 1024 * 50,
-  });
+  let dump = "";
 
-  return child.stdout;
+  for (const table of tables) {
+    const rows = await sequelize.query(`SELECT * FROM "${table}"`, {
+      type: sequelize.QueryTypes.SELECT,
+    });
+
+    dump += `\n-- TABLE: ${table}\n`;
+    dump += JSON.stringify(rows, null, 2);
+    dump += "\n";
+  }
+
+  return Readable.from(dump);
 }
 
 async function uploadToDrive(stream, fileName) {
@@ -477,8 +486,7 @@ async function createOrUpdateBackup() {
     const now = new Date();
 
     const fileName = `backup_${now.toISOString().replace(/[:.]/g, "-")}.sql`;
-    const stream = createDBDumpStream();
-
+    const stream = await createDBDumpStream(sequelize);
     const driveResult = await uploadToDrive(stream, fileName);
 
     const existing = await Backup.findOne({

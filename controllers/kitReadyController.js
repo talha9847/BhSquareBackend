@@ -87,6 +87,7 @@ async function getAllBrands(req, res) {
 
 async function createInventory(req, res) {
   try {
+    console.log(req.body);
     const inventory = await kitReadyService.addInventory(req.body);
 
     return res.status(201).json({

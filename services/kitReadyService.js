@@ -198,13 +198,11 @@ async function getAllBrands() {
 }
 async function addInventory(data) {
   const { name, brand_id, category_id, qty, price, tax } = data;
-
   try {
     // 🔹 Validate inventory name
     if (!name) {
       throw new Error("Inventory name is required");
     }
-
     // 🔹 Validate brand_id if provided
     if (brand_id) {
       const brand = await Brand.findByPk(brand_id);
@@ -212,7 +210,6 @@ async function addInventory(data) {
         throw new Error("Invalid brand_id");
       }
     }
-
     // 🔹 Validate category_id if provided
     if (category_id) {
       const category = await Category.findByPk(category_id);
@@ -220,7 +217,6 @@ async function addInventory(data) {
         throw new Error("Invalid category_id");
       }
     }
-
     // 🔹 Create inventory
     const inventory = await Inventory.create({
       name: name.trim(),
@@ -230,7 +226,6 @@ async function addInventory(data) {
       price: price,
       tax: tax,
     });
-
     return inventory;
   } catch (error) {
     throw error;
