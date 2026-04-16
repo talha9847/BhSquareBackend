@@ -130,9 +130,69 @@ async function getNameChangeDocs(req, res) {
   }
 }
 
+async function getNameChangeDocumentStatus(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result =
+      await nameChangeService.getNameChangeDocumentStatus(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Name change document status fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get Name Change Document Status Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch name change document status",
+    });
+  }
+}
+async function toggleNameChangeDocument(req, res) {
+  try {
+    const { customerId, fileName } = req.body;
+
+    if (!customerId || !fileName) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId and fileName are required",
+      });
+    }
+
+    const result = await nameChangeService.toggleNameChangeDoc(
+      customerId,
+      fileName,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Toggle Name Change Document Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to toggle name change document",
+    });
+  }
+}
 module.exports = {
   uploadNameChangeFiles,
   checkReady,
   goToStageThree,
   getNameChangeDocs,
+  getNameChangeDocumentStatus,
+  toggleNameChangeDocument,
 };

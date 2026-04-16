@@ -167,6 +167,7 @@ async function uploadBulkFiles(
           document_id: docId,
           file_name: fileName,
           file_url: fileUrl,
+          is_got: true,
           uploaded_at: new Date(),
           updated_at: new Date(),
         },
@@ -465,7 +466,6 @@ async function getCustomerDocumentStatus(customerId) {
       raw: true,
     });
 
-    // ❌ If no document row
     if (!customerDoc) {
       return {
         customerId,
@@ -482,23 +482,26 @@ async function getCustomerDocumentStatus(customerId) {
 
     const files = await CustomerDocumentFile.findAll({
       where: { document_id: documentId },
-      attributes: ["id", "file_name"],
+      attributes: ["id", "file_name", "is_got"], // ✅ IMPORTANT FIX
       raw: true,
     });
 
     const fileMap = new Map();
 
     for (const f of files) {
-      fileMap.set(normalize(f.file_name), f.id);
+      fileMap.set(normalize(f.file_name), {
+        id: f.id,
+        is_got: f.is_got === true || f.is_got === 1,
+      });
     }
 
     const result = REQUIRED_DOCS.map((doc) => {
-      const fileId = fileMap.get(normalize(doc));
+      const record = fileMap.get(normalize(doc));
 
       return {
         name: doc,
-        is_got: !!fileId,
-        file_id: fileId || null,
+        is_got: record ? record.is_got : false, // ✅ REAL DB VALUE
+        file_id: record ? record.id : null,
         doc_id: documentId,
       };
     });
@@ -531,11 +534,9 @@ async function upsertCustomerDocumentFile(doc_id, name) {
       },
     });
 
-    console.log(existing.is_got);
-
     if (existing) {
       await existing.update({
-        is_got: !!existing.is_got,
+        is_got: !existing.is_got,
         updated_at: new Date(),
       });
 

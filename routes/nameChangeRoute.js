@@ -25,5 +25,15 @@ router.get(
   middleware.authMiddleware(["admin"]),
   nameChangeController.getNameChangeDocs,
 );
+router.get(
+  "/getNameChangeDocumentStatus/:customerId",
+  middleware.authMiddleware(["admin"]),
+  nameChangeController.getNameChangeDocumentStatus,
+);
+router.post(
+  "/toggleNameChangeDocument",
+  middleware.authMiddleware(["admin"]),
+  nameChangeController.toggleNameChangeDocument,
+);
 
 module.exports = router;

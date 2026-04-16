@@ -26,6 +26,10 @@ const NameChange = sequelize.define(
       type: DataTypes.STRING(500),
       allowNull: true,
     },
+    is_got: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

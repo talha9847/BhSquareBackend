@@ -119,6 +119,7 @@ async function uploadNameChangeFiles(
           customer_id: customerId,
           document_name: fileName,
           document_url: fileUrl,
+          is_got: true,
           created_at: new Date(),
         },
         {
@@ -141,7 +142,7 @@ async function uploadNameChangeFiles(
 
 async function checkCustomerReady(customerId) {
   const count = await NameChange.count({
-    where: { customer_id: customerId },
+    where: { customer_id: customerId, is_got: true },
   });
 
   if (count >= 3) {
@@ -229,9 +230,109 @@ async function getNameChangeDocsByCustomerId(customerId) {
   }
 }
 
+const REQUIRED_NAMECHANGE_DOCS = [
+  "Passport Size Pic",
+  "Aadhar Card",
+  "Akarni / Sales Deed / Index-2",
+  "Property Card / 7-12 / 8-A",
+  "Hakk Patra",
+  "Tharav of Authority Signatory",
+  "Pan Card (Category Change)",
+  "Society Registration",
+  "Death Certificate",
+  "Samti Patra (Multi-Owner)",
+  "Pedhinamu (Multi-Varasdar)",
+];
+
+async function getNameChangeDocumentStatus(customerId) {
+  try {
+    const records = await NameChange.findAll({
+      where: { customer_id: customerId },
+      attributes: ["id", "document_name", "is_got"],
+      raw: true,
+    });
+
+    const docMap = new Map();
+
+    for (const doc of records) {
+      docMap.set(doc.document_name, {
+        id: doc.id,
+        is_got: doc.is_got === true || doc.is_got === 1,
+      });
+    }
+
+    const result = REQUIRED_NAMECHANGE_DOCS.map((docName) => {
+      const record = docMap.get(docName);
+
+      return {
+        name: docName,
+        is_got: record ? record.is_got : false,
+        file_id: record ? record.id : null,
+        customer_id: customerId,
+      };
+    });
+
+    return {
+      customerId,
+      documents: result,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function toggleNameChangeDoc(customerId, fileName) {
+  try {
+    if (!customerId || !fileName) {
+      throw new Error("doc_id and name are required");
+    }
+
+    // 🔥 simple validation
+    if (!REQUIRED_NAMECHANGE_DOCS.includes(fileName)) {
+      throw new Error("Invalid document name");
+    }
+    const record = await NameChange.findOne({
+      where: {
+        customer_id: customerId,
+        document_name: fileName,
+      },
+    });
+
+    // ❌ NOT EXISTS → CREATE (true)
+    if (!record) {
+      const newRecord = await NameChange.create({
+        customer_id: customerId,
+        document_name: fileName,
+        is_got: true,
+        document_url:
+          "https://drive.google.com/file/d/1QfWNjUm7C3bDOpjbZkbSBSilGgJG0hou/view",
+      });
+
+      return {
+        message: "Document created",
+        is_got: true,
+        data: newRecord,
+      };
+    }
+
+    // 🔁 EXISTS → TOGGLE
+    record.is_got = !record.is_got;
+    await record.save();
+
+    return {
+      message: "Document toggled successfully",
+      is_got: record.is_got,
+      data: record,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
 module.exports = {
   uploadNameChangeFiles,
   checkCustomerReady,
   goToStageThree,
   getNameChangeDocsByCustomerId,
+  getNameChangeDocumentStatus,
+  toggleNameChangeDoc,
 };
