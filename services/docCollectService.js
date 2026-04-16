@@ -405,6 +405,7 @@ async function getCustomerDocumentsWithFiles(customerId) {
     if (!document) {
       return {
         success: false,
+
         message: "Customer document not found",
       };
     }
@@ -439,6 +440,130 @@ async function getCustomerDocumentsWithFiles(customerId) {
   } catch (error) {
     console.error("Error fetching customer documents:", error);
     return { success: false, message: error.message };
+  }
+}
+
+const REQUIRED_DOCS = [
+  "Aadhar Card",
+  "Vera bill",
+  "Bank Passbook",
+  "Light Bill",
+];
+
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+async function getCustomerDocumentStatus(customerId) {
+  try {
+    const customerDoc = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+      attributes: ["id"],
+      raw: true,
+    });
+
+    // ❌ If no document row
+    if (!customerDoc) {
+      return {
+        customerId,
+        documents: REQUIRED_DOCS.map((name) => ({
+          name,
+          is_got: false,
+          file_id: null,
+          doc_id: null,
+        })),
+      };
+    }
+
+    const documentId = customerDoc.id;
+
+    const files = await CustomerDocumentFile.findAll({
+      where: { document_id: documentId },
+      attributes: ["id", "file_name"],
+      raw: true,
+    });
+
+    const fileMap = new Map();
+
+    for (const f of files) {
+      fileMap.set(normalize(f.file_name), f.id);
+    }
+
+    const result = REQUIRED_DOCS.map((doc) => {
+      const fileId = fileMap.get(normalize(doc));
+
+      return {
+        name: doc,
+        is_got: !!fileId,
+        file_id: fileId || null,
+        doc_id: documentId,
+      };
+    });
+
+    return {
+      customerId,
+      documents: result,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function upsertCustomerDocumentFile(doc_id, name) {
+  try {
+    if (!doc_id || !name) {
+      throw new Error("doc_id and name are required");
+    }
+
+    // 🔥 simple validation
+    if (!REQUIRED_DOCS.includes(name)) {
+      throw new Error("Invalid document name");
+    }
+
+    // check existing
+    const existing = await CustomerDocumentFile.findOne({
+      where: {
+        document_id: doc_id,
+        file_name: name,
+      },
+    });
+
+    console.log(existing.is_got);
+
+    if (existing) {
+      await existing.update({
+        is_got: !!existing.is_got,
+        updated_at: new Date(),
+      });
+
+      return {
+        message: "Document updated",
+        file_id: existing.id,
+        name,
+        is_got: true,
+      };
+    }
+
+    // create new
+    const created = await CustomerDocumentFile.create({
+      document_id: doc_id,
+      file_name: name,
+      file_url:
+        "https://drive.google.com/file/d/1QfWNjUm7C3bDOpjbZkbSBSilGgJG0hou/view",
+      is_got: true,
+    });
+
+    return {
+      message: "Document created",
+      file_id: created.id,
+      name,
+      is_got: true,
+    };
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -560,4 +685,6 @@ module.exports = {
   getCustomerDocumentsWithFiles,
   createOrUpdateBackup,
   getBackup,
+  getCustomerDocumentStatus,
+  upsertCustomerDocumentFile,
 };

@@ -223,7 +223,33 @@ async function fetchCustomerDocuments(req, res) {
     });
   }
 }
+async function getCustomerDocumentStatus(req, res) {
+  try {
+    const { customerId } = req.params;
 
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result =
+      await docCollectService.getCustomerDocumentStatus(customerId);
+    return res.status(200).json({
+      success: true,
+      message: "Customer document status fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Get Customer Document Status Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch document status",
+    });
+  }
+}
 async function backup(req, res) {
   try {
     const result = await docCollectService.createOrUpdateBackup();
@@ -261,6 +287,36 @@ async function getBackup(req, res) {
     });
   }
 }
+async function upsertCustomerDocumentFile(req, res) {
+  try {
+    const { doc_id, name } = req.body;
+
+    if (!doc_id || !name) {
+      return res.status(400).json({
+        success: false,
+        message: "doc_id and name are required",
+      });
+    }
+
+    const result = await docCollectService.upsertCustomerDocumentFile(
+      doc_id,
+      name,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result,
+    });
+  } catch (error) {
+    console.error("Upsert Document Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to process document",
+    });
+  }
+}
 
 module.exports = {
   getLeadDetailFromCustomerId,
@@ -273,4 +329,6 @@ module.exports = {
   fetchCustomerDocuments,
   backup,
   getBackup,
+  getCustomerDocumentStatus,
+  upsertCustomerDocumentFile,
 };

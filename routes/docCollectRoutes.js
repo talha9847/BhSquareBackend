@@ -53,10 +53,20 @@ router.post(
   middleware.authMiddleware(["admin"]),
   docCollectController.backup,
 );
+router.post(
+  "/upsertCustomerDocumentFile",
+  middleware.authMiddleware(["admin"]),
+  docCollectController.upsertCustomerDocumentFile,
+);
 router.get(
   "/getBackup",
   middleware.authMiddleware(["admin"]),
   docCollectController.getBackup,
+);
+
+router.get(
+  "/getCustomerDocumentStatus/:customerId",
+  docCollectController.getCustomerDocumentStatus,
 );
 
 module.exports = router;

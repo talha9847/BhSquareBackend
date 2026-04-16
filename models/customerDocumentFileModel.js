@@ -18,6 +18,10 @@ const CustomerDocumentFile = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    is_got: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
     file_url: {
       type: DataTypes.TEXT,
       allowNull: false,
@@ -36,7 +40,5 @@ const CustomerDocumentFile = sequelize.define(
     timestamps: false,
   },
 );
-
-
 
 module.exports = { CustomerDocumentFile };

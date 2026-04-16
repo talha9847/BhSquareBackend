@@ -137,7 +137,7 @@
         document_id INTEGER REFERENCES customer_documents(id) ON DELETE CASCADE,
         file_name VARCHAR(255) NOT NULL,
         file_url TEXT NOT NULL,
-
+        is_got BOOLEAN DEFAULT TRUE
         uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
