@@ -135,6 +135,11 @@ router.get(
   sourceController.getPaidCommissionByFabricatorId,
 );
 router.get(
+  "/getPaidCommissionBySupervisorId",
+  middleware.authMiddleware(["supervisor"]),
+  sourceController.getPaidCommissionBySupervisorId,
+);
+router.get(
   "/getCompletionReport",
   middleware.authMiddleware(["admin"]),
   sourceController.getCompletionReport,

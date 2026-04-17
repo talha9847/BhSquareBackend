@@ -1104,22 +1104,27 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
 
 async function getAllMasters() {
   try {
-    const [technicians, fabricators, leadSources] = await Promise.all([
-      Technician.findAll({
-        attributes: ["id", "name"],
-        order: [["name", "ASC"]],
-      }),
+    const [technicians, fabricators, leadSources, supervisor] =
+      await Promise.all([
+        Technician.findAll({
+          attributes: ["id", "name"],
+          order: [["name", "ASC"]],
+        }),
 
-      Fabricator.findAll({
-        attributes: ["id", "name"],
-        order: [["name", "ASC"]],
-      }),
+        Fabricator.findAll({
+          attributes: ["id", "name"],
+          order: [["name", "ASC"]],
+        }),
 
-      Source.findAll({
-        attributes: ["id", "name"],
-        order: [["name", "ASC"]],
-      }),
-    ]);
+        Source.findAll({
+          attributes: ["id", "name"],
+          order: [["name", "ASC"]],
+        }),
+        Supervisor.findAll({
+          attributes: ["id", "name"],
+          order: [["name", "ASC"]],
+        }),
+      ]);
 
     return {
       success: true,
@@ -1127,6 +1132,7 @@ async function getAllMasters() {
         technicians,
         fabricators,
         sources: leadSources,
+        supervisor: supervisor,
       },
     };
   } catch (error) {
@@ -1446,6 +1452,53 @@ async function getPaidCommissionByFabricatorId(sourceId) {
   }
 }
 
+async function getPaidCommissionBySupervisorId(sourceId) {
+  try {
+    if (!sourceId) {
+      throw new Error("sourceId is required");
+    }
+
+    const commissions = await SupervisorCommission.findAll({
+      where: {
+        supervisor_id: sourceId,
+        status: "paid",
+      },
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "lead_id"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["customer_name", "address"],
+            },
+          ],
+        },
+      ],
+      attributes: ["id", "customer_id", "total_kw", "commission", "created_at"],
+    });
+
+    if (!commissions || commissions.length === 0) {
+      return [];
+    }
+
+    // 🔹 format response
+    return commissions.map((item) => ({
+      id: item.id,
+      customer_id: item.customer_id,
+      customer_name: item.customer?.lead?.customer_name || null,
+      address: item.customer?.lead?.address || null,
+      total_kw: item.total_kw,
+      commission: item.commission,
+      created_at: item.created_at,
+    }));
+  } catch (error) {
+    throw error;
+  }
+}
+
 async function getCompletionReport({ startDate, endDate }) {
   try {
     let whereCondition = {};
@@ -1708,4 +1761,5 @@ module.exports = {
   getCompletionSummary,
   getFinalStageCustomersByStatus,
   getPaidCommissionByFabricatorId,
+  getPaidCommissionBySupervisorId,
 };
