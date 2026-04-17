@@ -17,7 +17,13 @@ router.get(
 );
 router.get(
   "/me",
-  middleware.authMiddleware(["admin", "technician", "fabricator", "source"]),
+  middleware.authMiddleware([
+    "admin",
+    "technician",
+    "fabricator",
+    "source",
+    "supervisor",
+  ]),
   userController.me,
 );
 
