@@ -21,6 +21,28 @@ async function fetchKitReadyCustomers(req, res) {
   }
 }
 
+async function deleteCustomerData(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result = await kitReadyService.deleteCustomerFullData(customerId);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 async function updateKitReadyStatusDelay(req, res) {
   try {
     const { id } = req.params;
@@ -695,4 +717,5 @@ module.exports = {
   deleteUnusedInventory,
   updateLoanFromRegistration,
   updateKitReadyStatusDelay,
+  deleteCustomerData,
 };

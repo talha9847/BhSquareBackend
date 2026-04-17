@@ -16,6 +16,11 @@ const { Dispatch } = require("../models/dispatchModel");
 const { Category } = require("../models/categoryModel");
 const { Wiring } = require("../models/wiringModel");
 const { UnusedInventory } = require("../models/UnusedInventoryModel");
+const { CustomerDocument } = require("../models/customerDocumentModel");
+const { CustomerDocumentFile } = require("../models/customerDocumentFileModel");
+const { LoanDoc } = require("../models/loanDocModel");
+const { NameChange } = require("../models/nameChangeModel");
+const { Permission } = require("../models/permissionModel");
 
 async function getKitReadyCustomers(status) {
   try {
@@ -88,6 +93,108 @@ async function updateKitReadyStatusDelay(id, status) {
     return kit;
   } catch (error) {
     console.error("❌ Error updating kit ready status:", error);
+    throw error;
+  }
+}
+
+async function deleteCustomerFullData(customerId) {
+  const t = await sequelize.transaction();
+
+  try {
+    // 1. Check Kit Ready
+    const kit = await KitReady.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (kit && kit.file_gen == "done") {
+      throw new Error(
+        "Cannot delete: file already generated for this customer",
+      );
+    }
+
+    // 2. Permission
+    await Permission.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 3. Kit Items (if any linked via kit_ready)
+    if (kit) {
+      await KitItems.destroy({
+        where: { kit_id: kit.id },
+        transaction: t,
+      });
+    }
+
+    // 4. Kit Ready
+    await KitReady.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 5. Loan + Loan Docs
+    const loans = await Loan.findAll({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    for (const loan of loans) {
+      await LoanDoc.destroy({
+        where: { loan_id: loan.id },
+        transaction: t,
+      });
+    }
+
+    await Loan.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 6. Registration
+    await CustomerRegistration.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 7. Documents + Files
+    const docs = await CustomerDocument.findAll({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    for (const doc of docs) {
+      await CustomerDocumentFile.destroy({
+        where: { document_id: doc.id },
+        transaction: t,
+      });
+    }
+
+    await CustomerDocument.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 8. Name Change
+    await NameChange.destroy({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    // 9. Final delete Customer
+    await Customer.destroy({
+      where: { id: customerId },
+      transaction: t,
+    });
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Customer deleted successfully (up to kit_ready)",
+    };
+  } catch (error) {
+    await t.rollback();
     throw error;
   }
 }
@@ -1308,4 +1415,5 @@ module.exports = {
   deleteUnusedInventory,
   updateLoanStatusFromRegisration,
   updateKitReadyStatusDelay,
+  deleteCustomerFullData,
 };

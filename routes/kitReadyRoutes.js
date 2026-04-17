@@ -6,6 +6,11 @@ router.get(
   "/fetchKitReadyCustomers",
   kitReadyController.fetchKitReadyCustomers,
 );
+router.delete(
+  "/deleteCustomerData/:customerId",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.deleteCustomerData,
+);
 router.post(
   "/updateKitReadyStatusDelay/:id",
   middleware.authMiddleware(["admin"]),
