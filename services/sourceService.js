@@ -190,7 +190,13 @@ async function getFinalStageCustomers() {
             {
               model: Lead,
               as: "lead",
-              attributes: ["id", "customer_name", "contact_number", "address"],
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "installation_type",
+              ],
             },
           ],
         },
@@ -298,7 +304,6 @@ async function getFinalStageCustomersByStatus(status) {
     throw error;
   }
 }
-
 
 async function assignSupervisorByCustomerId({ customer_id, supervisor_id }) {
   const t = await sequelize.transaction();

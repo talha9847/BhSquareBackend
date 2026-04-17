@@ -41,6 +41,7 @@ async function getCustomersWithSummary() {
             "customer_name",
             "contact_number",
             "address",
+            "installation_type",
             "number_of_panels",
             "number_of_inverters",
             "inverter_capacity",

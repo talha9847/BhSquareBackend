@@ -85,7 +85,13 @@ async function getWiringCustomerDetails() {
             {
               model: Lead,
               as: "lead", // 👈 matches Customer.belongsTo(Lead) alias
-              attributes: ["id", "customer_name", "contact_number", "address"],
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "installation_type",
+              ],
             },
           ],
         },

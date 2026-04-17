@@ -25,6 +25,7 @@ async function getCustomersWithLeadData() {
             "site_visit_date",
             "address",
             "total_capacity",
+            "installation_type",
           ],
         },
       ],

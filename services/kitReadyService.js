@@ -39,6 +39,7 @@ async function getKitReadyCustomers() {
                 "customer_name",
                 "contact_number",
                 "address",
+                "installation_type",
                 "panel_wattage",
                 "number_of_panels",
                 "number_of_inverters",

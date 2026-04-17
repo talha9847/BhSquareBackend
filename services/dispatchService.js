@@ -25,7 +25,13 @@ async function getAllDispatches() {
             {
               model: Lead,
               as: "lead",
-              attributes: ["id", "customer_name", "address", "contact_number"],
+              attributes: [
+                "id",
+                "customer_name",
+                "address",
+                "contact_number",
+                "installation_type",
+              ],
             },
           ],
         },
@@ -216,7 +222,13 @@ async function getAllFabrications() {
             {
               model: Lead,
               as: "lead",
-              attributes: ["id", "customer_name", "contact_number", "address"],
+              attributes: [
+                "id",
+                "customer_name",
+                "contact_number",
+                "address",
+                "installation_type",
+              ],
             },
           ],
         },
