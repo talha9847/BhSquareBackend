@@ -4,11 +4,42 @@ const kitReadyService = require("../services/kitReadyService");
 
 async function fetchKitReadyCustomers(req, res) {
   try {
-    const customers = await kitReadyService.getKitReadyCustomers();
+    // ✅ get status from query, default = pending
+    const { status = "pending" } = req.query;
+
+    const customers = await kitReadyService.getKitReadyCustomers(status);
 
     return res.status(200).json({
       success: true,
       data: customers,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function updateKitReadyStatusDelay(req, res) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // ✅ basic validation
+    if (!id || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "id and status are required",
+      });
+    }
+
+    const updated = await kitReadyService.updateKitReadyStatusDelay(id, status);
+
+    return res.status(200).json({
+      success: true,
+      message: "Status updated successfully",
+      data: updated,
     });
   } catch (error) {
     return res.status(500).json({
@@ -663,4 +694,5 @@ module.exports = {
   getUnusedInventoryByCustomerId,
   deleteUnusedInventory,
   updateLoanFromRegistration,
+  updateKitReadyStatusDelay,
 };

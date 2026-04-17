@@ -33,7 +33,7 @@ const KitReady = sequelize.define(
       type: DataTypes.STRING(10),
       defaultValue: "pending",
       validate: {
-        isIn: [["pending", "done"]],
+        isIn: [["pending", "done", "delay"]],
       },
     },
     file_gen: {

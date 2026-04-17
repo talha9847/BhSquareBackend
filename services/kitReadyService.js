@@ -17,12 +17,13 @@ const { Category } = require("../models/categoryModel");
 const { Wiring } = require("../models/wiringModel");
 const { UnusedInventory } = require("../models/UnusedInventoryModel");
 
-async function getKitReadyCustomers() {
+async function getKitReadyCustomers(status) {
   try {
     const data = await KitReady.findAll({
       attributes: ["id", "loan_status", "status", "file_gen"],
 
-      where: { status: "pending" },
+      // ✅ dynamic status filter
+      where: status ? { status } : {},
 
       include: [
         {
@@ -46,8 +47,6 @@ async function getKitReadyCustomers() {
                 "inverter_capacity",
               ],
             },
-
-            // ✅ ADD THIS
             {
               model: CustomerRegistration,
               as: "registration",
@@ -63,6 +62,32 @@ async function getKitReadyCustomers() {
     return data;
   } catch (error) {
     console.error("❌ Error fetching kit ready customers:", error);
+    throw error;
+  }
+}
+
+async function updateKitReadyStatusDelay(id, status) {
+  try {
+    // ✅ validate status (important based on your DB constraint)
+    const allowedStatus = ["pending", "delay"];
+
+    if (!allowedStatus.includes(status)) {
+      throw new Error("Invalid status value");
+    }
+
+    const kit = await KitReady.findByPk(id);
+
+    if (!kit) {
+      throw new Error("KitReady record not found");
+    }
+
+    // ✅ update
+    kit.status = status;
+    await kit.save();
+
+    return kit;
+  } catch (error) {
+    console.error("❌ Error updating kit ready status:", error);
     throw error;
   }
 }
@@ -1282,4 +1307,5 @@ module.exports = {
   getUnusedInventoryByCustomerId,
   deleteUnusedInventory,
   updateLoanStatusFromRegisration,
+  updateKitReadyStatusDelay,
 };

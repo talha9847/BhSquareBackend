@@ -7,6 +7,11 @@ router.get(
   kitReadyController.fetchKitReadyCustomers,
 );
 router.post(
+  "/updateKitReadyStatusDelay/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateKitReadyStatusDelay,
+);
+router.post(
   "/updateLoan",
   middleware.authMiddleware(["admin"]),
   kitReadyController.updateLoan,

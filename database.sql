@@ -219,7 +219,9 @@
         document_name VARCHAR(255) NOT NULL,
         document_url VARCHAR(500),
         is_got BOOLEAN DEFAULT TRUE
-        UNIQUE (customer_id, document_name)
+        UNIQUE (customer_id, document_name),
+        generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
     );
 
 
