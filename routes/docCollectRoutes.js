@@ -48,6 +48,11 @@ router.get(
   middleware.authMiddleware(["admin"]),
   docCollectController.fetchCustomerDocuments,
 );
+router.get(
+  "/getCustomerDocumentsWithoutFiles/:customerId",
+  middleware.authMiddleware(["technician"]),
+  docCollectController.getCustomerDocumentsWithoutFiles,
+);
 router.post(
   "/backup",
   middleware.authMiddleware(["admin"]),

@@ -223,6 +223,33 @@ async function fetchCustomerDocuments(req, res) {
     });
   }
 }
+async function getCustomerDocumentsWithoutFiles(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "customerId is required",
+      });
+    }
+
+    const result =
+      await docCollectService.getCustomerDocumentsWithoutFiles(customerId);
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error fetching customer documents:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to fetch customer documents",
+    });
+  }
+}
 async function getCustomerDocumentStatus(req, res) {
   try {
     const { customerId } = req.params;
@@ -331,4 +358,5 @@ module.exports = {
   getBackup,
   getCustomerDocumentStatus,
   upsertCustomerDocumentFile,
+  getCustomerDocumentsWithoutFiles,
 };

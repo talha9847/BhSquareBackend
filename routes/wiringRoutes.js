@@ -148,7 +148,7 @@ router.get(
 );
 router.get(
   "/getWiringItemsByCustomerId/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   wiringController.getWiringItemsByCustomerId,
 );
 module.exports = router;

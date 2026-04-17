@@ -95,12 +95,12 @@ router.get(
 );
 router.get(
   "/getDispatchByCustomerId/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   dispatchController.getDispatchByCustomerId,
 );
 router.get(
   "/getFabricationByCustomerId/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   dispatchController.getFabricationByCustomerId,
 );
 

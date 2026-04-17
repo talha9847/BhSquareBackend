@@ -444,6 +444,45 @@ async function getCustomerDocumentsWithFiles(customerId) {
   }
 }
 
+async function getCustomerDocumentsWithoutFiles(customerId) {
+  try {
+    if (!customerId) {
+      throw new Error("customerId is required");
+    }
+
+    // 🔹 Step 1: Get customer document
+    const document = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+    });
+
+    if (!document) {
+      return {
+        success: false,
+
+        message: "Customer document not found",
+      };
+    }
+
+    // 🔹 Step 3: Format response
+    const result = {
+      document_id: document.id,
+      customer_id: document.customer_id,
+      consumer_number: document.consumer_number,
+      geo_coordinate: document.geo_coordinate,
+      registration_number: document.registration_number,
+      sub_division: document.sub_division,
+    };
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error fetching customer documents:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 const REQUIRED_DOCS = [
   "Aadhar Card",
   "Vera bill",
@@ -688,4 +727,5 @@ module.exports = {
   getBackup,
   getCustomerDocumentStatus,
   upsertCustomerDocumentFile,
+  getCustomerDocumentsWithoutFiles,
 };

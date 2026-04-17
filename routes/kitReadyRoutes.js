@@ -101,7 +101,7 @@ router.post(
 
 router.get(
   "/fetchKitItemsbyCustomer/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "technician"]),
   kitReadyController.fetchKitItemsbyCustomer,
 );
 router.get(

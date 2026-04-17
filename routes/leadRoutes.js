@@ -60,7 +60,7 @@ router.post(
 );
 router.get(
   "/fetchLeadById/:id",
-  middleware.authMiddleware(["admin", "source"]),
+  middleware.authMiddleware(["admin", "source", "technician"]),
   leadController.fetchLeadById,
 );
 router.get(
