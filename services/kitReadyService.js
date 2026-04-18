@@ -898,6 +898,8 @@ async function addSerialsAndDispatch(customerId, kitPanelId, kitInveterId) {
     if (!panelInventory || !inverterInventory) {
       throw new Error("Inventory not found");
     }
+    ///  1 for panel
+    /// 3 for inverter
 
     // 🔴 Category validation
     if (panelInventory.category_id !== 1) {
