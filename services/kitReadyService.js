@@ -1410,6 +1410,32 @@ async function deleteUnusedInventory(data) {
   }
 }
 
+async function updateKitReadyNote(id, note) {
+  const t = await sequelize.transaction();
+
+  try {
+    const kit = await KitReady.findOne({
+      where: { id },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!kit) {
+      throw new Error("KitReady record not found");
+    }
+
+    kit.note = note;
+    await kit.save({ transaction: t });
+
+    await t.commit();
+
+    return kit; // only data
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -1443,4 +1469,5 @@ module.exports = {
   updateLoanStatusFromRegisration,
   updateKitReadyStatusDelay,
   deleteCustomerFullData,
+  updateKitReadyNote,
 };

@@ -158,4 +158,9 @@ router.delete(
   middleware.authMiddleware(["admin", "technician"]),
   kitReadyController.deleteUnusedInventory,
 );
+router.put(
+  "/updateKitReadyNote/:id",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.updateKitReadyNote,
+);
 module.exports = router;
