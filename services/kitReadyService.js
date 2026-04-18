@@ -907,6 +907,31 @@ async function addSerialsAndDispatch(customerId, kitPanelId, kitInveterId) {
     if (inverterInventory.category_id !== 3) {
       throw new Error("Selected inverter item is not an inverter (category 3)");
     }
+    ///////////////////////////////////////////////////////
+    ////////      below are extra i have addedd up too.......
+    const customer = await Customer.findOne({
+      where: { id: customerId },
+      transaction: t,
+    });
+
+    if (!customer || !customer.lead_id) {
+      throw new Error("Customer or lead_id not found");
+    }
+
+    // 🔹 Update Lead table
+    await Lead.update(
+      {
+        number_of_panels: panelItem.qty,
+        number_of_inverters: inverterItem.qty,
+      },
+      {
+        where: { id: customer.lead_id },
+        transaction: t,
+      },
+    );
+
+    //  ..... here ///////////////////////////////////////////
+    ///////////////////////////////////////////////////////
 
     // 🔹 Get registration
     const registration = await CustomerRegistration.findOne({
