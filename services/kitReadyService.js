@@ -25,7 +25,7 @@ const { Permission } = require("../models/permissionModel");
 async function getKitReadyCustomers(status) {
   try {
     const data = await KitReady.findAll({
-      attributes: ["id", "loan_status", "status", "file_gen"],
+      attributes: ["id", "loan_status", "status", "file_gen", "note"],
 
       // ✅ dynamic status filter
       where: status ? { status } : {},

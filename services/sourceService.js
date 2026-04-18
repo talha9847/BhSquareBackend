@@ -1599,6 +1599,13 @@ async function getCompletionSummary({ startDate, endDate }) {
                 "address",
                 "total_capacity", // ✅ from leads table
               ],
+              include: [
+                {
+                  model: Source,
+                  as: "source", // must match your association alias
+                  attributes: ["id", "name"],
+                },
+              ],
             },
           ],
         },
@@ -1616,6 +1623,9 @@ async function getCompletionSummary({ startDate, endDate }) {
       customer_name: c.customer?.lead?.customer_name || null,
       mobile: c.customer?.lead?.contact_number || null,
       address: c.customer?.lead?.address || null,
+
+      sourceId: c.customer?.lead?.source?.id || null,
+      sourceName: c.customer?.lead?.source?.name || null,
 
       total_capacity: Number(c.customer?.lead?.total_capacity || 0),
 

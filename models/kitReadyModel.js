@@ -36,6 +36,9 @@ const KitReady = sequelize.define(
         isIn: [["pending", "done", "delay"]],
       },
     },
+    note: {
+      type: DataTypes.TEXT,
+    },
     file_gen: {
       type: DataTypes.STRING(20),
       defaultValue: "pending",

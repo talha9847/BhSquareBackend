@@ -50,7 +50,7 @@ router.get(
 );
 router.get(
   "/getCustomerDocumentsWithoutFiles/:customerId",
-  middleware.authMiddleware(["technician"]),
+  middleware.authMiddleware(["technician", "fabricator"]),
   docCollectController.getCustomerDocumentsWithoutFiles,
 );
 router.post(
