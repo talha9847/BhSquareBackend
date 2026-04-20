@@ -609,19 +609,49 @@ async function upsertCustomerDocumentFile(doc_id, name) {
 
 const BACKUP_FOLDER_ID = "1pnk1TMq43xCyWQM2yg1LFr9vfTLz-vag";
 
-async function createDBDumpStream(sequelize) {
+async function createDBDumpStream() {
   const tables = await sequelize.getQueryInterface().showAllTables();
 
   let dump = "";
+  dump += `-- BhSquare Database Backup\n`;
+  dump += `-- Generated: ${new Date().toISOString()}\n`;
+  dump += `-- Tables: ${tables.length}\n\n`;
 
   for (const table of tables) {
     const rows = await sequelize.query(`SELECT * FROM "${table}"`, {
       type: sequelize.QueryTypes.SELECT,
     });
 
-    dump += `\n-- TABLE: ${table}\n`;
-    dump += JSON.stringify(rows, null, 2);
-    dump += "\n";
+    dump += `\n-- ============================================================\n`;
+    dump += `-- TABLE: ${table} (${rows.length} rows)\n`;
+    dump += `-- ============================================================\n\n`;
+
+    if (rows.length === 0) {
+      dump += `-- (empty)\n`;
+      continue;
+    }
+
+    // Build INSERT statements from real data
+    for (const row of rows) {
+      const columns = Object.keys(row)
+        .map((col) => `"${col}"`)
+        .join(", ");
+
+      const values = Object.values(row)
+        .map((val) => {
+          if (val === null || val === undefined) return "NULL";
+          if (typeof val === "boolean") return val ? "TRUE" : "FALSE";
+          if (typeof val === "number") return val;
+          if (val instanceof Date) return `'${val.toISOString()}'`;
+          // Escape single quotes in strings
+          return `'${String(val).replace(/'/g, "''")}'`;
+        })
+        .join(", ");
+
+      dump += `INSERT INTO "${table}" (${columns}) VALUES (${values}) ON CONFLICT DO NOTHING;\n`;
+    }
+
+    dump += `\n`;
   }
 
   return Readable.from(dump);

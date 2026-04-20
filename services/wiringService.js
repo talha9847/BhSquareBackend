@@ -462,22 +462,87 @@ async function updateWiringTechnician(wiringId, technicianId) {
   }
 }
 
+async function getOrCreateCustomerFolder(folderName) {
+  const existing = await drive.files.list({
+    q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    fields: "files(id, name)",
+  });
+
+  if (existing.data.files.length > 0) {
+    return existing.data.files[0].id;
+  }
+
+  const folder = await drive.files.create({
+    requestBody: {
+      name: folderName,
+      mimeType: "application/vnd.google-apps.folder",
+    },
+    fields: "id",
+  });
+
+  return folder.data.id;
+}
+
 async function updateWiringInventoryStatus(wiringId, newStatus) {
-  const t = await sequelize.transaction();
+  let folderId;
+  let registration;
+  let fileGen;
+  let t;
 
   try {
-    if (!wiringId) {
-      throw new Error("wiringId is required");
-    }
+    if (!wiringId) throw new Error("wiringId is required");
 
     const validStatuses = ["pending", "done"];
     if (!validStatuses.includes(newStatus)) {
-      throw new Error(`Invalid status. Must be: ${validStatuses.join(", ")}`);
+      throw new Error(`Invalid status`);
     }
 
-    const wiring = await Wiring.findByPk(wiringId, { transaction: t });
-    if (!wiring) {
-      throw new Error("Wiring record not found");
+    // ✅ NO transaction here
+    const wiring = await Wiring.findByPk(wiringId);
+    if (!wiring) throw new Error("Wiring record not found");
+
+    const customerDoc = await CustomerDocument.findOne({
+      where: { customer_id: wiring.customer_id },
+    });
+
+    if (!customerDoc) {
+      throw new Error("Customer document not found");
+    }
+
+    // ✅ FOLDER LOGIC OUTSIDE TRANSACTION
+    if (!customerDoc.folder_id) {
+      registration = await CustomerRegistration.findOne({
+        where: { customer_id: wiring.customer_id },
+      });
+
+      if (!registration) throw new Error("Registration not found");
+
+      fileGen = await FileGeneration.findOne({
+        where: { registration_id: registration.id },
+      });
+
+      if (!fileGen) throw new Error("File generation not found");
+
+      const folderName = `${fileGen.cs_no} ${fileGen.beneficiary_name} (${wiring.customer_id})`;
+
+      folderId = await getOrCreateCustomerFolder(folderName);
+    }
+
+    // ✅ START TRANSACTION HERE
+    t = await sequelize.transaction();
+
+    // ✅ SAVE FOLDER
+    if (!customerDoc.folder_id && folderId) {
+      await CustomerDocument.update(
+        {
+          folder_id: folderId,
+          updated_at: new Date(),
+        },
+        {
+          where: { customer_id: wiring.customer_id },
+          transaction: t,
+        },
+      );
     }
 
     // ===============================
@@ -644,8 +709,7 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
       message: "Inventory status updated successfully",
     };
   } catch (error) {
-    await t.rollback();
-
+    if (t) await t.rollback();
     console.error("❌ Error:", error);
 
     return {
