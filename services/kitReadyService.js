@@ -391,6 +391,7 @@ async function getAllInventory() {
       category_id: item.category_id,
       category_name: item.category?.name || null, // ✅ flattened
       qty: item.qty, // updated field name if using stock
+      wattage: item.wattage,
       price: item.price,
       tax: item.tax,
       created_at: item.created_at,
@@ -501,11 +502,14 @@ async function deleteBrand(id) {
 }
 async function updateInventory(id, data) {
   try {
-    const { name, brand_id, category_id, qty, price, tax } = data;
-
     // 🔹 Validate inventory ID
+    const { name, brand_id, category_id, qty, price, tax, wattage } = data;
+
     if (!id) {
       throw new Error("Inventory id is required");
+    }
+    if (!wattage) {
+      throw new Error("Wattage is required");
     }
 
     // 🔹 Validate name
@@ -559,6 +563,7 @@ async function updateInventory(id, data) {
       qty: updatedQty,
       price: price,
       tax: tax,
+      wattage: wattage,
     });
 
     return inventory;
@@ -728,11 +733,16 @@ async function getAvailableProductsForKit(customerId) {
       // optional: only show in-stock items
       // qty: { [Op.gt]: 0 }
     },
-    attributes: ["id", "name", "qty", "brand_id"],
+    attributes: ["id", "name", "qty", "brand_id", "category_id"],
     include: [
       {
         model: Brand,
         as: "brand",
+        attributes: ["id", "name"],
+      },
+      {
+        model: Category,
+        as: "category",
         attributes: ["id", "name"],
       },
     ],
@@ -746,45 +756,53 @@ async function getAvailableProductsForKit(customerId) {
     stock: product.qty,
     brandId: product.brand?.id || null,
     brand: product.brand?.name || null,
+    categoryId: product.category?.id || null,
+    category: product.category?.name || null,
   }));
 }
 
-async function addItemToKit({ kit_id, inventory_id }) {
-  if (!kit_id || !inventory_id) {
-    throw new Error("kit_id and inventory_id are required");
+async function addItemToKit({ kit_id, inventory_id, brand_id, category_id }) {
+  if (!kit_id || !inventory_id || !brand_id || !category_id) {
+    throw new Error(
+      "kit_id, inventory_id, brand_id and category_id are required",
+    );
   }
 
   // 🔹 Check if inventory exists
   const inventory = await Inventory.findByPk(inventory_id);
+  const brand = await Brand.findByPk(brand_id);
 
   if (!inventory) {
     throw new Error("Inventory item not found");
   }
 
-  // 🔹 Prevent duplicate (even though DB has unique constraint)
-  const existingItem = await KitItems.findOne({
-    where: { kit_id, inventory_id },
-  });
+  console.log(brand.name);
+  console.log(category_id);
 
-  if (existingItem) {
-    throw new Error("Item already exists in kit");
-  }
+  // // 🔹 Prevent duplicate (even though DB has unique constraint)
+  // const existingItem = await KitItems.findOne({
+  //   where: { kit_id, inventory_id },
+  // });
 
-  // 🔹 Create new kit item
-  const newItem = await KitItems.create({
-    kit_id,
-    inventory_id,
-    qty: 0,
-    status: "pending",
-  });
+  // if (existingItem) {
+  //   throw new Error("Item already exists in kit");
+  // }
 
-  return {
-    id: newItem.id,
-    kit_id: newItem.kit_id,
-    inventory_id: newItem.inventory_id,
-    qty: newItem.qty,
-    status: newItem.status,
-  };
+  // // 🔹 Create new kit item
+  // const newItem = await KitItems.create({
+  //   kit_id,
+  //   inventory_id,
+  //   qty: 0,
+  //   status: "pending",
+  // });
+
+  // return {
+  //   id: newItem.id,
+  //   kit_id: newItem.kit_id,
+  //   inventory_id: newItem.inventory_id,
+  //   qty: newItem.qty,
+  //   status: newItem.status,
+  // };
 }
 
 async function allocateKitItem({ kit_item_id, qty }) {

@@ -46,6 +46,16 @@ const Inventory = sequelize.define(
         min: 0, // prevents negative price
       },
     },
+
+    wattage: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+    },
+
     tax: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: false,

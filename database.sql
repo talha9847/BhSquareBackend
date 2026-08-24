@@ -628,3 +628,10 @@ CREATE TABLE backup (
     fabricator_commission,
     completion
     RESTART IDENTITY CASCADE;
+
+
+
+
+
+
+ALTER TABLE inventory_table ADD COLUMN wattage INTEGER DEFAULT 0;

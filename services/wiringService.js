@@ -462,9 +462,11 @@ async function updateWiringTechnician(wiringId, technicianId) {
   }
 }
 
+const ROOT_FOLDER_ID = "1VGCwKhFu_zY830etrGYmaAefKjklSAOv";
+
 async function getOrCreateCustomerFolder(folderName) {
   const existing = await drive.files.list({
-    q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    q: `'${ROOT_FOLDER_ID}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: "files(id, name)",
   });
 
@@ -476,6 +478,7 @@ async function getOrCreateCustomerFolder(folderName) {
     requestBody: {
       name: folderName,
       mimeType: "application/vnd.google-apps.folder",
+      parents: [ROOT_FOLDER_ID], // ✅ IMPORTANT: create inside root folder
     },
     fields: "id",
   });

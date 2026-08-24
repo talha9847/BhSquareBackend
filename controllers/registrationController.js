@@ -139,7 +139,9 @@ async function markRegistrationAsDone(req, res) {
 
 async function getFileGeneration(req, res) {
   try {
+    console.log("what is this")
     const { registrationId } = req.body;
+    console.log("registration Id  ", registrationId);
 
     if (!registrationId) {
       return res.status(400).json({
@@ -147,7 +149,6 @@ async function getFileGeneration(req, res) {
         message: "registrationId is required",
       });
     }
-
     const result =
       await registrationService.getFileGenerationData(registrationId);
 
@@ -207,7 +208,7 @@ async function getFileGeneration(req, res) {
     res.status(200);
     return res.send(buffer);
   } catch (error) {
-    console.error("❌ Controller Error:", error);
+    console.error("❌ Controller Errorssss:", error);
 
     return res.status(500).json({
       success: false,

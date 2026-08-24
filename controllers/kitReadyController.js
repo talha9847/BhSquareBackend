@@ -320,13 +320,13 @@ async function fetchAvailableProducts(req, res) {
 
 async function addItem(req, res) {
   try {
-    const { kit_id, inventory_id } = req.body;
-
+    const { kit_id, inventory_id, brand_id, category_id } = req.body;
     const item = await kitReadyService.addItemToKit({
       kit_id,
       inventory_id,
+      brand_id,
+      category_id,
     });
-
     return res.status(201).json({
       success: true,
       data: item,

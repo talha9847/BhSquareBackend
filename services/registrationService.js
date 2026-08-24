@@ -586,6 +586,7 @@ async function markRegistrationAsDone(
 
 async function getFileGenerationData(registrationId) {
   try {
+    console.log(registrationId + "   This is registration Id");
     const fileData = await FileGeneration.findOne({
       where: { registration_id: registrationId },
 
@@ -602,6 +603,8 @@ async function getFileGenerationData(registrationId) {
         },
       ],
     });
+
+    console.log(fileData);
 
     if (!fileData) {
       return {

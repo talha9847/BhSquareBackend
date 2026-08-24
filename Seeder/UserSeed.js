@@ -10,6 +10,7 @@ async function seedAdmin(req, res) {
       where: { email: adminEmail },
     });
 
+    
     if (!existAdmin) {
       const hashedPass = await bcrypt.hash("Admin@123", 10);
       await User.create({

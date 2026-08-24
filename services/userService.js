@@ -41,6 +41,7 @@ async function login(email, pass) {
     const user = await User.findOne({
       where: { email: email },
     });
+    console.log(user.is_active + " this is not going to bw null");
 
     if (!user) return { code: 0 }; // user not found
 
