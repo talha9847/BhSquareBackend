@@ -761,48 +761,166 @@ async function getAvailableProductsForKit(customerId) {
   }));
 }
 
-async function addItemToKit({ kit_id, inventory_id, brand_id, category_id }) {
-  if (!kit_id || !inventory_id || !brand_id || !category_id) {
-    throw new Error(
-      "kit_id, inventory_id, brand_id and category_id are required",
+async function addItemToKit({
+  kit_id,
+  inventory_id,
+  brand_id,
+  category_id,
+  customer_id,
+}) {
+  const t = await sequelize.transaction();
+
+  try {
+    if (!kit_id || !inventory_id || !brand_id || !category_id || !customer_id) {
+      throw new Error(
+        "kit_id, inventory_id, brand_id, category_id and customer_id are required",
+      );
+    }
+
+    // Get customer + lead ID
+    const customer = await Customer.findByPk(customer_id, {
+      attributes: ["lead_id"],
+      transaction: t,
+    });
+
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    const leadId = customer.lead_id;
+
+    // Get registration ID
+    const registration = await CustomerRegistration.findOne({
+      where: {
+        customer_id,
+      },
+      attributes: ["id"],
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Customer registration not found");
+    }
+
+    const registrationId = registration.id;
+
+    console.log("Customer ID:", customer_id);
+    console.log("Lead ID:", leadId);
+    console.log("Registration ID:", registrationId);
+
+    // Check inventory
+    const inventory = await Inventory.findByPk(inventory_id, {
+      attributes: ["id", "wattage"],
+      transaction: t,
+    });
+
+    if (!inventory) {
+      throw new Error("Inventory item not found");
+    }
+
+    // Check brand
+    const brand = await Brand.findByPk(brand_id, {
+      attributes: ["id", "name"],
+      transaction: t,
+    });
+
+    if (!brand) {
+      throw new Error("Brand not found");
+    }
+
+    console.log("Brand:", brand.name);
+    console.log("Category:", category_id);
+    console.log("Wattage:", inventory.wattage);
+
+    const wattage = Number(inventory.wattage);
+
+    // PANEL
+    if (category_id == 1) {
+      await FileGeneration.update(
+        {
+          panel_capacity: wattage,
+          panel_brand_id: brand_id,
+        },
+        {
+          where: {
+            registration_id: registrationId,
+          },
+          transaction: t,
+        },
+      );
+
+      await Lead.update(
+        {
+          panel_wattage: wattage,
+        },
+        {
+          where: {
+            id: leadId,
+          },
+          transaction: t,
+        },
+      );
+    }
+
+    // INVERTER
+    if (category_id == 3) {
+      await FileGeneration.update(
+        {
+          inverter_capacity: wattage,
+          inverter_brand_id: brand_id,
+        },
+        {
+          where: {
+            registration_id: registrationId,
+          },
+          transaction: t,
+        },
+      );
+
+      await Lead.update(
+        {
+          inverter_kw: wattage,
+        },
+        {
+          where: {
+            id: leadId,
+          },
+          transaction: t,
+        },
+      );
+    }
+
+    // Create kit item
+    const newItem = await KitItems.create(
+      {
+        kit_id,
+        inventory_id,
+        qty: 0,
+        status: "pending",
+      },
+      {
+        transaction: t,
+      },
     );
+
+    // Everything succeeded
+    await t.commit();
+
+    return {
+      id: newItem.id,
+      kit_id: newItem.kit_id,
+      inventory_id: newItem.inventory_id,
+      qty: newItem.qty,
+      status: newItem.status,
+    };
+  } catch (error) {
+    // Something failed -> rollback everything
+    await t.rollback();
+
+    console.error("❌ addItemToKit transaction failed:", error);
+
+    throw error;
   }
-
-  // 🔹 Check if inventory exists
-  const inventory = await Inventory.findByPk(inventory_id);
-  const brand = await Brand.findByPk(brand_id);
-
-  if (!inventory) {
-    throw new Error("Inventory item not found");
-  }
-
-  console.log(brand.name);
-  console.log(category_id);
-
-  // // 🔹 Prevent duplicate (even though DB has unique constraint)
-  // const existingItem = await KitItems.findOne({
-  //   where: { kit_id, inventory_id },
-  // });
-
-  // if (existingItem) {
-  //   throw new Error("Item already exists in kit");
-  // }
-
-  // // 🔹 Create new kit item
-  // const newItem = await KitItems.create({
-  //   kit_id,
-  //   inventory_id,
-  //   qty: 0,
-  //   status: "pending",
-  // });
-
-  // return {
-  //   id: newItem.id,
-  //   kit_id: newItem.kit_id,
-  //   inventory_id: newItem.inventory_id,
-  //   qty: newItem.qty,
-  //   status: newItem.status,
-  // };
 }
 
 async function allocateKitItem({ kit_item_id, qty }) {
