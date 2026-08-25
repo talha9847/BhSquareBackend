@@ -38,6 +38,9 @@ const { Supervisor } = require("./supervisorModel");
 const { SupervisorCommission } = require("./supervisorCommissionModel");
 const { FabricatorCommission } = require("./fabricatorCommissionModel");
 const { Completion } = require("./completionModel");
+const { EstimationType } = require("./estimationTypeModel");
+const { Estimation } = require("./estimationModel");
+
 // ----------------------
 // Customer → Lead
 // Each Customer belongs to one Lead
@@ -408,6 +411,17 @@ Completion.belongsTo(Customer, {
   foreignKey: "customer_id",
   as: "customer",
 });
+
+EstimationType.hasMany(Estimation, {
+  foreignKey: "type_id",
+  as: "estimations",
+});
+
+Estimation.belongsTo(EstimationType, {
+  foreignKey: "type_id",
+  as: "type",
+});
+
 module.exports = {
   Customer,
   Lead,
@@ -442,4 +456,6 @@ module.exports = {
   SupervisorCommission,
   FabricatorCommission,
   Completion,
+  Estimation,
+  EstimationType,
 };

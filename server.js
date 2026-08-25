@@ -15,6 +15,7 @@ const kitReadyRoutes = require("./routes/kitReadyRoutes");
 const loanRoutes = require("./routes/loanRoutes");
 const dispatchRoutes = require("./routes/dispatchRoutes");
 const wiringhRoutes = require("./routes/wiringRoutes");
+const estimationRoutes = require("./routes/estimationRoutes");
 require("./models/associationModel");
 
 UserSeeder.startServer();
@@ -57,6 +58,7 @@ app.use("/api/kitready", kitReadyRoutes);
 app.use("/api/loan", loanRoutes);
 app.use("/api/dispatch", dispatchRoutes);
 app.use("/api/wiring", wiringhRoutes);
+app.use("/api/estimation", estimationRoutes);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");

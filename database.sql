@@ -635,3 +635,41 @@ CREATE TABLE backup (
 
 
 ALTER TABLE inventory_table ADD COLUMN wattage INTEGER DEFAULT 0;
+
+
+
+
+
+CREATE TABLE estimation_type (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO estimation_type (name)
+VALUES
+    ('Structure'),
+    ('System'),
+    ('Wiring'),
+    ('Documentation'),
+    ('File Charge');
+
+CREATE TABLE estimation (
+    id SERIAL PRIMARY KEY,
+    type_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    qty NUMERIC(10, 2) NOT NULL,
+    price NUMERIC(12, 2) NOT NULL,
+
+    CONSTRAINT fk_estimation_type
+        FOREIGN KEY (type_id)
+        REFERENCES estimation_type(id)
+);
+
+ALTER TABLE estimation
+ADD COLUMN gst NUMERIC(5,2) NOT NULL DEFAULT 0
+CHECK (gst >= 0 AND gst <= 100);
+
+INSERT INTO estimation (type_id, name, qty, price, gst)
+VALUES (1, '40*60', 0, 50, 18);
+INSERT INTO estimation (type_id, name, qty, price, gst)
+VALUES (1, 'J Bolt', 0, 50, 18);
