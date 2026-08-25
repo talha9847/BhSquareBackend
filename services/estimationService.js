@@ -63,7 +63,7 @@ async function addEstimation(data) {
 async function updateEstimation(id, data) {
   try {
     const { type_id, name, qty, price, gst } = data;
-
+    console.log("this is the gst   ", gst);
     const estimation = await Estimation.findByPk(id);
 
     if (!estimation) {

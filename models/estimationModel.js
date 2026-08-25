@@ -36,6 +36,11 @@ const Estimation = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       allowNull: false,
     },
+    gst: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
   },
   {
     tableName: "estimation",

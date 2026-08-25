@@ -62,7 +62,7 @@ async function updateEstimation(req, res) {
   try {
     const { id } = req.params;
     const { type_id, name, qty, price, gst } = req.body;
-
+    console.log("in contorller i am the gst  ", gst);
     const result = await estimationService.updateEstimation(id, {
       type_id,
       name,
