@@ -93,9 +93,159 @@ async function updateEstimation(id, data) {
   }
 }
 
+async function generateEstimation(data) {
+  try {
+    const { panel_qty, panel_wattage, panel_rate_per_watt } = data;
+
+    // --------------------------------
+    // Validate input
+    // --------------------------------
+    if (!panel_qty || panel_qty <= 0) {
+      throw new Error("Panel quantity is required");
+    }
+
+    if (!panel_wattage || panel_wattage <= 0) {
+      throw new Error("Panel wattage is required");
+    }
+
+    if (
+      panel_rate_per_watt === undefined ||
+      panel_rate_per_watt === null ||
+      panel_rate_per_watt < 0
+    ) {
+      throw new Error("Panel rate per watt is required");
+    }
+
+    // --------------------------------
+    // Calculate total system capacity
+    // --------------------------------
+    const total_kw = (panel_qty * panel_wattage) / 1000;
+
+    // --------------------------------
+    // Get all estimation master data
+    // --------------------------------
+    const estimations = await Estimation.findAll({
+      attributes: ["id", "type_id", "name", "qty", "price", "gst"],
+      include: [
+        {
+          model: EstimationType,
+          as: "type",
+          attributes: ["id", "name"],
+        },
+      ],
+      order: [["id", "ASC"]],
+    });
+
+    if (!estimations.length) {
+      throw new Error("No estimation items found");
+    }
+
+    // --------------------------------
+    // Calculate every item
+    // --------------------------------
+    const items = estimations.map((item) => {
+      const itemName = item.name.trim().toUpperCase();
+
+      let qty = Number(item.qty);
+      let price = Number(item.price);
+
+      // --------------------------------
+      // PANEL
+      // --------------------------------
+      if (itemName === "PANEL") {
+        qty = panel_qty;
+
+        // Panel price is calculated using
+        // wattage × rate per watt
+        price = panel_wattage * panel_rate_per_watt;
+
+        const amount = qty * price;
+
+        const gstAmount = (amount * Number(item.gst)) / 100;
+
+        return {
+          id: item.id,
+          type_id: item.type_id,
+          type: item.type?.name || null,
+          name: item.name,
+          qty,
+          price,
+          gst: Number(item.gst),
+          amount,
+          gst_amount: gstAmount,
+          total: amount + gstAmount,
+        };
+      }
+
+      // --------------------------------
+      // 40*60 HOT DIP
+      // --------------------------------
+      if (itemName.includes("40*60")) {
+        qty = panel_qty;
+      }
+
+      // --------------------------------
+      // J BOLT
+      // --------------------------------
+      else if (itemName === "J BOLT") {
+        qty = panel_qty * 4;
+      }
+
+      // --------------------------------
+      // LABOUR CHARGE
+      // --------------------------------
+      else if (itemName === "LABOURE CHARGE" || itemName === "LABOUR CHARGE") {
+        qty = total_kw;
+      }
+
+      const amount = qty * price;
+
+      const gstAmount = (amount * Number(item.gst)) / 100;
+
+      return {
+        id: item.id,
+        type_id: item.type_id,
+        type: item.type?.name || null,
+        name: item.name,
+        qty,
+        price,
+        gst: Number(item.gst),
+        amount,
+        gst_amount: gstAmount,
+        total: amount + gstAmount,
+      };
+    });
+
+    // --------------------------------
+    // Calculate totals
+    // --------------------------------
+    const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
+
+    const total_gst = items.reduce((sum, item) => sum + item.gst_amount, 0);
+
+    const grand_total = subtotal + total_gst;
+
+    return {
+      panel_qty,
+      panel_wattage,
+      panel_rate_per_watt,
+      total_kw,
+
+      items,
+
+      subtotal,
+      total_gst,
+      grand_total,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
   addEstimation,
   updateEstimation,
+  generateEstimation,
 };

@@ -83,9 +83,34 @@ async function updateEstimation(req, res) {
     });
   }
 }
+
+async function generateEstimation(req, res) {
+  try {
+    const { panel_qty, panel_wattage, panel_rate_per_watt } = req.body;
+
+    const result = await estimationService.generateEstimation({
+      panel_qty,
+      panel_wattage,
+      panel_rate_per_watt,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Estimation generated successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
   addEstimation,
   updateEstimation,
+  generateEstimation
 };

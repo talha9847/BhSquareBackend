@@ -25,4 +25,10 @@ router.put(
   estimationController.updateEstimation,
 );
 
+router.post(
+  "/generateEstimation",
+  middleware.authMiddleware(["admin"]),
+  estimationController.generateEstimation,
+);
+
 module.exports = router;
