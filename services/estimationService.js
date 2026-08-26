@@ -93,10 +93,10 @@ async function updateEstimation(id, data) {
     throw error;
   }
 }
-
 async function generateEstimation(data) {
   try {
-    const { panel_qty, panel_wattage, panel_rate_per_watt } = data;
+    const { panel_qty, panel_wattage, panel_rate_per_watt, inverter_wattage } =
+      data;
 
     // --------------------------------
     // Validate input
@@ -117,10 +117,48 @@ async function generateEstimation(data) {
       throw new Error("Panel rate per watt is required");
     }
 
+    if (!inverter_wattage || inverter_wattage <= 0) {
+      throw new Error("Inverter wattage is required");
+    }
+
     // --------------------------------
     // Calculate total system capacity
     // --------------------------------
     const total_kw = (panel_qty * panel_wattage) / 1000;
+
+    // --------------------------------
+    // Convert inverter wattage to KW
+    // --------------------------------
+    const inverter_kw = Number(inverter_wattage);
+
+    // --------------------------------
+    // Find nearest inverter
+    // --------------------------------
+    const inverters = await Inverter.findAll({
+      attributes: ["id", "kw", "price"],
+      order: [["kw", "ASC"]],
+    });
+
+    if (!inverters.length) {
+      throw new Error("No inverter found");
+    }
+
+    // Find exact inverter first
+    let selectedInverter = inverters.find(
+      (inverter) => Number(inverter.kw) === inverter_kw,
+    );
+
+    // If exact inverter doesn't exist,
+    // find the nearest inverter
+    if (!selectedInverter) {
+      selectedInverter = inverters.reduce((nearest, current) => {
+        const currentDifference = Math.abs(Number(current.kw) - inverter_kw);
+
+        const nearestDifference = Math.abs(Number(nearest.kw) - inverter_kw);
+
+        return currentDifference < nearestDifference ? current : nearest;
+      });
+    }
 
     // --------------------------------
     // Get all estimation master data
@@ -156,8 +194,6 @@ async function generateEstimation(data) {
       if (itemName === "PANEL") {
         qty = panel_qty;
 
-        // Panel price is calculated using
-        // wattage × rate per watt
         price = panel_wattage * panel_rate_per_watt;
 
         const amount = qty * price;
@@ -170,6 +206,33 @@ async function generateEstimation(data) {
           type: item.type?.name || null,
           name: item.name,
           qty,
+          price,
+          gst: Number(item.gst),
+          amount,
+          gst_amount: gstAmount,
+          total: amount + gstAmount,
+        };
+      }
+
+      // --------------------------------
+      // INVERTER
+      // --------------------------------
+      if (itemName === "INVERTER") {
+        qty = 1;
+        price = Number(selectedInverter.price);
+
+        const amount = qty * price;
+
+        const gstAmount = (amount * Number(item.gst)) / 100;
+
+        return {
+          id: item.id,
+          type_id: item.type_id,
+          type: item.type?.name || null,
+          name: item.name,
+          qty,
+          inverter_kw: Number(selectedInverter.kw),
+          inverter_id: selectedInverter.id,
           price,
           gst: Number(item.gst),
           amount,
@@ -199,6 +262,9 @@ async function generateEstimation(data) {
         qty = total_kw;
       }
 
+      // --------------------------------
+      // Normal items
+      // --------------------------------
       const amount = qty * price;
 
       const gstAmount = (amount * Number(item.gst)) / 100;
@@ -230,7 +296,17 @@ async function generateEstimation(data) {
       panel_qty,
       panel_wattage,
       panel_rate_per_watt,
+
       total_kw,
+
+      inverter: {
+        requested_wattage: Number(inverter_wattage),
+        requested_kw: inverter_kw,
+        selected_id: selectedInverter.id,
+        selected_kw: Number(selectedInverter.kw),
+        selected_price: Number(selectedInverter.price),
+        exact_match: Number(selectedInverter.kw) === inverter_kw,
+      },
 
       items,
 
