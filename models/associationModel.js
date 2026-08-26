@@ -40,6 +40,7 @@ const { FabricatorCommission } = require("./fabricatorCommissionModel");
 const { Completion } = require("./completionModel");
 const { EstimationType } = require("./estimationTypeModel");
 const { Estimation } = require("./estimationModel");
+const { Inverter } = require("./inverterModel");
 
 // ----------------------
 // Customer → Lead
@@ -458,4 +459,5 @@ module.exports = {
   Completion,
   Estimation,
   EstimationType,
+  Inverter,
 };

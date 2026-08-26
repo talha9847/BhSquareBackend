@@ -107,10 +107,75 @@ async function generateEstimation(req, res) {
   }
 }
 
+async function getInverters(req, res) {
+  try {
+    const result = await estimationService.getInverters();
+
+    return res.status(200).json({
+      success: true,
+      message: "Inverters fetched successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function addInverter(req, res) {
+  try {
+    const { kw, price } = req.body;
+
+    const result = await estimationService.addInverter({
+      kw,
+      price,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Inverter added successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function updateInverter(req, res) {
+  try {
+    const { id } = req.params;
+    const { kw, price } = req.body;
+
+    const result = await estimationService.updateInverter(id, {
+      kw,
+      price,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Inverter updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
   addEstimation,
   updateEstimation,
-  generateEstimation
+  generateEstimation,
+  getInverters,
+  addInverter,
+  updateInverter,
 };

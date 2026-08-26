@@ -24,11 +24,27 @@ router.put(
   middleware.authMiddleware(["admin"]),
   estimationController.updateEstimation,
 );
+router.put(
+  "/updateInverter/:id",
+  middleware.authMiddleware(["admin"]),
+  estimationController.updateInverter,
+);
 
 router.post(
   "/generateEstimation",
   middleware.authMiddleware(["admin"]),
   estimationController.generateEstimation,
+);
+
+router.get(
+  "/getInverters",
+  middleware.authMiddleware(["admin"]),
+  estimationController.getInverters,
+);
+router.post(
+  "/addInverter",
+  middleware.authMiddleware(["admin"]),
+  estimationController.addInverter,
 );
 
 module.exports = router;

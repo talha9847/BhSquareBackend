@@ -673,3 +673,17 @@ INSERT INTO estimation (type_id, name, qty, price, gst)
 VALUES (1, '40*60', 0, 50, 18);
 INSERT INTO estimation (type_id, name, qty, price, gst)
 VALUES (1, 'J Bolt', 0, 50, 18);
+
+
+CREATE TABLE inverter (
+    id SERIAL PRIMARY KEY,
+    kw NUMERIC(10, 2) NOT NULL,
+    price NUMERIC(12, 2) NOT NULL
+);
+
+INSERT INTO inverter (kw, price)
+VALUES
+    (3.00, 45000.00),
+    (5.00, 65000.00),
+    (7.50, 90000.00),
+    (10.00, 120000.00);

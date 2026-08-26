@@ -1,6 +1,7 @@
 const sequelize = require("../config/db");
 const { Estimation } = require("../models/estimationModel");
 const { EstimationType } = require("../models/estimationTypeModel");
+const { Inverter } = require("../models/inverterModel");
 
 async function getEstimations() {
   try {
@@ -242,10 +243,70 @@ async function generateEstimation(data) {
   }
 }
 
+async function getInverters() {
+  try {
+    const inverters = await Inverter.findAll({
+      attributes: ["id", "kw", "price"],
+      order: [["kw", "ASC"]],
+    });
+
+    return inverters;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function addInverter(data) {
+  try {
+    const { kw, price } = data;
+
+    if (kw === undefined || kw === null) {
+      throw new Error("KW is required");
+    }
+
+    if (price === undefined || price === null) {
+      throw new Error("Price is required");
+    }
+
+    const inverter = await Inverter.create({
+      kw,
+      price,
+    });
+
+    return inverter;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateInverter(id, data) {
+  try {
+    const { kw, price } = data;
+
+    const inverter = await Inverter.findByPk(id);
+
+    if (!inverter) {
+      throw new Error("Inverter not found");
+    }
+
+    await inverter.update({
+      kw,
+      price,
+    });
+
+    return inverter;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
   addEstimation,
   updateEstimation,
   generateEstimation,
+  getInverters,
+  addInverter,
+  updateInverter,
 };
