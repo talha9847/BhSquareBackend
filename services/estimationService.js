@@ -96,7 +96,8 @@ async function updateEstimation(id, data) {
 
 async function generateEstimation(data) {
   try {
-    const { panel_qty, panel_wattage, panel_rate_per_watt,inverter_wattage } = data;
+    const { panel_qty, panel_wattage, panel_rate_per_watt, inverter_wattage } =
+      data;
 
     // --------------------------------
     // Validate input
@@ -116,6 +117,22 @@ async function generateEstimation(data) {
     ) {
       throw new Error("Panel rate per watt is required");
     }
+
+    // --------------------------------
+    // Find inverter price
+    // --------------------------------
+    const inverter = await Inverter.findOne({
+      where: {
+        kw: inverter_wattage,
+      },
+      attributes: ["price"],
+    });
+
+    if (!inverter) {
+      throw new Error(`Inverter price not found for ${inverter_wattage} kW`);
+    }
+
+    const inverterPrice = Number(inverter.price);
 
     // --------------------------------
     // Calculate total system capacity
@@ -156,8 +173,6 @@ async function generateEstimation(data) {
       if (itemName === "PANEL") {
         qty = panel_qty;
 
-        // Panel price is calculated using
-        // wattage × rate per watt
         price = panel_wattage * panel_rate_per_watt;
 
         const amount = qty * price;
@@ -176,6 +191,13 @@ async function generateEstimation(data) {
           gst_amount: gstAmount,
           total: amount + gstAmount,
         };
+      }
+
+      // --------------------------------
+      // INVERTER
+      // --------------------------------
+      if (itemName === "INVERTER") {
+        price = inverterPrice;
       }
 
       // --------------------------------
@@ -242,7 +264,6 @@ async function generateEstimation(data) {
     throw error;
   }
 }
-
 async function getInverters() {
   try {
     const inverters = await Inverter.findAll({

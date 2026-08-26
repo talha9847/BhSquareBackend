@@ -86,12 +86,14 @@ async function updateEstimation(req, res) {
 
 async function generateEstimation(req, res) {
   try {
-    const { panel_qty, panel_wattage, panel_rate_per_watt } = req.body;
+    const { panel_qty, panel_wattage, panel_rate_per_watt, inverter_wattage } =
+      req.body;
 
     const result = await estimationService.generateEstimation({
       panel_qty,
       panel_wattage,
       panel_rate_per_watt,
+      inverter_wattage,
     });
 
     return res.status(200).json({
