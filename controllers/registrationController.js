@@ -249,6 +249,25 @@ async function getInventoryByCategory(req, res) {
     });
   }
 }
+
+async function getLoanData(req, res) {
+  try {
+    const { status } = req.query;
+
+    const data = await registrationService.getLoanData(status);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function getInventoryByCategoryThree(req, res) {
   try {
     const data = await registrationService.getInventoryByCategory(3);
@@ -326,11 +345,12 @@ async function updateFileGenerationAndLead(req, res) {
 }
 async function completeRegistration(req, res) {
   try {
-    const { registrationId, customerId } = req.body;
-
+    const { registrationId, customerId, loanRequired } = req.body;
+    console.log(loanRequired);
     const data = await registrationService.completeRegistration(
       registrationId,
       customerId,
+      loanRequired,
     );
 
     return res.status(200).json({

@@ -13,6 +13,7 @@ const { Op } = require("sequelize");
 const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { Loan } = require("../models/loanModel");
+const { Dispatch } = require("../models/dispatchModel");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -60,6 +61,8 @@ async function getCustomersWithSummary() {
             "agreement_date",
             "inverter_qty",
             "panel_qty",
+            "inverter_brand_id",
+            "panel_brand_id",
             "status",
           ],
           required: true,
@@ -295,7 +298,7 @@ async function renameCustomerFolder(
   }
 }
 
-async function completeRegistration(registrationId, customerId) {
+async function completeRegistration(registrationId, customerId, loanRequired) {
   const t = await sequelize.transaction();
 
   try {
@@ -337,7 +340,7 @@ async function completeRegistration(registrationId, customerId) {
       transaction: t,
     });
 
-    if (!kit) {
+    if (!kit && loanRequired) {
       kit = await KitReady.create(
         {
           customer_id: customerId,
@@ -346,6 +349,74 @@ async function completeRegistration(registrationId, customerId) {
           file_gen: "pending",
         },
         { transaction: t },
+      );
+    } else if (!kit) {
+      kit = await KitReady.create(
+        {
+          customer_id: customerId,
+          loan_status: "not_applicable", // ✅ condition applied
+          status: "pending",
+          file_gen: "pending",
+        },
+        { transaction: t },
+      );
+    }
+
+    if (loanRequired) {
+      // 4️⃣ Update stage
+      await CustomerStage.update(
+        {
+          status: "pending",
+          completed_at: new Date(),
+        },
+        {
+          where: {
+            customer_id: customerId,
+            stage_id: {
+              [Op.in]: [5, 6, 7],
+            },
+          },
+          transaction: t,
+        },
+      );
+
+      const existingLoan = await Loan.findOne({
+        where: {
+          customer_id: customerId,
+        },
+        transaction: t,
+      });
+
+      if (!existingLoan) {
+        await Loan.create(
+          {
+            customer_id: customerId,
+            bank_name: "",
+            is_applied: false,
+            estimated: null,
+            loan_amount: null,
+            interest_rate: null,
+            bank_remarks: "",
+            is_approved: false,
+          },
+          { transaction: t },
+        );
+      }
+    } else {
+      await CustomerStage.update(
+        {
+          status: "pending",
+          completed_at: new Date(),
+        },
+        {
+          where: {
+            customer_id: customerId,
+            stage_id: {
+              [Op.in]: [6, 7],
+            },
+          },
+          transaction: t,
+        },
       );
     }
 

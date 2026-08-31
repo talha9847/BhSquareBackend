@@ -1257,6 +1257,44 @@ async function getKitReadyCustomersByStatus(status) {
   }
 }
 
+async function getLoanData() {
+  try {
+    const data = await KitReady.findAll({
+      where: {
+        loan_status: {
+          [Op.in]: ["pending", "required"],
+        }, // ✅ only pending loans
+      },
+      attributes: ["id", "loan_status", "status"],
+
+      include: [
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "status"],
+          include: [
+            {
+              model: Lead,
+              as: "lead",
+              attributes: ["id", "customer_name", "contact_number", "address"],
+            },
+          ],
+        },
+      ],
+
+      order: [["id", "ASC"]],
+    });
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching kit ready customers:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 async function addCategory(data) {
   try {
     const { name } = data;
@@ -1606,4 +1644,5 @@ module.exports = {
   updateKitReadyStatusDelay,
   deleteCustomerFullData,
   updateKitReadyNote,
+  getLoanData,
 };

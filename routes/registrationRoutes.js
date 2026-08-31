@@ -43,6 +43,7 @@ router.get(
   middleware.authMiddleware(["admin"]),
   registrationController.getInventoryByCategoryThree,
 );
+
 router.get(
   "/getFileGenerationBasicDetails/:registrationId",
   middleware.authMiddleware(["admin"]),

@@ -110,6 +110,12 @@ router.get(
   kitReadyController.fetchKitReadyCustomersByStatus,
 );
 
+router.get(
+  "/getLoanData",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.getLoanData,
+);
+
 router.post(
   "/createCategory",
   middleware.authMiddleware(["admin"]),

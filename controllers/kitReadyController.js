@@ -480,6 +480,22 @@ async function fetchKitReadyCustomersByStatus(req, res) {
   }
 }
 
+async function getLoanData(req, res) {
+  try {
+    const data = await kitReadyService.getLoanData();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 async function createCategory(req, res) {
   try {
     const category = await kitReadyService.addCategory(req.body);
@@ -755,4 +771,5 @@ module.exports = {
   updateKitReadyStatusDelay,
   deleteCustomerData,
   updateKitReadyNote,
+  getLoanData,
 };
