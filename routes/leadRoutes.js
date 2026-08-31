@@ -94,4 +94,9 @@ router.get(
   middleware.authMiddleware(["admin"]),
   leadController.getPendingStageCapacity,
 );
+router.put(
+  "/updateCustomerBio/:leadId",
+  middleware.authMiddleware(["admin"]),
+  leadController.updateCustomerBio,
+);
 module.exports = router;

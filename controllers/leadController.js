@@ -503,6 +503,82 @@ async function getPendingStageCapacity(req, res) {
   }
 }
 
+async function updateCustomerBio(req, res) {
+  try {
+    const { leadId } = req.params;
+    console.log(leadId + "      dlkjflksjflkdjflkdsjlk fsdjlk ekj lkwej ");
+    const {
+      registration_id,
+      customer_name,
+      contact_number,
+      source_id,
+      address,
+      installation_type,
+      // panel_wattage,
+      // number_of_panels,
+      // inverter_capacity,
+    } = req.body;
+
+    if (!leadId) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead id is required",
+      });
+    }
+
+    if (!registration_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration id is required",
+      });
+    }
+    console.log(
+      leadId,
+      registration_id,
+
+      customer_name,
+      contact_number,
+      source_id,
+      address,
+      installation_type,
+
+      // panel_wattage,
+      // number_of_panels,
+
+      // inverter_capacity,
+    );
+
+    const lead = await leadService.updateLeadAndFileGeneration({
+      lead_id: leadId,
+      registration_id,
+
+      customer_name,
+      contact_number,
+      source_id,
+      address,
+      installation_type,
+
+      // panel_wattage,
+      // number_of_panels,
+
+      // inverter_kw: inverter_capacity,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Customer bio updated successfully",
+      data: lead,
+    });
+  } catch (error) {
+    console.error("Error updating customer bio:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update customer bio",
+    });
+  }
+}
+
 module.exports = {
   addLead,
   fetchPendingLeads,
@@ -522,4 +598,5 @@ module.exports = {
   getLeadAnalytics,
   getCustomerReport,
   getPendingStageCapacity,
+  updateCustomerBio,
 };

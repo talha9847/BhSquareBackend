@@ -16,6 +16,7 @@ const { CustomerRegistration } = require("../models/customerRegistrationModel");
 const { Dispatch } = require("../models/dispatchModel");
 const { Loan } = require("../models/loanModel");
 const { FinalStage } = require("../models/finalStageModel");
+const { FileGeneration } = require("../models/fileGenerationModel");
 
 async function addLead(data) {
   try {
@@ -301,6 +302,7 @@ async function getLeadById(id) {
       total_capacity: lead.total_capacity,
       inverter_capacity: lead.inverter_capacity,
       source: lead.source?.name || null,
+      source_id: lead.source?.id || null,
       notes: lead.notes,
       created_at: lead.created_at,
     };
@@ -679,6 +681,127 @@ async function getPendingStageCapacity() {
     throw error;
   }
 }
+
+async function updateLeadAndFileGeneration({
+  lead_id,
+  registration_id,
+
+  customer_name,
+  contact_number,
+  source_id,
+  address,
+  installation_type,
+
+  panel_wattage,
+  number_of_panels,
+
+  inverter_kw,
+}) {
+  const t = await sequelize.transaction();
+
+  try {
+    const lead = await Lead.findByPk(lead_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    await lead.update(
+      {
+        customer_name,
+        contact_number,
+        source_id,
+        address,
+        installation_type,
+        // panel_wattage,
+        // number_of_panels,
+        // inverter_kw,
+        updated_at: new Date(),
+      },
+      {
+        transaction: t,
+      },
+    );
+
+    // -----------------------------------
+    // 3. Find File Generation
+    // -----------------------------------
+    const fileGeneration = await FileGeneration.findOne({
+      where: {
+        registration_id,
+      },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!fileGeneration) {
+      throw new Error("File generation record not found");
+    }
+
+    // -----------------------------------
+    // 4. Calculate values for file_generation
+    // -----------------------------------
+
+    // Panel capacity
+    const panelCapacity =
+      panel_wattage !== undefined && panel_wattage !== null
+        ? panel_wattage
+        : null;
+
+    // Panel quantity
+    const panelQuantity =
+      number_of_panels !== undefined && number_of_panels !== null
+        ? number_of_panels
+        : null;
+
+    // Total system capacity
+   
+
+    // Inverter capacity
+    const inverterCapacity =
+      inverter_kw !== undefined && inverter_kw !== null ? inverter_kw : null;
+
+    // -----------------------------------
+    // 5. Update File Generation
+    // -----------------------------------
+    await fileGeneration.update(
+      {
+        beneficiary_name: customer_name,
+        consumer_contact: contact_number,
+
+        panel_capacity: panelCapacity,
+        panel_quantity: panelQuantity,
+
+        inverter_capacity: inverterCapacity,
+      },
+      {
+        transaction: t,
+      },
+    );
+
+    // -----------------------------------
+    // 6. Commit
+    // -----------------------------------
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Lead and file generation data updated successfully",
+      lead,
+      fileGeneration,
+    };
+  } catch (error) {
+    // -----------------------------------
+    // 7. Rollback
+    // -----------------------------------
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   addLead,
   getPendingLeads,
@@ -697,4 +820,5 @@ module.exports = {
   getLeadAnalytics,
   getCustomerReport,
   getPendingStageCapacity,
+  updateLeadAndFileGeneration,
 };

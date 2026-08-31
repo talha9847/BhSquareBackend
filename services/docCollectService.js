@@ -356,7 +356,9 @@ async function checkDocumentCollectionAccess(customer_id) {
   const customer = await Customer.findOne({
     where: {
       id: customer_id,
-      status: "pending",
+      status: {
+        [Op.in]: ["pending", "done"],
+      },
       name_change: {
         [Op.in]: ["unchanged", "changed"],
       },
@@ -378,8 +380,12 @@ async function checkDocAccess(customer_id) {
   const customer = await Customer.findOne({
     where: {
       id: customer_id,
-      status: "pending",
-      name_change: "required",
+      status: {
+        [Op.in]: ["pending", "done"],
+      },
+      name_change: {
+        [Op.in]: ["required", "changed"],
+      },
     },
   });
 
