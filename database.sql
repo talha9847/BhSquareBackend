@@ -687,3 +687,11 @@ VALUES
     (5.00, 65000.00),
     (7.50, 90000.00),
     (10.00, 120000.00);
+
+
+ALTER TABLE customer_registration
+ADD COLUMN panel_brand_id INT REFERENCES brands(id);
+
+
+ALTER TABLE customer_registration
+ADD COLUMN inverter_brand_id INT REFERENCES brands(id);

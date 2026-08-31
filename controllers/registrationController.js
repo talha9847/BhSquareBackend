@@ -53,7 +53,6 @@ async function registration(req, res) {
         message: "customer_id and registrationData required",
       });
     }
-
     const result =
       await registrationService.createCustomerRegistrationWithPanels(
         customerId,
@@ -139,7 +138,7 @@ async function markRegistrationAsDone(req, res) {
 
 async function getFileGeneration(req, res) {
   try {
-    console.log("what is this")
+    console.log("what is this");
     const { registrationId } = req.body;
     console.log("registration Id  ", registrationId);
 

@@ -30,6 +30,16 @@ const CustomerRegistration = sequelize.define(
     panel_qty: {
       type: DataTypes.INTEGER,
     },
+
+    panel_brand_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    inverter_brand_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     status: {
       type: DataTypes.STRING(20),
       defaultValue: "pending", // overall workflow status

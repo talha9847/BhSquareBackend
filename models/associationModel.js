@@ -98,6 +98,25 @@ FileGeneration.belongsTo(CustomerRegistration, {
   as: "registration",
 });
 
+CustomerRegistration.belongsTo(Brand, {
+  foreignKey: "panel_brand_id",
+  as: "panelBrand",
+});
+
+CustomerRegistration.belongsTo(Brand, {
+  foreignKey: "inverter_brand_id",
+  as: "inverterBrand",
+});
+Brand.hasMany(CustomerRegistration, {
+  foreignKey: "panel_brand_id",
+  as: "panelRegistrations",
+});
+
+Brand.hasMany(CustomerRegistration, {
+  foreignKey: "inverter_brand_id",
+  as: "inverterRegistrations",
+});
+
 CustomerRegistration.hasOne(FileGeneration, {
   foreignKey: "registration_id",
   as: "file_generation",
