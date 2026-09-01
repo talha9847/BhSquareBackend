@@ -373,11 +373,11 @@ async function completeRegistration(
           inverter_capacity: lead?.inverter_kw
             ? parseFloat(lead.inverter_kw)
             : null,
-          inverter_quantity: lead?.number_of_inverter || null,
+          inverter_quantity: lead?.number_of_inverters || null,
           beneficiary_name: lead?.customer_name || null,
           beneficiary_address: lead?.address || null,
           consumer_contact: lead?.contact_number || null,
-          panel_quantity: lead?.number_of_panel || null,
+          panel_quantity: lead?.number_of_panels || null,
           panel_capacity: lead?.panel_wattage || null,
           application_number: registration?.application_number || null,
           registration_date: registration?.registration_date || null,
@@ -715,7 +715,6 @@ async function markRegistrationAsDone(
 
 async function getFileGenerationData(registrationId) {
   try {
-    console.log(registrationId + "   This is registration Id");
     const fileData = await FileGeneration.findOne({
       where: { registration_id: registrationId },
 
@@ -732,8 +731,6 @@ async function getFileGenerationData(registrationId) {
         },
       ],
     });
-
-    console.log(fileData);
 
     if (!fileData) {
       return {

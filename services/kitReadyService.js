@@ -107,11 +107,23 @@ async function deleteCustomerFullData(customerId) {
       transaction: t,
     });
 
-    if (kit && kit.file_gen == "done") {
-      throw new Error(
-        "Cannot delete: file already generated for this customer",
-      );
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    if (kit.file_gen == "done") {
+      FileGeneration.destroy({
+        where: { registration_id: registration.id },
+        transaction: t,
+      });
     }
+
+    // if (kit && kit.file_gen == "done") {
+    //   throw new Error(
+    //     "Cannot delete: file already generated for this customer",
+    //   );
+    // }
 
     // 2. Permission
     await Permission.destroy({
