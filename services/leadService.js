@@ -737,50 +737,28 @@ async function updateLeadAndFileGeneration({
       lock: t.LOCK.UPDATE,
     });
 
-    if (!fileGeneration) {
-      throw new Error("File generation record not found");
+    if (fileGeneration) {
+      const panelCapacity =
+        panel_wattage !== undefined && panel_wattage !== null
+          ? panel_wattage
+          : null;
+      const panelQuantity =
+        number_of_panels !== undefined && number_of_panels !== null
+          ? number_of_panels
+          : null;
+      const inverterCapacity =
+        inverter_kw !== undefined && inverter_kw !== null ? inverter_kw : null;
+      await fileGeneration.update(
+        {
+          beneficiary_name: customer_name,
+          consumer_contact: contact_number,
+          panel_capacity: panelCapacity,
+          panel_quantity: panelQuantity,
+          inverter_capacity: inverterCapacity,
+        },
+        { transaction: t },
+      );
     }
-
-    // -----------------------------------
-    // 4. Calculate values for file_generation
-    // -----------------------------------
-
-    // Panel capacity
-    const panelCapacity =
-      panel_wattage !== undefined && panel_wattage !== null
-        ? panel_wattage
-        : null;
-
-    // Panel quantity
-    const panelQuantity =
-      number_of_panels !== undefined && number_of_panels !== null
-        ? number_of_panels
-        : null;
-
-    // Total system capacity
-   
-
-    // Inverter capacity
-    const inverterCapacity =
-      inverter_kw !== undefined && inverter_kw !== null ? inverter_kw : null;
-
-    // -----------------------------------
-    // 5. Update File Generation
-    // -----------------------------------
-    await fileGeneration.update(
-      {
-        beneficiary_name: customer_name,
-        consumer_contact: contact_number,
-
-        panel_capacity: panelCapacity,
-        panel_quantity: panelQuantity,
-
-        inverter_capacity: inverterCapacity,
-      },
-      {
-        transaction: t,
-      },
-    );
 
     // -----------------------------------
     // 6. Commit
