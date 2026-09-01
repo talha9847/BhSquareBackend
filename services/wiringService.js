@@ -2106,6 +2106,71 @@ async function getWiringItemsByCustomerId(customerId) {
   }
 }
 
+async function deleteWiringItem(data) {
+  const t = await sequelize.transaction();
+
+  try {
+    const { wiring_item_id, wiring_id, wire_inventory_id } = data;
+
+    if (!wiring_item_id || !wiring_id || !wire_inventory_id) {
+      throw new Error("Required fields missing");
+    }
+
+    // 1. Find wiring item
+    const wiringItem = await WiringItem.findOne({
+      where: {
+        id: wiring_item_id,
+        wiring_id,
+        wire_inventory_id,
+      },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!wiringItem) {
+      await t.rollback();
+      return null;
+    }
+
+    // 2. Get qty from wiring_item
+    const qty = Number(wiringItem.qty);
+
+    // 3. Find wire inventory
+    const wireInventory = await WireInventory.findByPk(wire_inventory_id, {
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!wireInventory) {
+      throw new Error("Wire inventory not found");
+    }
+
+    // 4. Add qty back to stock
+    wireInventory.stock = Number(wireInventory.stock) + qty;
+
+    await wireInventory.save({
+      transaction: t,
+    });
+
+    // 5. Delete wiring item
+    await wiringItem.destroy({
+      transaction: t,
+    });
+
+    // 6. Commit
+    await t.commit();
+
+    console.log(
+      `Deleted wiring item ${wiring_item_id}, restored ${qty} to inventory`,
+    );
+
+    return true;
+  } catch (error) {
+    // 7. Rollback everything if anything fails
+    await t.rollback();
+    throw error;
+  }
+}
 module.exports = {
   updateTechnician,
   addTechnician,
@@ -2135,4 +2200,5 @@ module.exports = {
   getPendingFabricatorCommissions,
   updateFabricatorCommissionById,
   getFabricatorCommissionsByStatus,
+  deleteWiringItem,
 };

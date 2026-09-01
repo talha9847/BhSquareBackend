@@ -151,4 +151,10 @@ router.get(
   middleware.authMiddleware(["admin", "technician"]),
   wiringController.getWiringItemsByCustomerId,
 );
+
+router.delete(
+  "/deleteWiringItem",
+  middleware.authMiddleware(["admin", "technician"]),
+  wiringController.deleteWiringItem,
+);
 module.exports = router;

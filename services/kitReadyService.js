@@ -21,6 +21,7 @@ const { CustomerDocumentFile } = require("../models/customerDocumentFileModel");
 const { LoanDoc } = require("../models/loanDocModel");
 const { NameChange } = require("../models/nameChangeModel");
 const { Permission } = require("../models/permissionModel");
+const { WiringItem } = require("../models/wiringItemModel");
 
 async function getKitReadyCustomers(status) {
   try {

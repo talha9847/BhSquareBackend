@@ -713,6 +713,36 @@ async function getWiringItemsByCustomerId(req, res) {
   }
 }
 
+async function deleteWiringItem(req, res) {
+  try {
+    const { wiring_item_id, wiring_id, wire_inventory_id } = req.body;
+
+    const result = await wiringService.deleteWiringItem({
+      wiring_item_id,
+      wiring_id,
+      wire_inventory_id,
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: "Used wire record not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Used wire deleted successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
 module.exports = {
   updateTechnician,
   fetchTechnicians,
@@ -742,4 +772,5 @@ module.exports = {
   getPendingFabricatorCommissions,
   updateFabricatorCommission,
   getFabricatorCommissionsByStatus,
+  deleteWiringItem,
 };
