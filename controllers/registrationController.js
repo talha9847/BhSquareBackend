@@ -345,12 +345,13 @@ async function updateFileGenerationAndLead(req, res) {
 }
 async function completeRegistration(req, res) {
   try {
-    const { registrationId, customerId, loanRequired } = req.body;
+    const { registrationId, customerId, loanRequired, leadId } = req.body;
     console.log(loanRequired);
     const data = await registrationService.completeRegistration(
       registrationId,
       customerId,
       loanRequired,
+      leadId,
     );
 
     return res.status(200).json({

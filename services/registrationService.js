@@ -298,7 +298,12 @@ async function renameCustomerFolder(
   }
 }
 
-async function completeRegistration(registrationId, customerId, loanRequired) {
+async function completeRegistration(
+  registrationId,
+  customerId,
+  loanRequired,
+  leadId,
+) {
   const t = await sequelize.transaction();
 
   try {
@@ -335,18 +340,62 @@ async function completeRegistration(registrationId, customerId, loanRequired) {
       },
     );
 
+    const lead = await Lead.findOne({
+      where: { id: leadId },
+      transaction: t,
+    });
+
+    const customerDoc = await CustomerDocument.findOne({
+      where: { customer_id: customerId },
+      transaction: t,
+    });
+
+    const existingFile = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+      transaction: t,
+    });
+
     let kit = await KitReady.findOne({
       where: { customer_id: customerId },
       transaction: t,
     });
 
+    if (!existingFile) {
+      await FileGeneration.create(
+        {
+          registration_id: registrationId,
+          cs_no: "",
+          panel_brand_id: registration.panel_brand_id,
+          inverter_brand_id: registration.inverter_brand_id,
+          consumer_number: customerDoc?.consumer_number || null,
+          geo_location: customerDoc?.geo_coordinate || null,
+          subdivision: customerDoc?.sub_division || null,
+          inverter_capacity: lead?.inverter_kw
+            ? parseFloat(lead.inverter_kw)
+            : null,
+          inverter_quantity: lead?.number_of_inverter || null,
+          beneficiary_name: lead?.customer_name || null,
+          beneficiary_address: lead?.address || null,
+          consumer_contact: lead?.contact_number || null,
+          panel_quantity: lead?.number_of_panel || null,
+          panel_capacity: lead?.panel_wattage || null,
+          application_number: registration?.application_number || null,
+          registration_date: registration?.registration_date || null,
+          agreement_date: registration?.agreement_date || null,
+        },
+        {
+          transaction: t,
+        },
+      );
+    }
+
     if (!kit && loanRequired) {
       kit = await KitReady.create(
         {
           customer_id: customerId,
-          loan_status: "pending", // ✅ condition applied
+          loan_status: "pending",
           status: "pending",
-          file_gen: "pending",
+          file_gen: "done",
         },
         { transaction: t },
       );
@@ -354,9 +403,9 @@ async function completeRegistration(registrationId, customerId, loanRequired) {
       kit = await KitReady.create(
         {
           customer_id: customerId,
-          loan_status: "not_applicable", // ✅ condition applied
+          loan_status: "not_applicable",
           status: "pending",
-          file_gen: "pending",
+          file_gen: "done",
         },
         { transaction: t },
       );
@@ -373,7 +422,7 @@ async function completeRegistration(registrationId, customerId, loanRequired) {
           where: {
             customer_id: customerId,
             stage_id: {
-              [Op.in]: [5, 6, 7],
+              [Op.in]: [5, 6],
             },
           },
           transaction: t,
@@ -600,50 +649,55 @@ async function markRegistrationAsDone(
     await renameCustomerFolder(oldFolderName, newFolderName, rootFolderId);
 
     // 🔹 File Generation
+    const fileGenerationData = {
+      registration_id: registrationId,
+      cs_no,
+      panel_brand_id,
+      inverter_brand_id,
+
+      consumer_number: customerDocs?.consumer_number || null,
+      geo_location: customerDocs?.geo_coordinate || null,
+      subdivision: customerDocs?.sub_division || null,
+
+      inverter_capacity: lead?.inverter_capacity
+        ? parseFloat(lead.inverter_capacity)
+        : null,
+      inverter_quantity: lead?.number_of_inverters || null,
+
+      beneficiary_name: lead?.customer_name || null,
+      beneficiary_address: lead?.address || null,
+      consumer_contact: lead?.contact_number || null,
+
+      panel_quantity: lead?.number_of_panels || null,
+      panel_capacity: lead?.panel_wattage || null,
+
+      application_number: registration?.application_number || null,
+      registration_date: registration?.registration_date || null,
+      agreement_date: registration?.agreement_date || null,
+    };
+
     const existingFile = await FileGeneration.findOne({
       where: { registration_id: registrationId },
       transaction: t,
     });
 
-    if (!existingFile) {
-      await FileGeneration.create(
-        {
-          registration_id: registrationId,
-          cs_no,
-          panel_brand_id,
-          inverter_brand_id,
-
-          consumer_number: customerDocs?.consumer_number || null,
-          geo_location: customerDocs?.geo_coordinate || null,
-          subdivision: customerDocs?.sub_division || null,
-
-          inverter_capacity: lead?.inverter_capacity
-            ? parseFloat(lead.inverter_capacity)
-            : null,
-          inverter_quantity: lead?.number_of_inverters || null,
-
-          beneficiary_name: lead?.customer_name || null,
-          beneficiary_address: lead?.address || null,
-          consumer_contact: lead?.contact_number || null,
-
-          panel_quantity: lead?.number_of_panels || null,
-          panel_capacity: lead?.panel_wattage || null,
-
-          application_number: registration?.application_number || null,
-          registration_date: registration?.registration_date || null,
-          agreement_date: registration?.agreement_date || null,
-        },
-        { transaction: t },
-      );
-
-      await KitReady.update(
-        { file_gen: "done" },
-        {
-          where: { id: kitId },
-          transaction: t,
-        },
-      );
+    if (existingFile) {
+      await existingFile.update(fileGenerationData, {
+        transaction: t,
+      });
+    } else {
+      await FileGeneration.create(fileGenerationData, {
+        transaction: t,
+      });
     }
+
+    await KitReady.update(
+      { file_gen: "done" },
+      {
+        where: { id: kitId },
+        transaction: t,
+      },
+    );
 
     await t.commit();
 
