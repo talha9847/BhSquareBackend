@@ -651,6 +651,7 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
         { wiring_id: wiringId, doc_name: "Geo Tag" },
         { wiring_id: wiringId, doc_name: "Site Photo" },
         { wiring_id: wiringId, doc_name: "Wiring File" },
+        { wiring_id: wiringId, doc_name: "Combined Photo" },
       );
 
       await WiringDocs.bulkCreate(docs, {
@@ -792,7 +793,6 @@ async function uploadWiringDoc(customerId, wiringDocId, file) {
     const customerDoc = await CustomerDocument.findOne({
       where: { customer_id: customerId },
     });
-
     if (!customerDoc || !customerDoc.folder_id) {
       throw new Error("Customer folder not found");
     }
