@@ -24,7 +24,7 @@ const KitItems = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "inventory_table", // make sure this model exists
+        model: "inventory_table",
         key: "id",
       },
       onDelete: "CASCADE",
@@ -34,7 +34,23 @@ const KitItems = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       validate: {
+        min: 1,
+      },
+    },
+
+    partial_dispatched_qty: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
         min: 0,
+        dispatchQtyNotGreaterThanQty(value) {
+          if (value > this.qty) {
+            throw new Error(
+              "Partial dispatched quantity cannot be greater than quantity",
+            );
+          }
+        },
       },
     },
 
@@ -49,12 +65,23 @@ const KitItems = sequelize.define(
   {
     tableName: "kit_items",
     timestamps: false,
+
     indexes: [
       {
         unique: true,
-        fields: ["kit_id", "inventory_id"], // prevent duplicates
+        fields: ["kit_id", "inventory_id"],
       },
     ],
+
+    validate: {
+      dispatchedQtyNotGreaterThanQty() {
+        if (this.partial_dispatched_qty > this.qty) {
+          throw new Error(
+            "Partial dispatched quantity cannot be greater than quantity",
+          );
+        }
+      },
+    },
   },
 );
 

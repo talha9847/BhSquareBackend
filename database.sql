@@ -695,3 +695,15 @@ ADD COLUMN panel_brand_id INT REFERENCES brands(id);
 
 ALTER TABLE customer_registration
 ADD COLUMN inverter_brand_id INT REFERENCES brands(id);
+
+
+
+
+
+
+ALTER TABLE kit_items
+ADD COLUMN partial_dispatched_qty INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE kit_items
+ADD CONSTRAINT kit_items_qty_dispatch_check
+CHECK (partial_dispatched_qty >= 0 AND partial_dispatched_qty <= qty);

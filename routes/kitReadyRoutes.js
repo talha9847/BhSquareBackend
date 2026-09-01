@@ -169,4 +169,10 @@ router.put(
   middleware.authMiddleware(["admin"]),
   kitReadyController.updateKitReadyNote,
 );
+
+router.post(
+  "/partialDispatch",
+  middleware.authMiddleware(["admin"]),
+  kitReadyController.partialDispatchKitItem,
+);
 module.exports = router;

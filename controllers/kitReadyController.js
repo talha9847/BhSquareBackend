@@ -738,6 +738,34 @@ async function updateKitReadyNote(req, res) {
     });
   }
 }
+async function partialDispatchKitItem(req, res) {
+  try {
+    const { kitItemId, dispatchQty } = req.body;
+
+    if (!kitItemId || dispatchQty === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "kitItemId and dispatchQty are required",
+      });
+    }
+
+    const result = await kitReadyService.partialDispatchKitItem(
+      kitItemId,
+      dispatchQty,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Partial dispatch completed successfully",
+      data: result,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
 
 module.exports = {
   fetchKitReadyCustomers,
@@ -772,4 +800,5 @@ module.exports = {
   deleteCustomerData,
   updateKitReadyNote,
   getLoanData,
+  partialDispatchKitItem,
 };

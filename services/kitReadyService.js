@@ -695,6 +695,7 @@ async function getKitItemsByCustomer(customerId) {
     qty: item.qty,
     verified: item.status === "pending" ? false : true,
     stock: item.inventory?.qty || null,
+    partialDispatchedQty: item.partial_dispatched_qty || 0,
 
     brandId: item.inventory?.brand?.id || null,
     brand: item.inventory?.brand?.name || null,
@@ -1610,6 +1611,57 @@ async function updateKitReadyNote(id, note) {
   }
 }
 
+async function partialDispatchKitItem(kitItemId, dispatchQty) {
+  try {
+    const kitItem = await KitItems.findOne({
+      where: {
+        id: kitItemId,
+      },
+    });
+
+    if (!kitItem) {
+      throw new Error("Kit item not found");
+    }
+
+    const qty = Number(kitItem.qty) || 0;
+    const partialDispatchedQty = Number(kitItem.partial_dispatched_qty) || 0;
+
+    const inputQty = Number(dispatchQty);
+
+    if (!Number.isInteger(inputQty) || inputQty <= 0) {
+      throw new Error("Dispatch quantity must be greater than 0");
+    }
+
+    const remainingQty = qty - partialDispatchedQty;
+
+    if (remainingQty <= 0) {
+      throw new Error("All quantity has already been dispatched");
+    }
+
+    if (inputQty > remainingQty) {
+      throw new Error(
+        `Cannot dispatch ${inputQty}. Only ${remainingQty} quantity is available`,
+      );
+    }
+
+    const newPartialDispatchedQty = partialDispatchedQty + inputQty;
+
+    await kitItem.update({
+      partial_dispatched_qty: newPartialDispatchedQty,
+    });
+
+    return {
+      kitItemId: kitItem.id,
+      qty,
+      dispatchedQty: inputQty,
+      partialDispatchedQty: newPartialDispatchedQty,
+      remainingQty: qty - newPartialDispatchedQty,
+    };
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   getKitReadyCustomers,
   updateLoanStatus,
@@ -1645,4 +1697,5 @@ module.exports = {
   deleteCustomerFullData,
   updateKitReadyNote,
   getLoanData,
+  partialDispatchKitItem,
 };
