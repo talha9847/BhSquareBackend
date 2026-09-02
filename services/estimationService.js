@@ -253,7 +253,8 @@ async function generateEstimation(data) {
       panel_wattage,
       panel_rate_per_watt,
       total_kw,
-
+      discount: 10000,
+      subsidy_amount: 78000,
       items,
 
       subtotal,
