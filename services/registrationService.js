@@ -395,7 +395,7 @@ async function completeRegistration(
           customer_id: customerId,
           loan_status: "pending",
           status: "pending",
-          file_gen: "done",
+          file_gen: "partial",
         },
         { transaction: t },
       );
@@ -405,7 +405,7 @@ async function completeRegistration(
           customer_id: customerId,
           loan_status: "not_applicable",
           status: "pending",
-          file_gen: "done",
+          file_gen: "partial",
         },
         { transaction: t },
       );
