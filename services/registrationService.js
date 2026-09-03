@@ -771,6 +771,7 @@ async function getCustomersByStatus(fileGenStatus) {
       where: {
         customer_id: customerIds,
       },
+
       attributes: [
         "id",
         "customer_id",
@@ -782,11 +783,14 @@ async function getCustomersByStatus(fileGenStatus) {
         "status",
         "created_at",
       ],
+
       include: [
+        // Customer
         {
           model: Customer,
           as: "customer",
           attributes: ["id", "status"],
+
           include: [
             {
               model: Lead,
@@ -805,7 +809,16 @@ async function getCustomersByStatus(fileGenStatus) {
             },
           ],
         },
+
+        // File Generation
+        {
+          model: FileGeneration,
+          as: "file_generation",
+          attributes: ["cs_no"],
+          required: false,
+        },
       ],
+
       order: [["created_at", "DESC"]],
     });
 
@@ -817,6 +830,9 @@ async function getCustomersByStatus(fileGenStatus) {
       agreement_date: reg.agreement_date,
       panel_qty: reg.panel_qty,
       inverter_qty: reg.inverter_qty,
+
+      // ✅ CS Number
+      cs_no: reg.file_generation?.cs_no || null,
 
       customer_id: reg.customer?.id || null,
       customer_status: reg.customer?.status || null,
