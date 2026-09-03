@@ -171,6 +171,23 @@ async function updateInverter(req, res) {
   }
 }
 
+const deleteEstimation = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await estimationService.deleteEstimation(id);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("❌ Delete estimation error:", error);
+
+    return res.status(404).json({
+      success: false,
+      message: error.message || "Failed to delete estimation",
+    });
+  }
+};
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
@@ -180,4 +197,5 @@ module.exports = {
   getInverters,
   addInverter,
   updateInverter,
+  deleteEstimation,
 };

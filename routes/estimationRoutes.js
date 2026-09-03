@@ -47,4 +47,10 @@ router.post(
   estimationController.addInverter,
 );
 
+router.delete(
+  "/deleteEstimation/:id",
+  middleware.authMiddleware(["admin"]),
+  estimationController.deleteEstimation,
+);
+
 module.exports = router;

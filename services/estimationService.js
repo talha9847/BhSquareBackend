@@ -327,6 +327,26 @@ async function updateInverter(id, data) {
   }
 }
 
+async function deleteEstimation(id) {
+  try {
+    const estimation = await Estimation.findByPk(id);
+
+    if (!estimation) {
+      throw new Error("Estimation not found");
+    }
+
+    await estimation.destroy();
+
+    return {
+      success: true,
+      message: "Estimation deleted successfully",
+      id,
+    };
+  } catch (error) {
+    console.error("❌ Error deleting estimation:", error);
+    throw error;
+  }
+}
 module.exports = {
   getEstimations,
   getEstimationTypes,
@@ -336,4 +356,5 @@ module.exports = {
   getInverters,
   addInverter,
   updateInverter,
+  deleteEstimation,
 };
