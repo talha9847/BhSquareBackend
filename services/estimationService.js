@@ -217,10 +217,16 @@ async function generateEstimation(data) {
       // --------------------------------
       // LABOUR CHARGE
       // --------------------------------
-      else if (itemName === "LABOURE CHARGE" || itemName === "LABOUR CHARGE") {
+      else if (
+        itemName === "LABOURE CHARGE" ||
+        itemName === "LABOUR CHARGE" ||
+        itemName === "WIRING LABOURE" ||
+        itemName === "FILE CHARGE" ||
+        itemName == "PORTAL CHARGE" ||
+        itemName == "SALESMAN CHARGE"
+      ) {
         qty = total_kw;
       }
-
       const amount = qty * price;
 
       const gstAmount = (amount * Number(item.gst)) / 100;
