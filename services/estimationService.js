@@ -220,7 +220,7 @@ async function generateEstimation(data) {
       else if (
         itemName === "LABOURE CHARGE" ||
         itemName === "LABOUR CHARGE" ||
-        itemName === "WIRING LABOURE" ||
+        itemName === "WIRING LABOUR" ||
         itemName === "FILE CHARGE" ||
         itemName == "PORTAL CHARGE" ||
         itemName == "SALESMAN CHARGE"
