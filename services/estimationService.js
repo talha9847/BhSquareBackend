@@ -218,7 +218,6 @@ async function generateEstimation(data) {
       // LABOUR CHARGE
       // --------------------------------
       else if (
-        itemName === "LABOURE CHARGE" ||
         itemName === "LABOUR CHARGE" ||
         itemName === "WIRING LABOUR" ||
         itemName === "FILE CHARGE" ||

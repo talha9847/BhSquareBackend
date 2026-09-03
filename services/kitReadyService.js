@@ -57,6 +57,15 @@ async function getKitReadyCustomers(status) {
               model: CustomerRegistration,
               as: "registration",
               attributes: ["id"],
+
+              include: [
+                {
+                  model: FileGeneration,
+                  as: "file_generation", // ✅ MUST MATCH ASSOCIATION
+                  attributes: ["cs_no"],
+                  required: false,
+                },
+              ],
             },
           ],
         },
