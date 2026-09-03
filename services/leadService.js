@@ -73,12 +73,16 @@ async function getLeadsByStatus(status) {
   }
 }
 
-async function getLeadsBySource(source_id) {
+async function getLeadsBySource(source_id, status) {
   try {
     const leads = await Lead.findAll({
-      where: { source_id },
+      where: {
+        source_id,
+        status,
+      },
       order: [["created_at", "DESC"]],
     });
+
     return leads;
   } catch (error) {
     throw error;

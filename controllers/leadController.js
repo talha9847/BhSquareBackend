@@ -334,15 +334,16 @@ async function fetchLeadById(req, res) {
 
 async function fetchLeadsBySource(req, res) {
   try {
-    const source_id = req.user.role_id; // 👈 same pattern
+    const source_id = req.user.role_id;
+    const { status } = req.query;
 
     if (!source_id) {
       return res.status(400).json({
-        message: "fabricator_id is required",
+        message: "source_id is required",
       });
     }
 
-    const leads = await leadService.getLeadsBySource(source_id);
+    const leads = await leadService.getLeadsBySource(source_id, status);
 
     return res.status(200).json({
       success: true,
