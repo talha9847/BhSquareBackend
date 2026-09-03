@@ -27,6 +27,7 @@ app.use(
       "https://bhsquare.in",
       "https://www.bhsquare.in",
       "https://bh-square-frontend.vercel.app",
+      "https://bhsquarefrontendh.vercel.app/",
       "http://localhost:5173",
     ],
     credentials: true,
