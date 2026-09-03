@@ -166,7 +166,6 @@ async function generateEstimation(data) {
 
       let qty = Number(item.qty);
       let price = Number(item.price);
-
       // --------------------------------
       // PANEL
       // --------------------------------
@@ -218,7 +217,7 @@ async function generateEstimation(data) {
       // LABOUR CHARGE
       // --------------------------------
       else if (
-        itemName === "LABOUR CHARGE" ||
+        itemName === "LABOURE CHARGE" ||
         itemName === "WIRING LABOUR" ||
         itemName === "FILE CHARGE" ||
         itemName == "PORTAL CHARGE" ||
@@ -229,7 +228,7 @@ async function generateEstimation(data) {
       const amount = qty * price;
 
       const gstAmount = (amount * Number(item.gst)) / 100;
-
+      console.log(gstAmount);
       return {
         id: item.id,
         type_id: item.type_id,
