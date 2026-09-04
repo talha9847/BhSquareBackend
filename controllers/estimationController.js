@@ -188,6 +188,112 @@ const deleteEstimation = async (req, res) => {
   }
 };
 
+async function createAgency(req, res) {
+  try {
+    const agency = await estimationService.addAgency(req.body);
+
+    return res.status(201).json({
+      success: true,
+      data: agency,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function updateAgency(req, res) {
+  try {
+    const { id } = req.params;
+
+    const updated = await estimationService.updateAgency(id, req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function deleteAgency(req, res) {
+  try {
+    const { id } = req.params;
+
+    await estimationService.deleteAgency(id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Agency deleted successfully",
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function getAllAgencies(req, res) {
+  try {
+    const agencies = await estimationService.getAllAgencies();
+
+    return res.status(200).json({
+      success: true,
+      data: agencies,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function createAgencyInventory(req, res) {
+  try {
+    const agencyInventory = await estimationService.createAgencyInventory(
+      req.body,
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Inventory sent to agency successfully",
+      data: agencyInventory,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+const getAllAgencyInventory = async (req, res) => {
+  try {
+    const data = await estimationService.getAllAgencyInventory();
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    console.error("Get All Agency Inventory Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to get agency inventory",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
@@ -198,4 +304,10 @@ module.exports = {
   addInverter,
   updateInverter,
   deleteEstimation,
+  createAgency,
+  updateAgency,
+  deleteAgency,
+  getAllAgencies,
+  createAgencyInventory,
+  getAllAgencyInventory,
 };

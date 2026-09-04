@@ -1,7 +1,12 @@
 const sequelize = require("../config/db");
+const { AgencyInventory } = require("../models/agencyInventoryModel");
+const { Agency } = require("../models/agencyModel");
+const { Brand } = require("../models/brandModel");
 const { Estimation } = require("../models/estimationModel");
 const { EstimationType } = require("../models/estimationTypeModel");
+const { Inventory } = require("../models/inventoryModel");
 const { Inverter } = require("../models/inverterModel");
+const { Op } = require("sequelize");
 
 async function getEstimations() {
   try {
@@ -344,6 +349,237 @@ async function deleteEstimation(id) {
     throw error;
   }
 }
+
+async function addAgency(data) {
+  try {
+    const { name } = data;
+
+    if (!name) {
+      throw new Error("Agency name is required");
+    }
+
+    const existing = await Agency.findOne({
+      where: {
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn("LOWER", sequelize.col("name")),
+            name.trim().toLowerCase(),
+          ),
+        ],
+      },
+    });
+
+    if (existing) {
+      throw new Error("Agency already exists");
+    }
+
+    const agency = await Agency.create({
+      name: name.trim().toUpperCase(),
+    });
+
+    return agency;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function updateAgency(id, data) {
+  try {
+    const { name } = data;
+
+    if (!id) {
+      throw new Error("Agency id is required");
+    }
+
+    if (!name) {
+      throw new Error("Agency name is required");
+    }
+
+    const agency = await Agency.findByPk(id);
+
+    if (!agency) {
+      throw new Error("Agency not found");
+    }
+
+    const existing = await Agency.findOne({
+      where: sequelize.where(
+        sequelize.fn("LOWER", sequelize.col("name")),
+        name.trim().toLowerCase(),
+      ),
+    });
+
+    if (existing && existing.id !== Number(id)) {
+      throw new Error("Agency already exists");
+    }
+
+    await agency.update({
+      name: name.trim().toUpperCase(),
+    });
+
+    return agency;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function deleteAgency(id) {
+  try {
+    // 🔹 Validate
+    if (!id) {
+      throw new Error("Agency id is required");
+    }
+
+    // 🔹 Check agency exists
+    const agency = await Agency.findByPk(id);
+
+    if (!agency) {
+      throw new Error("Agency not found");
+    }
+
+    // 🔹 Delete agency
+    await agency.destroy();
+
+    return true;
+  } catch (error) {
+    throw error;
+  }
+}
+
+async function getAllAgencies() {
+  try {
+    const agencies = await Agency.findAll({
+      attributes: ["id", "name"],
+      order: [["name", "ASC"]],
+    });
+
+    return agencies;
+  } catch (error) {
+    throw error;
+  }
+}
+async function createAgencyInventory(data) {
+  try {
+    const { agency_id, inventory_id, qty, note } = data;
+
+    // Validate agency
+    if (!agency_id) {
+      throw new Error("Agency id is required");
+    }
+
+    // Validate inventory
+    if (!inventory_id) {
+      throw new Error("Inventory id is required");
+    }
+
+    // Validate quantity
+    if (qty === undefined || qty === null || qty === "") {
+      throw new Error("Quantity is required");
+    }
+
+    if (Number(qty) <= 0) {
+      throw new Error("Quantity must be greater than 0");
+    }
+
+    // Check agency exists
+    const agency = await Agency.findByPk(agency_id);
+
+    if (!agency) {
+      throw new Error("Agency not found");
+    }
+
+    // Check inventory exists
+    const inventory = await Inventory.findByPk(inventory_id);
+
+    if (!inventory) {
+      throw new Error("Inventory not found");
+    }
+
+    // Check available stock
+    if (Number(inventory.qty) < Number(qty)) {
+      throw new Error(
+        `Insufficient stock. Available quantity: ${inventory.qty}`,
+      );
+    }
+
+    // Create agency inventory entry
+    const agencyInventory = await AgencyInventory.create({
+      agency_id,
+      inventory_id,
+      qty: Number(qty),
+      note: note ? note.trim() : null,
+    });
+
+    // Reduce main inventory stock
+    await inventory.update({
+      qty: Number(inventory.qty) - Number(qty),
+    });
+
+    return agencyInventory;
+  } catch (error) {
+    throw error;
+  }
+}
+
+const getAllAgencyInventory = async () => {
+  try {
+    const data = await AgencyInventory.findAll({
+      order: [["created_at", "DESC"]],
+
+      include: [
+        {
+          model: Agency,
+          as: "agency",
+          attributes: ["id", "name"],
+        },
+
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: [
+            "id",
+            "name",
+            "brand_id",
+            "category_id",
+            "qty",
+            "price",
+            "wattage",
+            "tax",
+          ],
+
+          include: [
+            {
+              model: Brand,
+              as: "brand",
+              attributes: ["id", "name"],
+            },
+          ],
+        },
+      ],
+    });
+
+    return data.map((item) => ({
+      id: item.id,
+
+      agency_id: item.agency_id,
+      agency_name: item.agency?.name || "Unknown Agency",
+
+      inventory_id: item.inventory_id,
+      inventory_name: item.inventory?.name || "Unknown Inventory",
+
+      brand_name: item.inventory?.brand?.name || "Generic",
+
+      qty: item.qty,
+
+      note: item.note || "",
+
+      created_at: item.created_at,
+    }));
+  } catch (error) {
+    console.error("getAllAgencyInventory service error:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   getEstimations,
   getEstimationTypes,
@@ -354,4 +590,10 @@ module.exports = {
   addInverter,
   updateInverter,
   deleteEstimation,
+  addAgency,
+  updateAgency,
+  deleteAgency,
+  getAllAgencies,
+  createAgencyInventory,
+  getAllAgencyInventory,
 };

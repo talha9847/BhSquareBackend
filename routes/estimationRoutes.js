@@ -53,4 +53,40 @@ router.delete(
   estimationController.deleteEstimation,
 );
 
+router.post(
+  "/createAgency",
+  middleware.authMiddleware(["admin"]),
+  estimationController.createAgency,
+);
+
+router.put(
+  "/updateAgency/:id",
+  middleware.authMiddleware(["admin"]),
+  estimationController.updateAgency,
+);
+
+router.delete(
+  "/deleteAgency/:id",
+  middleware.authMiddleware(["admin"]),
+  estimationController.deleteAgency,
+);
+
+router.get(
+  "/getAllAgencies",
+  middleware.authMiddleware(["admin"]),
+  estimationController.getAllAgencies,
+);
+
+router.post(
+  "/createAgencyInventory",
+  middleware.authMiddleware(["admin"]),
+  estimationController.createAgencyInventory,
+);
+
+router.get(
+  "/getAllAgencyInventory",
+  middleware.authMiddleware(["admin"]),
+  estimationController.getAllAgencyInventory,
+);
+
 module.exports = router;

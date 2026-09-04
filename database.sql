@@ -707,3 +707,20 @@ ADD COLUMN partial_dispatched_qty INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE kit_items
 ADD CONSTRAINT kit_items_qty_dispatch_check
 CHECK (partial_dispatched_qty >= 0 AND partial_dispatched_qty <= qty);
+
+
+
+    CREATE TABLE agency (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL)
+	
+
+
+CREATE TABLE agency_inventory (
+    id SERIAL PRIMARY KEY,
+    agency_id INTEGER NOT NULL REFERENCES agency(id) ON DELETE CASCADE,
+    inventory_id INTEGER NOT NULL REFERENCES inventory_table(id) ON DELETE CASCADE,
+    qty INTEGER NOT NULL DEFAULT 0 CHECK (qty >= 0),
+    note VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -41,6 +41,8 @@ const { Completion } = require("./completionModel");
 const { EstimationType } = require("./estimationTypeModel");
 const { Estimation } = require("./estimationModel");
 const { Inverter } = require("./inverterModel");
+const { AgencyInventory } = require("./agencyInventoryModel");
+const { Agency } = require("./agencyModel");
 
 // ----------------------
 // Customer → Lead
@@ -442,6 +444,34 @@ Estimation.belongsTo(EstimationType, {
   as: "type",
 });
 
+// ----------------------
+// Agency → AgencyInventory
+// One Agency can have many inventory transactions
+Agency.hasMany(AgencyInventory, {
+  foreignKey: "agency_id",
+  as: "inventoryTransactions",
+});
+
+// AgencyInventory → Agency
+AgencyInventory.belongsTo(Agency, {
+  foreignKey: "agency_id",
+  as: "agency",
+});
+
+// ----------------------
+// Inventory → AgencyInventory
+// One Inventory can have many agency transactions
+Inventory.hasMany(AgencyInventory, {
+  foreignKey: "inventory_id",
+  as: "agencyTransactions",
+});
+
+// AgencyInventory → Inventory
+AgencyInventory.belongsTo(Inventory, {
+  foreignKey: "inventory_id",
+  as: "inventory",
+});
+
 module.exports = {
   Customer,
   Lead,
@@ -479,4 +509,6 @@ module.exports = {
   Estimation,
   EstimationType,
   Inverter,
+  Agency,
+  AgencyInventory,
 };
