@@ -756,7 +756,17 @@ async function getCustomersByStatus(fileGenStatus) {
 
     // 1️⃣ Get customer_ids from KitReady
     const kits = await KitReady.findAll({
-      where: { file_gen: fileGenStatus },
+      where:
+        fileGenStatus === "done"
+          ? {
+              file_gen: {
+                [Op.in]: ["done", "partial"],
+              },
+            }
+          : {
+              file_gen: "pending",
+            },
+
       attributes: ["customer_id"],
     });
 
