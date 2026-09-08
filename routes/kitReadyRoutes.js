@@ -4,6 +4,7 @@ const router = express.Router();
 const middleware = require("../middlewares/authMiddleware");
 router.get(
   "/fetchKitReadyCustomers",
+  middleware.authMiddleware(["admin"]),
   kitReadyController.fetchKitReadyCustomers,
 );
 router.delete(
@@ -175,6 +176,5 @@ router.post(
   middleware.authMiddleware(["admin"]),
   kitReadyController.partialDispatchKitItem,
 );
-
 
 module.exports = router;
