@@ -18,6 +18,55 @@ const { Loan } = require("../models/loanModel");
 const { FinalStage } = require("../models/finalStageModel");
 const { FileGeneration } = require("../models/fileGenerationModel");
 
+async function toggleLeadFlag(id, flags) {
+  try {
+    if (!id) {
+      throw new Error("Lead id is required");
+    }
+
+    // Only allow these two fields — never spread user input blindly.
+    const updates = {};
+
+    if (typeof flags.estimation_sent === "boolean") {
+      updates.estimation_sent = flags.estimation_sent;
+    }
+    if (typeof flags.site_visited === "boolean") {
+      updates.site_visited = flags.site_visited;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      throw new Error(
+        "Provide at least one boolean: estimation_sent or site_visited",
+      );
+    }
+
+    updates.updated_at = new Date();
+
+    const [updatedRows] = await Lead.update(updates, { where: { id } });
+
+    if (updatedRows === 0) {
+      return { success: false, message: "Lead not found" };
+    }
+
+    const lead = await Lead.findByPk(id, {
+      attributes: ["id", "estimation_sent", "site_visited", "updated_at"],
+    });
+
+    return {
+      success: true,
+      data: {
+        id: lead.id,
+        estimation_sent: lead.estimation_sent,
+        site_visited: lead.site_visited,
+        updated_at: lead.updated_at,
+      },
+    };
+  } catch (error) {
+    console.error("Error toggling lead flag:", error);
+    return { success: false, message: error.message };
+  }
+}
+
 async function addLead(data) {
   try {
     const total_capacity =
@@ -803,4 +852,5 @@ module.exports = {
   getCustomerReport,
   getPendingStageCapacity,
   updateLeadAndFileGeneration,
+  toggleLeadFlag,
 };

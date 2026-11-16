@@ -69,6 +69,18 @@ const Lead = sequelize.define(
       defaultValue: "Residential",
     },
 
+    // === tick-mark flags ===
+    estimation_sent: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    site_visited: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

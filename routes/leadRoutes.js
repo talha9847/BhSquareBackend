@@ -58,6 +58,13 @@ router.post(
   middleware.authMiddleware(["admin"]),
   leadController.updateLead,
 );
+
+router.patch(
+  "/updateLeadFlags/:id",
+  middleware.authMiddleware(["admin"]),
+  leadController.updateLeadFlags,
+);
+
 router.get(
   "/fetchLeadById/:id",
   middleware.authMiddleware(["admin", "source", "technician", "fabricator"]),

@@ -724,3 +724,44 @@ CREATE TABLE agency_inventory (
     note VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+
+
+
+CREATE TABLE baileys_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    session_id VARCHAR(150) UNIQUE NOT NULL,
+    creds JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE baileys_auth_keys (
+    id BIGSERIAL PRIMARY KEY,
+    session_id VARCHAR(150) NOT NULL,
+    key_type VARCHAR(100) NOT NULL,
+    key_id VARCHAR(255) NOT NULL,
+    key_data JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_baileys_session
+        FOREIGN KEY (session_id)
+        REFERENCES baileys_sessions(session_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT unique_baileys_key
+        UNIQUE (session_id, key_type, key_id)
+);
+
+CREATE INDEX idx_baileys_session
+ON baileys_auth_keys(session_id);
+
+
+
+
+ALTER TABLE leads
+  ADD COLUMN estimation_sent BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN site_visited    BOOLEAN NOT NULL DEFAULT FALSE;

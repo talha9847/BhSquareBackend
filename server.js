@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const cookieParser = require("cookie-parser");
+const { startWhatsAppSession } = require("./services/whatsappService");
 
 const UserSeeder = require("./Seeder/UserSeed");
 const userRoutes = require("./routes/userRoutes");
@@ -16,6 +17,8 @@ const loanRoutes = require("./routes/loanRoutes");
 const dispatchRoutes = require("./routes/dispatchRoutes");
 const wiringhRoutes = require("./routes/wiringRoutes");
 const estimationRoutes = require("./routes/estimationRoutes");
+const whatsappRoutes = require("./routes/whatsappRoutes");
+
 require("./models/associationModel");
 
 UserSeeder.startServer();
@@ -60,7 +63,25 @@ app.use("/api/loan", loanRoutes);
 app.use("/api/dispatch", dispatchRoutes);
 app.use("/api/wiring", wiringhRoutes);
 app.use("/api/estimation", estimationRoutes);
+app.use("/api/whatsapp", whatsappRoutes);
 
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
+
+async function bootstrap() {
+  try {
+    // Start WhatsApp (restores from DB if creds exist, else shows QR)
+    const status = await startWhatsAppSession();
+    console.log("WhatsApp initial status:", status);
+
+    app.listen( () => {
+      console.log(`Server listening on http://localhost:3000`);
+    });
+  } catch (error) {
+    console.error("Failed to start WhatsApp session:", error);
+    process.exit(1);
+  }
+}
+
+bootstrap();

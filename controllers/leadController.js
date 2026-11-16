@@ -1,5 +1,54 @@
 const leadService = require("../services/leadService");
 
+async function updateLeadFlags(req, res) {
+  try {
+    const { id } = req.params;
+    const { estimation_sent, site_visited } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Lead id is required",
+      });
+    }
+
+    // At least one flag must be provided
+    const hasEstimation =
+      typeof estimation_sent === "boolean" ? estimation_sent : undefined;
+    const hasSiteVisited =
+      typeof site_visited === "boolean" ? site_visited : undefined;
+
+    if (hasEstimation === undefined && hasSiteVisited === undefined) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Provide at least one boolean flag: estimation_sent or site_visited",
+      });
+    }
+
+    const result = await leadService.toggleLeadFlag(id, {
+      estimation_sent: hasEstimation,
+      site_visited: hasSiteVisited,
+    });
+
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Lead flags updated successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("Error updating lead flags:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 async function addLead(req, res) {
   try {
     const {
@@ -600,4 +649,5 @@ module.exports = {
   getCustomerReport,
   getPendingStageCapacity,
   updateCustomerBio,
+  updateLeadFlags,
 };
