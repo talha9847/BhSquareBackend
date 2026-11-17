@@ -1,5 +1,5 @@
 // workers/whatsappFollowupWorker.js
-const whatsappService = require("../services/whatsappService"); // your existing service
+const whatsappService = require("../services/whatsappService");
 const whatsappFollowupService = require("../services/whatsappFollowupService");
 const sequelize = require("../config/db");
 const { QueryTypes } = require("sequelize");
@@ -9,12 +9,12 @@ const { QueryTypes } = require("sequelize");
 // ---------------------------------------------------------------------------
 const WORKER_ID = process.env.WHATSAPP_WORKER_ID || `worker-${process.pid}`;
 const POLL_MS = Number(process.env.WHATSAPP_WORKER_POLL_MS) || 15_000;
-const BATCH_SIZE = Number(process.env.WHATSAPP_WORKER_BATCH) || 20;
+const BATCH_SIZE = Number(process.env.WHATSAPP_WORKER_BATCH) || 10; // 10 per batch
 const REAP_AFTER_MIN = Number(process.env.WHATSAPP_WORKER_REAP_MIN) || 10;
 
-// Your session-based socket can't send N messages in parallel safely.
-// Keep this at 1 unless you've tested concurrency with your provider.
+// Session-based socket: keep at 1 unless you've tested concurrency.
 const SEND_CONCURRENCY = Number(process.env.WHATSAPP_WORKER_CONCURRENCY) || 1;
+const SEND_GAP_MS = Number(process.env.WHATSAPP_WORKER_GAP_MS) || 3000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -23,6 +23,39 @@ let running = false;
 let stopping = false;
 let timer = null;
 let tickInFlight = null;
+
+// ---------------------------------------------------------------------------
+// DUE: claim rows whose scheduled time has passed (oldest first).
+// SKIP LOCKED makes it safe if more than one worker runs.
+// ---------------------------------------------------------------------------
+async function claimDueFollowups({ workerId, batchSize }) {
+  const rows = await sequelize.query(
+    `
+    UPDATE whatsapp_followups
+       SET status = 'processing',
+           locked_by = :workerId,
+           locked_at = NOW(),
+           attempts = attempts + 1,
+           updated_at = NOW()
+     WHERE id IN (
+       SELECT id
+         FROM whatsapp_followups
+        WHERE status = 'scheduled'
+          AND scheduled_at <= NOW()
+        ORDER BY scheduled_at ASC
+        LIMIT :batchSize
+        FOR UPDATE SKIP LOCKED
+     )
+    RETURNING *
+    `,
+    { type: QueryTypes.SELECT, replacements: { workerId, batchSize } },
+  );
+
+  // RETURNING doesn't guarantee order
+  return rows.sort(
+    (a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at),
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Reaper — un-stick rows whose worker died mid-send
@@ -55,8 +88,27 @@ async function reapStuckFollowups() {
 }
 
 // ---------------------------------------------------------------------------
-// Process one claimed follow-up.
-// Uses your existing whatsappService.sendMessage(number, message).
+// Release claims we never attempted (shutdown, or already tried this tick).
+// attempts is rolled back because no send was made.
+// ---------------------------------------------------------------------------
+async function releaseClaims(ids) {
+  if (!ids.length) return;
+  await sequelize.query(
+    `
+    UPDATE whatsapp_followups
+       SET status = 'scheduled',
+           locked_by = NULL,
+           locked_at = NULL,
+           attempts = GREATEST(attempts - 1, 0),
+           updated_at = NOW()
+     WHERE id IN (:ids) AND status = 'processing'
+    `,
+    { type: QueryTypes.UPDATE, replacements: { ids } },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Process one claimed follow-up
 // ---------------------------------------------------------------------------
 async function processOne(followup) {
   const started = Date.now();
@@ -81,7 +133,7 @@ async function processOne(followup) {
     await whatsappFollowupService.logFollowupSuccess({
       followup_id: followup.id,
       attempt_no: followup.attempts,
-      http_status: null, // session-based, no HTTP status
+      http_status: null,
       response_body: {
         jid: result?.jid ?? null,
         messageId: result?.messageId ?? null,
@@ -120,10 +172,8 @@ async function processOne(followup) {
 }
 
 // ---------------------------------------------------------------------------
-// Small concurrency helper (cap = SEND_CONCURRENCY)
+// Send a batch with a gap + jitter between messages
 // ---------------------------------------------------------------------------
-const SEND_GAP_MS = Number(process.env.WHATSAPP_WORKER_GAP_MS) || 3000;
-
 async function processBatch(rows) {
   const results = [];
   let i = 0;
@@ -137,7 +187,6 @@ async function processBatch(rows) {
         if (idx >= rows.length) return;
         results[idx] = await processOne(rows[idx]);
 
-        // gap between sends (jitter avoids machine-pattern detection)
         if (i < rows.length) {
           const jitter = Math.floor(Math.random() * 2000);
           await new Promise((r) => setTimeout(r, SEND_GAP_MS + jitter));
@@ -149,62 +198,59 @@ async function processBatch(rows) {
   await Promise.all(workers);
   return results.filter(Boolean);
 }
-// ---------------------------------------------------------------------------
-// Release claims we didn't get to (on shutdown mid-batch)
-// ---------------------------------------------------------------------------
-async function releaseClaims(ids) {
-  if (!ids.length) return;
-  await sequelize.query(
-    `
-    UPDATE whatsapp_followups
-       SET status = 'scheduled',
-           locked_by = NULL,
-           locked_at = NULL,
-           updated_at = NOW()
-     WHERE id IN (:ids) AND status = 'processing'
-    `,
-    { type: QueryTypes.UPDATE, replacements: { ids } },
-  );
-}
 
 // ---------------------------------------------------------------------------
-// One poll cycle
+// One poll cycle: send everything that is due, 10 at a time
 // ---------------------------------------------------------------------------
 async function tick() {
   try {
     console.log(`[worker:${WORKER_ID}] tick @ ${new Date().toISOString()}`);
     await reapStuckFollowups();
 
+    const seen = new Set(); // ids already attempted this tick
     let totalClaimed = 0;
     let totalSent = 0;
     let totalFailed = 0;
 
-    // Drain the queue — keep claiming batches until nothing is due
     while (true) {
       if (stopping) break;
 
-      const claimed = await whatsappFollowupService.claimDueFollowups({
+      const claimed = await claimDueFollowups({
         workerId: WORKER_ID,
         batchSize: BATCH_SIZE,
       });
 
       if (claimed.length === 0) break;
 
-      totalClaimed += claimed.length;
+      // A failed row rescheduled into the past must not be re-sent this tick
+      const fresh = claimed.filter((r) => !seen.has(r.id));
+      const repeats = claimed.filter((r) => seen.has(r.id));
+
+      if (repeats.length) await releaseClaims(repeats.map((r) => r.id));
+      if (fresh.length === 0) break;
+
+      fresh.forEach((r) => seen.add(r.id));
+      totalClaimed += fresh.length;
       console.log(
-        `[worker:${WORKER_ID}] claimed ${claimed.length} (total ${totalClaimed})`,
+        `[worker:${WORKER_ID}] claimed ${fresh.length} (total ${totalClaimed})`,
       );
 
       if (stopping) {
-        await releaseClaims(claimed.map((r) => r.id));
+        await releaseClaims(fresh.map((r) => r.id));
         break;
       }
 
-      const results = await processBatch(claimed);
+      const results = await processBatch(fresh);
+
       for (const r of results) {
         if (r.status === "sent") totalSent++;
         else if (r.status === "failed") totalFailed++;
       }
+
+      // If we stopped mid-batch, give back the rows we never reached
+      const done = new Set(results.map((r) => r.id));
+      const unreached = fresh.filter((r) => !done.has(r.id));
+      if (unreached.length) await releaseClaims(unreached.map((r) => r.id));
     }
 
     if (totalClaimed > 0) {
@@ -276,4 +322,5 @@ module.exports = {
   _tick: tick,
   _reap: reapStuckFollowups,
   _processOne: processOne,
+  _claimDue: claimDueFollowups,
 };
