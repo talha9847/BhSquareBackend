@@ -10,9 +10,34 @@ const QR_PATH = path.join(process.cwd(), "qr.png");
 const SESSION_ID = process.env.BAILEYS_SESSION_ID || "rayvolts-dev";
 const DEFAULT_COUNTRY_CODE = process.env.WA_DEFAULT_COUNTRY_CODE || "91";
 
+const SEND_TIMEOUT_MS = 30000;
+const LOOKUP_TIMEOUT_MS = 15000;
+const JID_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const DB_CHUNK_SIZE = 500;
+
+// number -> { jid, number, expires }
+const jidCache = new Map();
+
 // =====================================================
-// JSON HELPERS
+// GENERIC HELPERS
 // =====================================================
+
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function chunk(arr, size = DB_CHUNK_SIZE) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 function restoreJSON(value, BufferJSON) {
   if (!value) return null;
@@ -37,7 +62,7 @@ function normalizeNumber(number) {
 }
 
 // Confirms the number is on WhatsApp and returns the real JID.
-// Without this, Baileys reports "sent" even when the number is wrong.
+// Results are cached so repeat sends skip the network lookup.
 async function resolveJid(sock, number) {
   const n = normalizeNumber(number);
 
@@ -45,13 +70,23 @@ async function resolveJid(sock, number) {
     throw new Error(`Invalid phone number: ${n || "(empty)"}`);
   }
 
-  const results = await sock.onWhatsApp(n);
+  const cached = jidCache.get(n);
+  if (cached && cached.expires > Date.now()) {
+    return { jid: cached.jid, number: n };
+  }
+
+  const results = await withTimeout(
+    sock.onWhatsApp(n),
+    LOOKUP_TIMEOUT_MS,
+    "onWhatsApp lookup",
+  );
   const found = results?.[0];
 
   if (!found?.exists) {
     throw new Error(`${n} is not registered on WhatsApp`);
   }
 
+  jidCache.set(n, { jid: found.jid, expires: Date.now() + JID_CACHE_TTL_MS });
   return { jid: found.jid, number: n };
 }
 
@@ -130,7 +165,111 @@ async function loadAuthState(session, baileys) {
 }
 
 // =====================================================
+// PERSISTENCE (incremental + batched)
+// =====================================================
+
+// Serialize all DB writes. A failed write never breaks the chain.
+function enqueue(session, task) {
+  const run = (session.savePromise || Promise.resolve())
+    .catch(() => {})
+    .then(task);
+  session.savePromise = run.catch(() => {});
+  return run;
+}
+
+// Creds only: 1 query.
+async function persistCreds(session) {
+  const { BufferJSON } = session.baileys;
+
+  await sequelize.query(
+    `INSERT INTO baileys_sessions (session_id, creds)
+     VALUES (:sessionId, CAST(:creds AS JSONB))
+     ON CONFLICT (session_id)
+     DO UPDATE SET
+       creds = EXCLUDED.creds,
+       updated_at = CURRENT_TIMESTAMP`,
+    {
+      replacements: {
+        sessionId: session.id,
+        creds: serializeJSON(session.auth.creds, BufferJSON),
+      },
+    },
+  );
+}
+
+// Changed keys only: 1 query per DB_CHUNK_SIZE keys.
+async function persistKeyChanges(session, upserts, deletes) {
+  const { BufferJSON } = session.baileys;
+
+  for (const part of chunk(upserts)) {
+    await sequelize.query(
+      `INSERT INTO baileys_auth_keys (session_id, key_type, key_id, key_data)
+       SELECT :sessionId, x.t, x.i, x.d::jsonb
+       FROM unnest(ARRAY[:types]::text[], ARRAY[:ids]::text[], ARRAY[:datas]::text[])
+            AS x(t, i, d)
+       ON CONFLICT (session_id, key_type, key_id)
+       DO UPDATE SET
+         key_data = EXCLUDED.key_data,
+         updated_at = CURRENT_TIMESTAMP`,
+      {
+        replacements: {
+          sessionId: session.id,
+          types: part.map((k) => k.type),
+          ids: part.map((k) => String(k.id)),
+          datas: part.map((k) => serializeJSON(k.value, BufferJSON)),
+        },
+      },
+    );
+  }
+
+  for (const part of chunk(deletes)) {
+    await sequelize.query(
+      `DELETE FROM baileys_auth_keys b
+       USING unnest(ARRAY[:types]::text[], ARRAY[:ids]::text[]) AS x(t, i)
+       WHERE b.session_id = :sessionId
+         AND b.key_type = x.t
+         AND b.key_id = x.i`,
+      {
+        replacements: {
+          sessionId: session.id,
+          types: part.map((k) => k.type),
+          ids: part.map((k) => String(k.id)),
+        },
+      },
+    );
+  }
+}
+
+// Full dump: only for the first login of a fresh session.
+async function persistAllKeys(session) {
+  const all = [];
+  for (const [type, entries] of session.keys.entries()) {
+    for (const [id, value] of entries.entries()) {
+      all.push({ type, id, value });
+    }
+  }
+
+  await persistCreds(session);
+  await persistKeyChanges(session, all, []);
+  console.log(`WhatsApp full auth saved (${all.length} keys).`);
+}
+
+// Remove everything stored for this session (used after logout).
+async function clearStoredAuth(session) {
+  await sequelize.query(
+    `DELETE FROM baileys_auth_keys WHERE session_id = :sessionId`,
+    { replacements: { sessionId: session.id } },
+  );
+  await sequelize.query(
+    `DELETE FROM baileys_sessions WHERE session_id = :sessionId`,
+    { replacements: { sessionId: session.id } },
+  );
+}
+
+// =====================================================
 // DATABASE-BACKED KEY STORE
+// Reads come from memory. Writes update memory immediately,
+// then persist only the changed keys in the background.
 // =====================================================
 
 function createDatabaseKeyStore(session) {
@@ -149,92 +288,36 @@ function createDatabaseKeyStore(session) {
     },
 
     set: async (data) => {
+      const upserts = [];
+      const deletes = [];
+
       for (const [type, entries] of Object.entries(data)) {
         if (!session.keys.has(type)) {
           session.keys.set(type, new Map());
         }
-
         const typeKeys = session.keys.get(type);
 
         for (const [id, value] of Object.entries(entries)) {
-          if (value === null) {
+          if (value === null || value === undefined) {
             typeKeys.delete(id);
+            deletes.push({ type, id });
           } else {
             typeKeys.set(id, value);
+            upserts.push({ type, id, value });
           }
         }
       }
 
-      // Persist only after the session has been fully registered.
-      if (session.persisted) {
-        await queueAuthSave(session);
+      // Memory is already updated, so a failed DB write must not block sending.
+      if (session.persisted && (upserts.length || deletes.length)) {
+        enqueue(session, () =>
+          persistKeyChanges(session, upserts, deletes),
+        ).catch((error) => {
+          console.error("Key save error:", error.message);
+        });
       }
     },
   };
-}
-
-// =====================================================
-// PERSIST AUTH STATE TO DATABASE
-// =====================================================
-
-async function persistAuthState(session) {
-  const { BufferJSON } = session.baileys;
-
-  await sequelize.transaction(async (transaction) => {
-    await sequelize.query(
-      `INSERT INTO baileys_sessions (session_id, creds)
-       VALUES (:sessionId, CAST(:creds AS JSONB))
-       ON CONFLICT (session_id)
-       DO UPDATE SET
-         creds = EXCLUDED.creds,
-         updated_at = CURRENT_TIMESTAMP`,
-      {
-        replacements: {
-          sessionId: session.id,
-          creds: serializeJSON(session.auth.creds, BufferJSON),
-        },
-        transaction,
-      },
-    );
-
-    for (const [type, entries] of session.keys.entries()) {
-      for (const [id, value] of entries.entries()) {
-        await sequelize.query(
-          `INSERT INTO baileys_auth_keys
-             (session_id, key_type, key_id, key_data)
-           VALUES
-             (:sessionId, :type, :id, CAST(:keyData AS JSONB))
-           ON CONFLICT (session_id, key_type, key_id)
-           DO UPDATE SET
-             key_data = EXCLUDED.key_data,
-             updated_at = CURRENT_TIMESTAMP`,
-          {
-            replacements: {
-              sessionId: session.id,
-              type,
-              id,
-              keyData: serializeJSON(value, BufferJSON),
-            },
-            transaction,
-          },
-        );
-      }
-    }
-  });
-
-  console.log("WhatsApp authentication saved to PostgreSQL.");
-}
-
-// =====================================================
-// SERIALIZE AUTH SAVES
-// =====================================================
-
-function queueAuthSave(session) {
-  session.savePromise = (session.savePromise || Promise.resolve())
-    .catch(() => {}) // never break the chain on prior failure
-    .then(() => persistAuthState(session));
-
-  return session.savePromise;
 }
 
 // =====================================================
@@ -259,10 +342,6 @@ async function generateQR(session, qr) {
   session.qr = await QRCode.toDataURL(qr);
   session.status = "qr_pending";
 }
-
-// =====================================================
-// CLEANUP
-// =====================================================
 
 function clearQRFile() {
   if (fs.existsSync(QR_PATH)) {
@@ -289,20 +368,19 @@ async function createSocket(session) {
 
   session.socket = sock;
 
-  // Save credentials only after the session is registered.
+  // Creds change often but are small: one query.
   sock.ev.on("creds.update", () => {
     if (session.persisted) {
-      queueAuthSave(session).catch((error) => {
-        console.error("Credential save error:", error);
+      enqueue(session, () => persistCreds(session)).catch((error) => {
+        console.error("Credential save error:", error.message);
       });
     }
   });
 
-  // =================================================
-  // CONNECTION EVENTS
-  // =================================================
-
   sock.ev.on("connection.update", async (update) => {
+    // Ignore events from a socket that has already been replaced.
+    if (session.socket && session.socket !== sock) return;
+
     const { connection, qr, lastDisconnect } = update;
 
     if (qr) {
@@ -323,11 +401,11 @@ async function createSocket(session) {
       session.qr = null;
       clearQRFile();
 
-      // Persist on first successful login.
+      // First successful login: save everything once.
       if (!session.persisted) {
         try {
           session.persisted = true;
-          await queueAuthSave(session);
+          await enqueue(session, () => persistAllKeys(session));
           console.log("First WhatsApp login persisted to database.");
         } catch (error) {
           session.persisted = false;
@@ -346,10 +424,34 @@ async function createSocket(session) {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       console.log("WhatsApp connection closed:", statusCode);
 
+      // 401: logged out from the phone. Wipe auth and start fresh for a new QR.
       if (statusCode === DisconnectReason.loggedOut) {
         session.status = "authentication_required";
         session.persisted = false;
-        console.log("WhatsApp authentication needs a new QR.");
+        console.log(
+          "WhatsApp logged out. Clearing auth and requesting a new QR.",
+        );
+
+        try {
+          await session.savePromise;
+          await clearStoredAuth(session);
+          session.keys = new Map();
+          session.auth.creds = session.baileys.initAuthCreds();
+          jidCache.clear();
+          await createSocket(session);
+        } catch (error) {
+          console.error("Logout cleanup error:", error);
+        }
+        return;
+      }
+
+      // 440: the same session was opened somewhere else. Reconnecting would
+      // make two instances kick each other out forever.
+      if (statusCode === DisconnectReason.connectionReplaced) {
+        session.status = "replaced";
+        console.error(
+          "Session replaced by another instance. Not reconnecting. Restart this service to take the session back.",
+        );
         return;
       }
 
@@ -461,16 +563,22 @@ async function sendMessage(number, message) {
     throw new Error("Message is required");
   }
 
+  const t0 = Date.now();
+
   const { jid, number: formattedNumber } = await resolveJid(
     session.socket,
     number,
   );
 
-  const result = await session.socket.sendMessage(jid, {
-    text: message.trim(),
-  });
+  const result = await withTimeout(
+    session.socket.sendMessage(jid, { text: message.trim() }),
+    SEND_TIMEOUT_MS,
+    "sendMessage",
+  );
 
-  console.log("WA text sent:", jid, result?.key?.id);
+  console.log(
+    `WA text sent: ${jid} | id=${result?.key?.id} | ${Date.now() - t0}ms`,
+  );
 
   return {
     success: true,
@@ -490,6 +598,8 @@ async function sendDocument(number, file, options = {}) {
   if (!file) {
     throw new Error("Document file is required");
   }
+
+  const t0 = Date.now();
 
   const { jid, number: formattedNumber } = await resolveJid(
     session.socket,
@@ -512,15 +622,19 @@ async function sendDocument(number, file, options = {}) {
   const mimetype = options.mimetype || "application/pdf";
   const caption = options.caption || "";
 
-  const result = await session.socket.sendMessage(jid, {
-    document: buffer,
-    mimetype,
-    fileName,
-    caption,
-  });
+  const result = await withTimeout(
+    session.socket.sendMessage(jid, {
+      document: buffer,
+      mimetype,
+      fileName,
+      caption,
+    }),
+    SEND_TIMEOUT_MS,
+    "sendMessage",
+  );
 
   console.log(
-    `WA document sent: ${jid} | ${fileName} | ${buffer.length} bytes | id=${result?.key?.id}`,
+    `WA document sent: ${jid} | ${fileName} | ${buffer.length} bytes | id=${result?.key?.id} | ${Date.now() - t0}ms`,
   );
 
   return {
