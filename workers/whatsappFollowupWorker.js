@@ -122,6 +122,8 @@ async function processOne(followup) {
 // ---------------------------------------------------------------------------
 // Small concurrency helper (cap = SEND_CONCURRENCY)
 // ---------------------------------------------------------------------------
+const SEND_GAP_MS = Number(process.env.WHATSAPP_WORKER_GAP_MS) || 3000;
+
 async function processBatch(rows) {
   const results = [];
   let i = 0;
@@ -134,6 +136,12 @@ async function processBatch(rows) {
         const idx = i++;
         if (idx >= rows.length) return;
         results[idx] = await processOne(rows[idx]);
+
+        // gap between sends (jitter avoids machine-pattern detection)
+        if (i < rows.length) {
+          const jitter = Math.floor(Math.random() * 2000);
+          await new Promise((r) => setTimeout(r, SEND_GAP_MS + jitter));
+        }
       }
     },
   );
@@ -141,7 +149,6 @@ async function processBatch(rows) {
   await Promise.all(workers);
   return results.filter(Boolean);
 }
-
 // ---------------------------------------------------------------------------
 // Release claims we didn't get to (on shutdown mid-batch)
 // ---------------------------------------------------------------------------
@@ -168,21 +175,43 @@ async function tick() {
     console.log(`[worker:${WORKER_ID}] tick @ ${new Date().toISOString()}`);
     await reapStuckFollowups();
 
-    const claimed = await whatsappFollowupService.claimDueFollowups({
-      workerId: WORKER_ID,
-      batchSize: BATCH_SIZE,
-    });
+    let totalClaimed = 0;
+    let totalSent = 0;
+    let totalFailed = 0;
 
-    if (claimed.length === 0) return;
+    // Drain the queue — keep claiming batches until nothing is due
+    while (true) {
+      if (stopping) break;
 
-    console.log(`[worker:${WORKER_ID}] claimed ${claimed.length} follow-up(s)`);
+      const claimed = await whatsappFollowupService.claimDueFollowups({
+        workerId: WORKER_ID,
+        batchSize: BATCH_SIZE,
+      });
 
-    if (stopping) {
-      await releaseClaims(claimed.map((r) => r.id));
-      return;
+      if (claimed.length === 0) break;
+
+      totalClaimed += claimed.length;
+      console.log(
+        `[worker:${WORKER_ID}] claimed ${claimed.length} (total ${totalClaimed})`,
+      );
+
+      if (stopping) {
+        await releaseClaims(claimed.map((r) => r.id));
+        break;
+      }
+
+      const results = await processBatch(claimed);
+      for (const r of results) {
+        if (r.status === "sent") totalSent++;
+        else if (r.status === "failed") totalFailed++;
+      }
     }
 
-    await processBatch(claimed);
+    if (totalClaimed > 0) {
+      console.log(
+        `[worker:${WORKER_ID}] tick drained: claimed=${totalClaimed} sent=${totalSent} failed=${totalFailed}`,
+      );
+    }
   } catch (err) {
     console.error(`[worker:${WORKER_ID}] tick error:`, err);
   }
