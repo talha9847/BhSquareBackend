@@ -86,10 +86,6 @@ async function bootstrap() {
 
 bootstrap();
 
-
-
-
-
 //   const [result] = await sequelize.query(`
 //     SELECT
 //         current_database() AS database,
