@@ -764,3 +764,106 @@ ALTER TABLE leads
   ADD COLUMN estimation_sent BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN site_visited    BOOLEAN NOT NULL DEFAULT FALSE;
 
+
+
+CREATE TABLE follow_up_templates (
+  id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name        VARCHAR(100) NOT NULL UNIQUE,
+  type        VARCHAR(20) NOT NULL DEFAULT 'simple'
+              CHECK (type IN ('simple','good','warm','promo','visit','payment')),
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_follow_up_templates_type ON follow_up_templates (type);
+
+
+
+
+
+-- 1. Make sure the target tables exist (adjust names to your actual schema)
+--    leads(id) must exist. Templates: reuse your existing table.
+--    Rename your existing table OR point the FK at it. I'll point at follow_up_templates.
+
+CREATE TABLE IF NOT EXISTS whatsapp_followups (
+  id                    BIGSERIAL PRIMARY KEY,
+  -- who
+  lead_id               BIGINT NOT NULL,
+  whatsapp_number       VARCHAR(20) NOT NULL,          -- digits only, with country code
+  -- what
+  template_id           INTEGER NULL,                  -- matches follow_up_templates.id
+  template_name         VARCHAR(120) NULL,             -- snapshot
+  message               TEXT NOT NULL,                 -- FINAL rendered text
+  -- when (all UTC)
+  scheduled_at          TIMESTAMP NOT NULL,            -- user's chosen time — never mutated
+  run_at                TIMESTAMP NOT NULL,            -- next attempt
+  timezone              VARCHAR(40) NOT NULL DEFAULT 'Asia/Kolkata',
+  -- lifecycle
+  status                VARCHAR(12) NOT NULL DEFAULT 'scheduled'
+                        CHECK (status IN ('scheduled','processing','sent','failed','cancelled')),
+  attempts              SMALLINT NOT NULL DEFAULT 0,
+  max_attempts          SMALLINT NOT NULL DEFAULT 3,
+  -- outcome
+  sent_at               TIMESTAMP NULL,
+  failed_at             TIMESTAMP NULL,
+  cancelled_at          TIMESTAMP NULL,
+  last_error            TEXT NULL,
+  provider_message_id   VARCHAR(120) NULL,
+  provider_payload      JSONB NULL,
+  -- worker coordination
+  locked_by             VARCHAR(64) NULL,
+  locked_at             TIMESTAMP NULL,
+  -- audit / dedupe
+  idempotency_key       UUID NOT NULL,
+  created_by            BIGINT NULL,
+  created_at            TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  CONSTRAINT uq_followup_idem UNIQUE (idempotency_key),
+  CONSTRAINT fk_followup_lead
+    FOREIGN KEY (lead_id) REFERENCES leads (id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_followup_template
+    FOREIGN KEY (template_id) REFERENCES follow_up_templates (id)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT chk_followup_phone
+    CHECK (whatsapp_number ~ '^[1-9][0-9]{7,14}$'),
+  CONSTRAINT chk_followup_attempts
+    CHECK (attempts <= max_attempts)
+);
+
+-- hot-path indexes
+CREATE INDEX idx_due          ON whatsapp_followups (status, run_at);
+CREATE INDEX idx_lead         ON whatsapp_followups (lead_id, status, scheduled_at);
+CREATE INDEX idx_number       ON whatsapp_followups (whatsapp_number, scheduled_at);
+CREATE INDEX idx_provider     ON whatsapp_followups (provider_message_id);
+
+-- updated_at trigger (Postgres has no ON UPDATE CURRENT_TIMESTAMP)
+CREATE OR REPLACE FUNCTION trg_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_updated_at_whatsapp_followups
+BEFORE UPDATE ON whatsapp_followups
+FOR EACH ROW EXECUTE FUNCTION trg_set_updated_at();
+
+
+CREATE TABLE IF NOT EXISTS whatsapp_followup_logs (
+  id              BIGSERIAL PRIMARY KEY,
+  followup_id     BIGINT NOT NULL,
+  attempt_no      SMALLINT NOT NULL,
+  status          VARCHAR(8) NOT NULL CHECK (status IN ('success','failed')),
+  http_status     SMALLINT NULL,
+  error_message   TEXT NULL,
+  response_body   JSONB NULL,
+  duration_ms     INTEGER NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_attempt UNIQUE (followup_id, attempt_no),
+  CONSTRAINT fk_log_followup
+    FOREIGN KEY (followup_id) REFERENCES whatsapp_followups (id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_log_followup ON whatsapp_followup_logs (followup_id, created_at);

@@ -715,9 +715,178 @@ async function sendDocument(number, file, options = {}) {
 // EXPORT
 // =====================================================
 
+const VALID_TEMPLATE_TYPES = [
+  "simple",
+  "good",
+  "warm",
+  "promo",
+  "visit",
+  "payment",
+];
+
+// READ ALL
+async function fetchFollowUpTemplates() {
+  try {
+    const data = await sequelize.query(
+      `SELECT id, name, type, message, created_at, updated_at
+       FROM follow_up_templates
+       ORDER BY created_at DESC`,
+      { type: sequelize.QueryTypes.SELECT },
+    );
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("Error fetching templates:", error);
+    throw error;
+  }
+}
+
+// READ ONE
+async function fetchFollowUpTemplateById(id) {
+  try {
+    if (!id) throw new Error("Template id is required");
+
+    const rows = await sequelize.query(
+      `SELECT id, name, type, message, created_at, updated_at
+       FROM follow_up_templates
+       WHERE id = :id
+       LIMIT 1`,
+      {
+        replacements: { id },
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
+    return {
+      success: true,
+      data: rows[0] || null,
+    };
+  } catch (error) {
+    console.error("Error fetching template:", error);
+    throw error;
+  }
+}
+
+// CREATE
+async function createFollowUpTemplate({ name, type, message }) {
+  try {
+    const cleanName = String(name || "").trim();
+    const cleanMessage = String(message || "").trim();
+
+    if (!cleanName) throw new Error("Template name is required");
+    if (!cleanMessage) throw new Error("Template message is required");
+    if (!VALID_TEMPLATE_TYPES.includes(type)) {
+      throw new Error(`Invalid template type: ${type}`);
+    }
+
+    const [data] = await sequelize.query(
+      `INSERT INTO follow_up_templates (name, type, message)
+       VALUES (:name, :type, :message)
+       RETURNING id, name, type, message, created_at, updated_at`,
+      {
+        replacements: {
+          name: cleanName,
+          type,
+          message: cleanMessage,
+        },
+      },
+    );
+
+    return {
+      success: true,
+      data: data[0],
+      message: "Template created successfully",
+    };
+  } catch (error) {
+    console.error("Error creating template:", error);
+    throw error;
+  }
+}
+
+// UPDATE
+async function updateFollowUpTemplate({ id, name, type, message }) {
+  try {
+    if (!id) throw new Error("Template id is required");
+
+    const cleanName = String(name || "").trim();
+    const cleanMessage = String(message || "").trim();
+
+    if (!cleanName) throw new Error("Template name is required");
+    if (!cleanMessage) throw new Error("Template message is required");
+    if (!VALID_TEMPLATE_TYPES.includes(type)) {
+      throw new Error(`Invalid template type: ${type}`);
+    }
+
+    const [data] = await sequelize.query(
+      `UPDATE follow_up_templates
+       SET name = :name,
+           type = :type,
+           message = :message,
+           updated_at = NOW()
+       WHERE id = :id
+       RETURNING id, name, type, message, created_at, updated_at`,
+      {
+        replacements: {
+          id,
+          name: cleanName,
+          type,
+          message: cleanMessage,
+        },
+      },
+    );
+
+    if (!data.length) throw new Error("Template not found");
+
+    return {
+      success: true,
+      data: data[0],
+      message: "Template updated successfully",
+    };
+  } catch (error) {
+    console.error("Error updating template:", error);
+    throw error;
+  }
+}
+
+// DELETE
+async function deleteFollowUpTemplate(id) {
+  try {
+    if (!id) throw new Error("Template id is required");
+
+    const [data] = await sequelize.query(
+      `DELETE FROM follow_up_templates
+       WHERE id = :id
+       RETURNING id`,
+      {
+        replacements: { id },
+      },
+    );
+
+    if (!data.length) throw new Error("Template not found");
+
+    return {
+      success: true,
+      data: data[0],
+      message: "Template deleted successfully",
+    };
+  } catch (error) {
+    console.error("Error deleting template:", error);
+    throw error;
+  }
+}
+
 module.exports = {
   startWhatsAppSession,
   getWhatsAppStatus,
   sendMessage,
   sendDocument,
+
+  fetchFollowUpTemplates,
+  fetchFollowUpTemplateById,
+  createFollowUpTemplate,
+  updateFollowUpTemplate,
+  deleteFollowUpTemplate,
 };

@@ -18,6 +18,13 @@ const dispatchRoutes = require("./routes/dispatchRoutes");
 const wiringhRoutes = require("./routes/wiringRoutes");
 const estimationRoutes = require("./routes/estimationRoutes");
 const whatsappRoutes = require("./routes/whatsappRoutes");
+const whatsappFollowupRoutes = require("./routes/whatsappFollowupRoutes");
+
+// ── NEW: WhatsApp follow-up worker ──
+const {
+  startWhatsappFollowupWorker,
+  stopWhatsappFollowupWorker,
+} = require("./workers/whatsappFollowupWorker");
 
 require("./models/associationModel");
 
@@ -39,18 +46,16 @@ app.use(
 
 app.use((req, res, next) => {
   const start = Date.now();
-
   console.log(`➡️ ${req.method} ${req.url}`);
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     console.log(
       `⬅️ ${req.method} ${req.url} ${res.statusCode} - ${duration}ms`,
     );
   });
-
   next();
 });
+
 app.use("/api/users", userRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/sources", sourceRoutes);
@@ -64,10 +69,9 @@ app.use("/api/dispatch", dispatchRoutes);
 app.use("/api/wiring", wiringhRoutes);
 app.use("/api/estimation", estimationRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
+app.use("/api/whatsapp-followups", whatsappFollowupRoutes);
 
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
+// NOTE: no app.listen() here — bootstrap() handles it
 
 async function bootstrap() {
   try {
@@ -85,9 +89,43 @@ async function bootstrap() {
     console.log("NODE CONNECTION CHECK:", result);
     console.log("WhatsApp initial status:", status);
 
-    app.listen(() => {
+    const server = app.listen(3000, () => {
       console.log(`Server listening on http://localhost:3000`);
+
+      // ── NEW: start the follow-up worker ──
+      startWhatsappFollowupWorker();
+      console.log("WhatsApp follow-up worker started");
+
+      setInterval(
+        async () => {
+          try {
+            const response = await fetch(`${process.env.RENDER_URL}/`);
+            console.log(
+              `🏓 Render ping: ${response.status} - ${new Date().toISOString()}`,
+            );
+          } catch (error) {
+            console.error("❌ Render ping failed:", error.message);
+          }
+        },
+        13 * 60 * 1000, // every 13 minutes
+      );
     });
+
+    // ── NEW: graceful shutdown ──
+    const shutdown = async (signal) => {
+      console.log(`\n${signal} received — shutting down...`);
+      try {
+        await stopWhatsappFollowupWorker();
+        server.close(() => console.log("HTTP server closed"));
+        await sequelize.close();
+        process.exit(0);
+      } catch (err) {
+        console.error("Shutdown error:", err);
+        process.exit(1);
+      }
+    };
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
   } catch (error) {
     console.error("Failed to start WhatsApp session:", error);
     process.exit(1);
