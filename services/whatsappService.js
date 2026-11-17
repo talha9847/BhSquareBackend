@@ -8,6 +8,7 @@ const sessions = new Map();
 
 const QR_PATH = path.join(process.cwd(), "qr.png");
 const SESSION_ID = process.env.BAILEYS_SESSION_ID || "rayvolts-dev";
+const DEFAULT_COUNTRY_CODE = process.env.WA_DEFAULT_COUNTRY_CODE || "91";
 
 // =====================================================
 // JSON HELPERS
@@ -20,6 +21,50 @@ function restoreJSON(value, BufferJSON) {
 
 function serializeJSON(value, BufferJSON) {
   return JSON.stringify(value, BufferJSON.replacer);
+}
+
+// =====================================================
+// NUMBER HELPERS
+// =====================================================
+
+// Strips symbols/leading zeros and adds the country code to 10-digit numbers.
+function normalizeNumber(number) {
+  let n = String(number || "")
+    .replace(/\D/g, "")
+    .replace(/^0+/, "");
+  if (n.length === 10) n = DEFAULT_COUNTRY_CODE + n;
+  return n;
+}
+
+// Confirms the number is on WhatsApp and returns the real JID.
+// Without this, Baileys reports "sent" even when the number is wrong.
+async function resolveJid(sock, number) {
+  const n = normalizeNumber(number);
+
+  if (n.length < 11 || n.length > 15) {
+    throw new Error(`Invalid phone number: ${n || "(empty)"}`);
+  }
+
+  const results = await sock.onWhatsApp(n);
+  const found = results?.[0];
+
+  if (!found?.exists) {
+    throw new Error(`${n} is not registered on WhatsApp`);
+  }
+
+  return { jid: found.jid, number: n };
+}
+
+function getReadySession() {
+  const session = sessions.get(SESSION_ID);
+
+  if (!session || !session.socket) {
+    throw new Error("WhatsApp session not initialized");
+  }
+  if (session.status !== "connected") {
+    throw new Error(`WhatsApp is not connected (status: ${session.status})`);
+  }
+  return session;
 }
 
 // =====================================================
@@ -410,40 +455,79 @@ function getWhatsAppStatus(sessionId = SESSION_ID) {
 // =====================================================
 
 async function sendMessage(number, message) {
-  const session = sessions.get(SESSION_ID);
-
-  if (!session || !session.socket) {
-    throw new Error("WhatsApp session not initialized");
-  }
-
-  if (session.status !== "connected") {
-    throw new Error("WhatsApp is not connected");
-  }
-
-  if (!number || typeof number !== "string") {
-    throw new Error("Valid phone number is required");
-  }
+  const session = getReadySession();
 
   if (!message || typeof message !== "string" || !message.trim()) {
     throw new Error("Message is required");
   }
 
-  const formattedNumber = number.replace(/\D/g, "");
-
-  if (formattedNumber.length < 8 || formattedNumber.length > 15) {
-    throw new Error("Invalid phone number");
-  }
-
-  const jid = `${formattedNumber}@s.whatsapp.net`;
+  const { jid, number: formattedNumber } = await resolveJid(
+    session.socket,
+    number,
+  );
 
   const result = await session.socket.sendMessage(jid, {
     text: message.trim(),
   });
 
+  console.log("WA text sent:", jid, result?.key?.id);
+
   return {
     success: true,
     number: formattedNumber,
-    messageId: result.key.id,
+    jid,
+    messageId: result?.key?.id,
+  };
+}
+
+// =====================================================
+// SEND DOCUMENT (PDF)
+// =====================================================
+
+async function sendDocument(number, file, options = {}) {
+  const session = getReadySession();
+
+  if (!file) {
+    throw new Error("Document file is required");
+  }
+
+  const { jid, number: formattedNumber } = await resolveJid(
+    session.socket,
+    number,
+  );
+
+  // Normalise file to Buffer
+  const buffer = Buffer.isBuffer(file) ? file : fs.readFileSync(file);
+
+  if (!buffer.length) {
+    throw new Error("Document file is empty");
+  }
+
+  // Safe file name, always ends in .pdf
+  let fileName = String(options.fileName || "Estimation.pdf")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .trim();
+  if (!/\.pdf$/i.test(fileName)) fileName += ".pdf";
+
+  const mimetype = options.mimetype || "application/pdf";
+  const caption = options.caption || "";
+
+  const result = await session.socket.sendMessage(jid, {
+    document: buffer,
+    mimetype,
+    fileName,
+    caption,
+  });
+
+  console.log(
+    `WA document sent: ${jid} | ${fileName} | ${buffer.length} bytes | id=${result?.key?.id}`,
+  );
+
+  return {
+    success: true,
+    number: formattedNumber,
+    jid,
+    messageId: result?.key?.id,
   };
 }
 
@@ -455,4 +539,5 @@ module.exports = {
   startWhatsAppSession,
   getWhatsAppStatus,
   sendMessage,
+  sendDocument,
 };

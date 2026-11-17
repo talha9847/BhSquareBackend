@@ -760,8 +760,7 @@ CREATE INDEX idx_baileys_session
 ON baileys_auth_keys(session_id);
 
 
-
-
 ALTER TABLE leads
   ADD COLUMN estimation_sent BOOLEAN NOT NULL DEFAULT FALSE,
   ADD COLUMN site_visited    BOOLEAN NOT NULL DEFAULT FALSE;
+

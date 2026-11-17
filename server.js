@@ -75,7 +75,7 @@ async function bootstrap() {
     const status = await startWhatsAppSession();
     console.log("WhatsApp initial status:", status);
 
-    app.listen( () => {
+    app.listen(() => {
       console.log(`Server listening on http://localhost:3000`);
     });
   } catch (error) {
@@ -85,3 +85,18 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+
+
+
+
+//   const [result] = await sequelize.query(`
+//     SELECT
+//         current_database() AS database,
+//         current_user AS username,
+//         current_setting('search_path') AS search_path,
+//         current_schemas(true) AS schemas,
+//         current_schema() AS schema
+// `);
+
+//   console.log("NODE CONNECTION CHECK:", result);

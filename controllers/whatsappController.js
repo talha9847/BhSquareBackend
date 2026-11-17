@@ -1,7 +1,5 @@
 const whatsappService = require("../services/whatsappService");
 
-
-
 function getWhatsAppQR(req, res) {
   return res.status(200).json({
     success: true,
@@ -50,8 +48,46 @@ const sendMessage = async (req, res) => {
   }
 };
 
+const sharePdfDirectly = async (req, res) => {
+  try {
+    const { number, caption } = req.body;
+    const file = req.file; // The PDF buffer from the frontend
+
+    if (!number) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Number is required" });
+    }
+    if (!file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "PDF file is required" });
+    }
+
+    // Pass the Buffer directly to your existing Baileys sendDocument function
+    const result = await whatsappService.sendDocument(number, file.buffer, {
+      fileName: file.originalname || "Estimation.pdf",
+      mimetype: file.mimetype || "application/pdf",
+      caption: caption || "Here is your solar estimation.",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "PDF sent successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Share PDF Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to send PDF",
+    });
+  }
+};
+
 module.exports = {
   getWhatsAppQR,
   logoutWhatsApp,
   sendMessage,
+  sharePdfDirectly,
 };
