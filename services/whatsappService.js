@@ -12,11 +12,16 @@ const DEFAULT_COUNTRY_CODE = process.env.WA_DEFAULT_COUNTRY_CODE || "91";
 
 const SEND_TIMEOUT_MS = 30000;
 const LOOKUP_TIMEOUT_MS = 15000;
+const READY_WAIT_MS = 25000;
 const JID_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const DB_CHUNK_SIZE = 500;
+const LOAD_RETRIES = 5;
+const START_RETRY_MS = 15000;
 
-// number -> { jid, number, expires }
+// number -> { jid, expires }
 const jidCache = new Map();
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // =====================================================
 // GENERIC HELPERS
@@ -90,78 +95,124 @@ async function resolveJid(sock, number) {
   return { jid: found.jid, number: n };
 }
 
-function getReadySession() {
-  const session = sessions.get(SESSION_ID);
+// Waits for the session to become ready (covers Render wake-up and reconnects).
+async function getReadySession(timeoutMs = READY_WAIT_MS) {
+  const start = Date.now();
 
-  if (!session || !session.socket) {
-    throw new Error("WhatsApp session not initialized");
+  while (Date.now() - start < timeoutMs) {
+    const session = sessions.get(SESSION_ID);
+
+    if (!session) {
+      throw new Error("WhatsApp session not initialized");
+    }
+
+    if (
+      session.socket &&
+      (session.status === "connected" ||
+        session.status === "connected_unpersisted")
+    ) {
+      return session;
+    }
+
+    // These states will not fix themselves by waiting.
+    if (
+      ["qr_pending", "authentication_required", "replaced"].includes(
+        session.status,
+      )
+    ) {
+      throw new Error(`WhatsApp needs attention (status: ${session.status})`);
+    }
+
+    await sleep(500);
   }
-  if (session.status !== "connected") {
-    throw new Error(`WhatsApp is not connected (status: ${session.status})`);
-  }
-  return session;
+
+  const session = sessions.get(SESSION_ID);
+  throw new Error(
+    `WhatsApp is not connected (status: ${session?.status || "unknown"}). Try again in a few seconds.`,
+  );
 }
 
 // =====================================================
 // LOAD AUTH STATE FROM DATABASE
+//
+// IMPORTANT: this function never swallows errors. A database
+// problem must NOT be mistaken for "no saved session", because
+// that would start a fresh login and replace the real one.
+// Fresh credentials are created only when the query succeeded
+// and returned no rows.
 // =====================================================
 
 async function loadAuthState(session, baileys) {
   const { BufferJSON, initAuthCreds } = baileys;
 
-  try {
-    const rows = await sequelize.query(
-      `SELECT creds
-       FROM baileys_sessions
-       WHERE session_id = :sessionId`,
-      {
-        replacements: { sessionId: session.id },
-        type: sequelize.QueryTypes.SELECT,
-      },
-    );
+  const rows = await sequelize.query(
+    `SELECT creds
+     FROM baileys_sessions
+     WHERE session_id = :sessionId`,
+    {
+      replacements: { sessionId: session.id },
+      type: sequelize.QueryTypes.SELECT,
+    },
+  );
 
-    const hasCreds =
-      rows.length > 0 &&
-      rows[0].creds &&
-      typeof rows[0].creds === "object" &&
-      Object.keys(rows[0].creds).length > 0;
+  const hasCreds =
+    rows.length > 0 &&
+    rows[0].creds &&
+    typeof rows[0].creds === "object" &&
+    Object.keys(rows[0].creds).length > 0;
 
-    if (hasCreds) {
-      console.log("Restoring WhatsApp session from database...");
-
-      const creds = restoreJSON(rows[0].creds, BufferJSON);
-
-      const keyRows = await sequelize.query(
-        `SELECT key_type, key_id, key_data
-         FROM baileys_auth_keys
-         WHERE session_id = :sessionId`,
-        {
-          replacements: { sessionId: session.id },
-          type: sequelize.QueryTypes.SELECT,
-        },
-      );
-
-      for (const row of keyRows) {
-        if (!session.keys.has(row.key_type)) {
-          session.keys.set(row.key_type, new Map());
-        }
-        session.keys
-          .get(row.key_type)
-          .set(row.key_id, restoreJSON(row.key_data, BufferJSON));
-      }
-
-      console.log(`Restored ${keyRows.length} auth key(s) from database.`);
-
-      session.persisted = true;
-      return creds;
-    }
-  } catch (error) {
-    console.error("Error loading auth state from database:", error);
+  if (!hasCreds) {
+    console.log("No saved session found. Initializing fresh authentication...");
+    session.persisted = false;
+    return initAuthCreds();
   }
 
-  console.log("No saved session found. Initializing fresh authentication...");
-  session.persisted = false;
-  return initAuthCreds();
+  console.log("Restoring WhatsApp session from database...");
+
+  const creds = restoreJSON(rows[0].creds, BufferJSON);
+
+  const keyRows = await sequelize.query(
+    `SELECT key_type, key_id, key_data
+     FROM baileys_auth_keys
+     WHERE session_id = :sessionId`,
+    {
+      replacements: { sessionId: session.id },
+      type: sequelize.QueryTypes.SELECT,
+    },
+  );
+
+  const restored = new Map();
+  for (const row of keyRows) {
+    if (!restored.has(row.key_type)) {
+      restored.set(row.key_type, new Map());
+    }
+    restored
+      .get(row.key_type)
+      .set(row.key_id, restoreJSON(row.key_data, BufferJSON));
+  }
+
+  // Swap in only after everything loaded without errors.
+  session.keys = restored;
+
+  console.log(`Restored ${keyRows.length} auth key(s) from database.`);
+
+  session.persisted = true;
+  return creds;
+}
+
+async function loadAuthStateWithRetry(session, baileys) {
+  for (let attempt = 1; attempt <= LOAD_RETRIES; attempt++) {
+    try {
+      return await loadAuthState(session, baileys);
+    } catch (error) {
+      console.error(
+        `Auth load failed (attempt ${attempt}/${LOAD_RETRIES}):`,
+        error.message,
+      );
+      if (attempt === LOAD_RETRIES) throw error;
+      await sleep(2000 * attempt);
+    }
+  }
 }
 
 // =====================================================
@@ -178,7 +229,7 @@ function enqueue(session, task) {
 }
 
 // Creds only: 1 query.
-async function persistCreds(session) {
+async function persistCreds(session, transaction) {
   const { BufferJSON } = session.baileys;
 
   await sequelize.query(
@@ -193,12 +244,13 @@ async function persistCreds(session) {
         sessionId: session.id,
         creds: serializeJSON(session.auth.creds, BufferJSON),
       },
+      transaction,
     },
   );
 }
 
 // Changed keys only: 1 query per DB_CHUNK_SIZE keys.
-async function persistKeyChanges(session, upserts, deletes) {
+async function persistKeyChanges(session, upserts, deletes, transaction) {
   const { BufferJSON } = session.baileys;
 
   for (const part of chunk(upserts)) {
@@ -218,6 +270,7 @@ async function persistKeyChanges(session, upserts, deletes) {
           ids: part.map((k) => String(k.id)),
           datas: part.map((k) => serializeJSON(k.value, BufferJSON)),
         },
+        transaction,
       },
     );
   }
@@ -235,13 +288,16 @@ async function persistKeyChanges(session, upserts, deletes) {
           types: part.map((k) => k.type),
           ids: part.map((k) => String(k.id)),
         },
+        transaction,
       },
     );
   }
 }
 
-// Full dump: only for the first login of a fresh session.
-async function persistAllKeys(session) {
+// Called only after a NEW login succeeded (first scan or re-link).
+// Old rows belong to the previous identity, so they are replaced in one
+// transaction: either the new session is fully saved, or nothing changes.
+async function persistNewLogin(session) {
   const all = [];
   for (const [type, entries] of session.keys.entries()) {
     for (const [id, value] of entries.entries()) {
@@ -249,21 +305,16 @@ async function persistAllKeys(session) {
     }
   }
 
-  await persistCreds(session);
-  await persistKeyChanges(session, all, []);
-  console.log(`WhatsApp full auth saved (${all.length} keys).`);
-}
+  await sequelize.transaction(async (transaction) => {
+    await sequelize.query(
+      `DELETE FROM baileys_auth_keys WHERE session_id = :sessionId`,
+      { replacements: { sessionId: session.id }, transaction },
+    );
+    await persistCreds(session, transaction);
+    await persistKeyChanges(session, all, [], transaction);
+  });
 
-// Remove everything stored for this session (used after logout).
-async function clearStoredAuth(session) {
-  await sequelize.query(
-    `DELETE FROM baileys_auth_keys WHERE session_id = :sessionId`,
-    { replacements: { sessionId: session.id } },
-  );
-  await sequelize.query(
-    `DELETE FROM baileys_sessions WHERE session_id = :sessionId`,
-    { replacements: { sessionId: session.id } },
-  );
+  console.log(`WhatsApp new login saved (${all.length} keys).`);
 }
 
 // =====================================================
@@ -392,7 +443,10 @@ async function createSocket(session) {
     }
 
     if (connection === "connecting") {
-      session.status = "connecting";
+      // Do not overwrite a pending QR with "connecting".
+      if (session.status !== "qr_pending") {
+        session.status = "connecting";
+      }
       console.log("WhatsApp connecting...");
     }
 
@@ -401,14 +455,13 @@ async function createSocket(session) {
       session.qr = null;
       clearQRFile();
 
-      // First successful login: save everything once.
+      // A new login was just completed: save it (replaces the old identity).
       if (!session.persisted) {
         try {
+          await enqueue(session, () => persistNewLogin(session));
           session.persisted = true;
-          await enqueue(session, () => persistAllKeys(session));
           console.log("First WhatsApp login persisted to database.");
         } catch (error) {
-          session.persisted = false;
           session.status = "connected_unpersisted";
           console.error("Initial auth persistence failed:", error);
           return;
@@ -424,23 +477,25 @@ async function createSocket(session) {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       console.log("WhatsApp connection closed:", statusCode);
 
-      // 401: logged out from the phone. Wipe auth and start fresh for a new QR.
+      // 401: WhatsApp itself ended this linked device (removed on the phone,
+      // or invalidated). Nothing is deleted from the database here. We only
+      // prepare a fresh in-memory identity so a new QR can be scanned. The
+      // stored rows are replaced only after that new login succeeds.
       if (statusCode === DisconnectReason.loggedOut) {
         session.status = "authentication_required";
         session.persisted = false;
         console.log(
-          "WhatsApp logged out. Clearing auth and requesting a new QR.",
+          "WhatsApp logged out by the phone/server. Database left untouched. Waiting for a new QR scan.",
         );
 
         try {
           await session.savePromise;
-          await clearStoredAuth(session);
           session.keys = new Map();
           session.auth.creds = session.baileys.initAuthCreds();
           jidCache.clear();
           await createSocket(session);
         } catch (error) {
-          console.error("Logout cleanup error:", error);
+          console.error("Logout recovery error:", error);
         }
         return;
       }
@@ -450,7 +505,7 @@ async function createSocket(session) {
       if (statusCode === DisconnectReason.connectionReplaced) {
         session.status = "replaced";
         console.error(
-          "Session replaced by another instance. Not reconnecting. Restart this service to take the session back.",
+          "Session replaced by another instance. Not reconnecting. Make sure only one backend uses this session, then restart this service.",
         );
         return;
       }
@@ -502,6 +557,7 @@ async function startWhatsAppSession(sessionId = SESSION_ID) {
       status: "connecting",
       qr: null,
       reconnectTimer: null,
+      startRetryTimer: null,
       savePromise: Promise.resolve(),
       starting: null,
       persisted: false,
@@ -518,16 +574,28 @@ async function startWhatsAppSession(sessionId = SESSION_ID) {
 
       session.baileys = await import("@whiskeysockets/baileys");
 
+      // Throws if the database cannot be read, so we never fall back to a
+      // fresh login because of a temporary database problem.
+      const creds = await loadAuthStateWithRetry(session, session.baileys);
+
       session.auth = {
-        creds: await loadAuthState(session, session.baileys),
+        creds,
         keys: createDatabaseKeyStore(session),
       };
 
       await createSocket(session);
     } catch (error) {
       session.status = "error";
-      console.error("WhatsApp startup error:", error);
-      throw error;
+      console.error(
+        `WhatsApp startup error (no QR will be shown, saved session untouched). Retrying in ${START_RETRY_MS / 1000}s:`,
+        error.message,
+      );
+
+      if (session.startRetryTimer) clearTimeout(session.startRetryTimer);
+      session.startRetryTimer = setTimeout(() => {
+        session.startRetryTimer = null;
+        startWhatsAppSession(sessionId).catch(() => {});
+      }, START_RETRY_MS);
     } finally {
       session.starting = null;
     }
@@ -557,12 +625,11 @@ function getWhatsAppStatus(sessionId = SESSION_ID) {
 // =====================================================
 
 async function sendMessage(number, message) {
-  const session = getReadySession();
-
   if (!message || typeof message !== "string" || !message.trim()) {
     throw new Error("Message is required");
   }
 
+  const session = await getReadySession();
   const t0 = Date.now();
 
   const { jid, number: formattedNumber } = await resolveJid(
@@ -593,12 +660,11 @@ async function sendMessage(number, message) {
 // =====================================================
 
 async function sendDocument(number, file, options = {}) {
-  const session = getReadySession();
-
   if (!file) {
     throw new Error("Document file is required");
   }
 
+  const session = await getReadySession();
   const t0 = Date.now();
 
   const { jid, number: formattedNumber } = await resolveJid(

@@ -3,7 +3,7 @@ const cors = require("cors");
 const app = express();
 const cookieParser = require("cookie-parser");
 const { startWhatsAppSession } = require("./services/whatsappService");
-
+const sequelize = require("./config/db");
 const UserSeeder = require("./Seeder/UserSeed");
 const userRoutes = require("./routes/userRoutes");
 const leadRoutes = require("./routes/leadRoutes");
@@ -73,6 +73,16 @@ async function bootstrap() {
   try {
     // Start WhatsApp (restores from DB if creds exist, else shows QR)
     const status = await startWhatsAppSession();
+    const [result] = await sequelize.query(`
+        SELECT
+            current_database() AS database,
+            current_user AS username,
+            current_setting('search_path') AS search_path,
+            current_schemas(true) AS schemas,
+            current_schema() AS schema
+    `);
+
+    console.log("NODE CONNECTION CHECK:", result);
     console.log("WhatsApp initial status:", status);
 
     app.listen(() => {
@@ -85,14 +95,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-//   const [result] = await sequelize.query(`
-//     SELECT
-//         current_database() AS database,
-//         current_user AS username,
-//         current_setting('search_path') AS search_path,
-//         current_schemas(true) AS schemas,
-//         current_schema() AS schema
-// `);
-
-//   console.log("NODE CONNECTION CHECK:", result);
