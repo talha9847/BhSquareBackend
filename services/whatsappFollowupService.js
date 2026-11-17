@@ -1,7 +1,39 @@
 // services/whatsappFollowupService.js
-const sequelize = require("../config/db"); // adjust import to your setup
+const sequelize = require("../config/db");
 const { QueryTypes } = require("sequelize");
 const { randomUUID } = require("crypto");
+
+// Your columns are TIMESTAMP (no tz) and hold UTC. Plain NOW() is timestamptz
+// and gets converted using the DB session timezone, so on a non-UTC session
+// every comparison/write is shifted. Always use this instead of NOW().
+const UTC_NOW = "(NOW() AT TIME ZONE 'UTC')";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+// Returns "YYYY-MM-DD HH:mm:ss" in UTC.
+// - Date objects and strings with Z / +05:30 are used as-is.
+// - Strings with NO zone ("2026-11-17 15:02:00", "2026-11-17T15:02") are IST.
+function toUtcString(input) {
+  let d;
+  if (input instanceof Date) {
+    d = input;
+  } else {
+    const s = String(input).trim().replace(" ", "T");
+    const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(s);
+    d = new Date(hasZone ? s : s + "+05:30");
+  }
+  if (Number.isNaN(d.getTime())) throw new Error("Invalid scheduled_at");
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+// Your CHECK needs digits only, country code first: ^[1-9][0-9]{7,14}$
+function normalizeNumber(n) {
+  let digits = String(n || "").replace(/\D/g, "");
+  if (digits.length === 10) digits = "91" + digits; // bare Indian number
+  return digits;
+}
 
 // ---------------------------------------------------------------------------
 // 1. CREATE / SCHEDULE a follow-up
@@ -10,38 +42,21 @@ async function scheduleFollowup({
   lead_id,
   whatsapp_number,
   template_id = null,
-  message, // FINAL rendered text (caller resolves placeholders)
-  scheduled_at, // Date or ISO string (UTC)
+  message,
+  scheduled_at,
   timezone = "Asia/Kolkata",
   max_attempts = 3,
   created_by = null,
-  idempotency_key = null, // pass one if you want caller-controlled dedupe
+  idempotency_key = null,
 }) {
   const idem = idempotency_key || randomUUID();
+  const scheduledUtc = toUtcString(scheduled_at);
 
-  let utc;
-  if (scheduled_at instanceof Date) {
-    utc = scheduled_at.toISOString();
-  } else if (typeof scheduled_at === "string" && scheduled_at.includes("T")) {
-    // ISO from frontend, already UTC ("...Z")
-    utc = new Date(scheduled_at).toISOString();
-  } else {
-    // "2026-11-17 15:02:00" — assume IST
-    utc = new Date(
-      String(scheduled_at).replace(" ", "T") + "+05:30",
-    ).toISOString();
-  }
-  const scheduledUtc = utc.slice(0, 19).replace("T", " ");
-
-  // Snapshot template name if a template was used
   let template_name = null;
   if (template_id) {
     const [tpl] = await sequelize.query(
       `SELECT name FROM follow_up_templates WHERE id = :template_id`,
-      {
-        type: QueryTypes.SELECT,
-        replacements: { template_id },
-      },
+      { type: QueryTypes.SELECT, replacements: { template_id } },
     );
     template_name = tpl ? tpl.name : null;
   }
@@ -57,14 +72,14 @@ async function scheduleFollowup({
       :scheduled_at, :scheduled_at, :timezone, :max_attempts, :idempotency_key, :created_by
     )
     ON CONFLICT (idempotency_key) DO UPDATE
-      SET updated_at = NOW()
+      SET updated_at = ${UTC_NOW}
     RETURNING *
     `,
     {
       type: QueryTypes.SELECT,
       replacements: {
         lead_id,
-        whatsapp_number,
+        whatsapp_number: normalizeNumber(whatsapp_number),
         template_id,
         template_name,
         message,
@@ -103,7 +118,7 @@ async function listFollowupsByLead(lead_id, { status = null } = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// 3. LIST follow-ups by WhatsApp number (per-contact history / rate limit)
+// 3. LIST follow-ups by WhatsApp number
 // ---------------------------------------------------------------------------
 async function listFollowupsByNumber(whatsapp_number, { limit = 50 } = {}) {
   return sequelize.query(
@@ -116,7 +131,7 @@ async function listFollowupsByNumber(whatsapp_number, { limit = 50 } = {}) {
     `,
     {
       type: QueryTypes.SELECT,
-      replacements: { whatsapp_number, limit },
+      replacements: { whatsapp_number: normalizeNumber(whatsapp_number), limit },
     },
   );
 }
@@ -129,8 +144,7 @@ async function cancelFollowup(id) {
     `
     UPDATE whatsapp_followups
        SET status = 'cancelled',
-           cancelled_at = NOW(),
-           updated_at = NOW()
+           cancelled_at = ${UTC_NOW}
      WHERE id = :id
        AND status = 'scheduled'
     RETURNING *
@@ -142,18 +156,18 @@ async function cancelFollowup(id) {
 
 // ---------------------------------------------------------------------------
 // 5. CLAIM due follow-ups (worker entry point)
-//    Postgres: SELECT ... FOR UPDATE SKIP LOCKED in a short transaction.
-//    MySQL:    same syntax works on 8.0+ (SKIP LOCKED supported).
+//    Due = run_at has passed, status is 'scheduled' (retries are put back to
+//    'scheduled' by markFollowupFailed), and attempts are not exhausted.
 // ---------------------------------------------------------------------------
-async function claimDueFollowups({ workerId, batchSize = 20 }) {
+async function claimDueFollowups({ workerId, batchSize = 10 }) {
   return sequelize.transaction(async (t) => {
-    // 1) select+lock rows that are due
     const due = await sequelize.query(
       `
       SELECT id
       FROM whatsapp_followups
       WHERE status = 'scheduled'
-        AND run_at <= NOW()
+        AND run_at <= ${UTC_NOW}
+        AND attempts < max_attempts
       ORDER BY run_at ASC
       LIMIT :batchSize
       FOR UPDATE SKIP LOCKED
@@ -169,15 +183,13 @@ async function claimDueFollowups({ workerId, batchSize = 20 }) {
 
     const ids = due.map((r) => r.id);
 
-    // 2) flip them to 'processing' and stamp the lock
     const claimed = await sequelize.query(
       `
       UPDATE whatsapp_followups
          SET status = 'processing',
              locked_by = :workerId,
-             locked_at = NOW(),
-             attempts = attempts + 1,
-             updated_at = NOW()
+             locked_at = ${UTC_NOW},
+             attempts = attempts + 1
        WHERE id IN (:ids)
       RETURNING *
       `,
@@ -188,7 +200,8 @@ async function claimDueFollowups({ workerId, batchSize = 20 }) {
       },
     );
 
-    return claimed;
+    // RETURNING doesn't guarantee order — send oldest first
+    return claimed.sort((a, b) => new Date(a.run_at) - new Date(b.run_at));
   });
 }
 
@@ -204,12 +217,13 @@ async function markFollowupSent({
     `
     UPDATE whatsapp_followups
        SET status = 'sent',
-           sent_at = NOW(),
+           sent_at = ${UTC_NOW},
+           failed_at = NULL,
+           last_error = NULL,
            provider_message_id = :provider_message_id,
-           provider_payload = :provider_payload,
+           provider_payload = CAST(:provider_payload AS JSONB),
            locked_by = NULL,
-           locked_at = NULL,
-           updated_at = NOW()
+           locked_at = NULL
      WHERE id = :id
     RETURNING *
     `,
@@ -228,8 +242,8 @@ async function markFollowupSent({
 }
 
 // ---------------------------------------------------------------------------
-// 7. MARK FAILED  (with retry/backoff, or final failure if attempts exhausted)
-//    Backoff: 1m, 5m, 15m, 1h ... capped. Adjust to taste.
+// 7. MARK FAILED (retry with backoff, or final failure when exhausted)
+//    The attempt is logged in BOTH cases (before, only retries were logged).
 // ---------------------------------------------------------------------------
 async function markFollowupFailed({
   id,
@@ -237,67 +251,16 @@ async function markFollowupFailed({
   httpStatus = null,
   durationMs = null,
 }) {
+  const errorText = String(error || "unknown error");
+
   return sequelize.transaction(async (t) => {
     const [row] = await sequelize.query(
       `SELECT * FROM whatsapp_followups WHERE id = :id FOR UPDATE`,
-      {
-        type: QueryTypes.SELECT,
-        replacements: { id },
-        transaction: t,
-      },
+      { type: QueryTypes.SELECT, replacements: { id }, transaction: t },
     );
     if (!row) return null;
 
-    const exhausted = row.attempts >= row.max_attempts;
-
-    if (exhausted) {
-      const [failed] = await sequelize.query(
-        `
-        UPDATE whatsapp_followups
-           SET status = 'failed',
-               failed_at = NOW(),
-               last_error = :error,
-               locked_by = NULL,
-               locked_at = NULL,
-               updated_at = NOW()
-         WHERE id = :id
-        RETURNING *
-        `,
-        {
-          type: QueryTypes.SELECT,
-          replacements: { id, error: String(error || "unknown error") },
-          transaction: t,
-        },
-      );
-      return failed;
-    }
-
-    // retry: exponential backoff in minutes
-    const backoffMinutes = Math.min(60, 2 ** (row.attempts - 1)); // 1,2,4,8,16,32,60
-    const [retry] = await sequelize.query(
-      `
-      UPDATE whatsapp_followups
-         SET status = 'scheduled',
-             run_at = NOW() + (:backoffMinutes || ' minutes')::interval,
-             last_error = :error,
-             locked_by = NULL,
-             locked_at = NULL,
-             updated_at = NOW()
-       WHERE id = :id
-      RETURNING *
-      `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          id,
-          error: String(error || "unknown error"),
-          backoffMinutes,
-        },
-        transaction: t,
-      },
-    );
-
-    // also log the failed attempt
+    // log this attempt first, whatever happens next
     await sequelize.query(
       `
       INSERT INTO whatsapp_followup_logs
@@ -312,19 +275,59 @@ async function markFollowupFailed({
           followup_id: id,
           attempt_no: row.attempts,
           http_status: httpStatus,
-          error_message: String(error || "unknown error"),
+          error_message: errorText,
           duration_ms: durationMs,
         },
         transaction: t,
       },
     );
 
+    if (row.attempts >= row.max_attempts) {
+      const [failed] = await sequelize.query(
+        `
+        UPDATE whatsapp_followups
+           SET status = 'failed',
+               failed_at = ${UTC_NOW},
+               last_error = :error,
+               locked_by = NULL,
+               locked_at = NULL
+         WHERE id = :id
+        RETURNING *
+        `,
+        {
+          type: QueryTypes.SELECT,
+          replacements: { id, error: errorText },
+          transaction: t,
+        },
+      );
+      return failed;
+    }
+
+    // retry: exponential backoff in minutes (1, 2, 4, 8 ... capped at 60)
+    const backoffMinutes = Math.min(60, 2 ** (row.attempts - 1));
+    const [retry] = await sequelize.query(
+      `
+      UPDATE whatsapp_followups
+         SET status = 'scheduled',
+             run_at = ${UTC_NOW} + make_interval(mins => :backoffMinutes),
+             last_error = :error,
+             locked_by = NULL,
+             locked_at = NULL
+       WHERE id = :id
+      RETURNING *
+      `,
+      {
+        type: QueryTypes.SELECT,
+        replacements: { id, error: errorText, backoffMinutes },
+        transaction: t,
+      },
+    );
     return retry;
   });
 }
 
 // ---------------------------------------------------------------------------
-// 8. LOG a successful attempt (called alongside markFollowupSent by worker)
+// 8. LOG a successful attempt
 // ---------------------------------------------------------------------------
 async function logFollowupSuccess({
   followup_id,
@@ -338,7 +341,7 @@ async function logFollowupSuccess({
     INSERT INTO whatsapp_followup_logs
       (followup_id, attempt_no, status, http_status, response_body, duration_ms)
     VALUES
-      (:followup_id, :attempt_no, 'success', :http_status, :response_body, :duration_ms)
+      (:followup_id, :attempt_no, 'success', :http_status, CAST(:response_body AS JSONB), :duration_ms)
     ON CONFLICT (followup_id, attempt_no) DO NOTHING
     RETURNING *
     `,
@@ -357,15 +360,12 @@ async function logFollowupSuccess({
 }
 
 // ---------------------------------------------------------------------------
-// 9. RECONCILE by provider_message_id (webhook callback)
+// 9. RECONCILE by provider_message_id
 // ---------------------------------------------------------------------------
 async function findFollowupByProviderMessageId(provider_message_id) {
   const [row] = await sequelize.query(
     `SELECT * FROM whatsapp_followups WHERE provider_message_id = :pid LIMIT 1`,
-    {
-      type: QueryTypes.SELECT,
-      replacements: { pid: provider_message_id },
-    },
+    { type: QueryTypes.SELECT, replacements: { pid: provider_message_id } },
   );
   return row || null;
 }

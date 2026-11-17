@@ -9,12 +9,15 @@ const { QueryTypes } = require("sequelize");
 // ---------------------------------------------------------------------------
 const WORKER_ID = process.env.WHATSAPP_WORKER_ID || `worker-${process.pid}`;
 const POLL_MS = Number(process.env.WHATSAPP_WORKER_POLL_MS) || 15_000;
-const BATCH_SIZE = Number(process.env.WHATSAPP_WORKER_BATCH) || 10; // 10 per batch
+const BATCH_SIZE = Number(process.env.WHATSAPP_WORKER_BATCH) || 10;
 const REAP_AFTER_MIN = Number(process.env.WHATSAPP_WORKER_REAP_MIN) || 10;
 
 // Session-based socket: keep at 1 unless you've tested concurrency.
 const SEND_CONCURRENCY = Number(process.env.WHATSAPP_WORKER_CONCURRENCY) || 1;
 const SEND_GAP_MS = Number(process.env.WHATSAPP_WORKER_GAP_MS) || 3000;
+
+// Timestamps are TIMESTAMP (no tz), stored as UTC
+const UTC_NOW = "(NOW() AT TIME ZONE 'UTC')";
 
 // ---------------------------------------------------------------------------
 // State
@@ -25,52 +28,24 @@ let timer = null;
 let tickInFlight = null;
 
 // ---------------------------------------------------------------------------
-// DUE: claim rows whose scheduled time has passed (oldest first).
-// SKIP LOCKED makes it safe if more than one worker runs.
-// ---------------------------------------------------------------------------
-async function claimDueFollowups({ workerId, batchSize }) {
-  const rows = await sequelize.query(
-    `
-    UPDATE whatsapp_followups
-       SET status = 'processing',
-           locked_by = :workerId,
-           locked_at = NOW(),
-           attempts = attempts + 1,
-           updated_at = NOW()
-     WHERE id IN (
-       SELECT id
-         FROM whatsapp_followups
-        WHERE status = 'scheduled'
-          AND scheduled_at <= NOW()
-        ORDER BY scheduled_at ASC
-        LIMIT :batchSize
-        FOR UPDATE SKIP LOCKED
-     )
-    RETURNING *
-    `,
-    { type: QueryTypes.SELECT, replacements: { workerId, batchSize } },
-  );
-
-  // RETURNING doesn't guarantee order
-  return rows.sort(
-    (a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Reaper — un-stick rows whose worker died mid-send
+// Reaper — un-stick rows whose worker died mid-send.
+// If that was the last allowed attempt, mark failed instead of rescheduling
+// (the claim query skips rows with attempts >= max_attempts).
 // ---------------------------------------------------------------------------
 async function reapStuckFollowups() {
   const rows = await sequelize.query(
     `
     UPDATE whatsapp_followups
-       SET status = 'scheduled',
+       SET status = CASE WHEN attempts >= max_attempts
+                         THEN 'failed' ELSE 'scheduled' END,
+           failed_at = CASE WHEN attempts >= max_attempts
+                            THEN ${UTC_NOW} ELSE failed_at END,
+           last_error = COALESCE(last_error, 'worker died mid-send'),
            locked_by = NULL,
-           locked_at = NULL,
-           updated_at = NOW()
+           locked_at = NULL
      WHERE status = 'processing'
-       AND locked_at < NOW() - (:minutes || ' minutes')::interval
-    RETURNING id, locked_by, attempts
+       AND locked_at < ${UTC_NOW} - make_interval(mins => :minutes)
+    RETURNING id, locked_by, attempts, status
     `,
     {
       type: QueryTypes.SELECT,
@@ -81,14 +56,14 @@ async function reapStuckFollowups() {
   if (rows.length > 0) {
     console.warn(
       `[worker:${WORKER_ID}] reaped ${rows.length} stuck follow-up(s):`,
-      rows.map((r) => r.id),
+      rows.map((r) => `${r.id}->${r.status}`),
     );
   }
   return rows.length;
 }
 
 // ---------------------------------------------------------------------------
-// Release claims we never attempted (shutdown, or already tried this tick).
+// Release claims we never attempted (shutdown / already tried this tick).
 // attempts is rolled back because no send was made.
 // ---------------------------------------------------------------------------
 async function releaseClaims(ids) {
@@ -99,8 +74,7 @@ async function releaseClaims(ids) {
        SET status = 'scheduled',
            locked_by = NULL,
            locked_at = NULL,
-           attempts = GREATEST(attempts - 1, 0),
-           updated_at = NOW()
+           attempts = GREATEST(attempts - 1, 0)
      WHERE id IN (:ids) AND status = 'processing'
     `,
     { type: QueryTypes.UPDATE, replacements: { ids } },
@@ -200,7 +174,7 @@ async function processBatch(rows) {
 }
 
 // ---------------------------------------------------------------------------
-// One poll cycle: send everything that is due, 10 at a time
+// One poll cycle: send everything that is due and not sent, 10 at a time
 // ---------------------------------------------------------------------------
 async function tick() {
   try {
@@ -215,14 +189,15 @@ async function tick() {
     while (true) {
       if (stopping) break;
 
-      const claimed = await claimDueFollowups({
+      // due = run_at <= now AND status in ('scheduled','failed') AND attempts < max_attempts
+      const claimed = await whatsappFollowupService.claimDueFollowups({
         workerId: WORKER_ID,
         batchSize: BATCH_SIZE,
       });
 
       if (claimed.length === 0) break;
 
-      // A failed row rescheduled into the past must not be re-sent this tick
+      // Safety net: never send the same row twice in one tick
       const fresh = claimed.filter((r) => !seen.has(r.id));
       const repeats = claimed.filter((r) => seen.has(r.id));
 
@@ -322,5 +297,4 @@ module.exports = {
   _tick: tick,
   _reap: reapStuckFollowups,
   _processOne: processOne,
-  _claimDue: claimDueFollowups,
 };
