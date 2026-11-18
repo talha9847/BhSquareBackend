@@ -132,25 +132,4 @@ async function bootstrap() {
   }
 }
 
-// bootstrap();
-const server = app.listen(3000, () => {
-  console.log(`Server listening on http://localhost:3000`);
-
-  // ── NEW: start the follow-up worker ──
-  startWhatsappFollowupWorker();
-  console.log("WhatsApp follow-up worker started");
-
-  setInterval(
-    async () => {
-      try {
-        const response = await fetch(`${process.env.RENDER_URL}/`);
-        console.log(
-          `🏓 Render ping: ${response.status} - ${new Date().toISOString()}`,
-        );
-      } catch (error) {
-        console.error("❌ Render ping failed:", error.message);
-      }
-    },
-    13 * 60 * 1000, // every 13 minutes
-  );
-});
+bootstrap();
