@@ -136,6 +136,76 @@ async function markRegistrationAsDone(req, res) {
   }
 }
 
+async function saveTechnicalFinalization(req, res) {
+  try {
+    const { leadId, customerId, data } = req.body;
+
+    // Basic validation
+    if (!leadId || !customerId) {
+      return res.status(400).json({
+        message: "leadId and customerId are required",
+      });
+    }
+
+    if (!data) {
+      return res.status(400).json({
+        message: "data object is required",
+      });
+    }
+
+    const { cs_no, panel_brand_id, inverter_brand_id, panel_id, inverter_id } =
+      data;
+
+    if (
+      !cs_no ||
+      !panel_brand_id ||
+      !inverter_brand_id ||
+      !panel_id ||
+      !inverter_id
+    ) {
+      return res.status(400).json({
+        message: "All technical finalization fields are required",
+      });
+    }
+
+    // Call service
+    const result = await registrationService.technicalFinalization(
+      leadId,
+      customerId,
+      data,
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: result.message || "Technical finalization failed",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      registration_id: result.registration_id,
+      customer_id: result.customer_id,
+    });
+  } catch (error) {
+    console.error("Error saving technical finalization:", error);
+
+    if (
+      error.message.includes("not found") ||
+      error.message.includes("does not belong")
+    ) {
+      return res.status(400).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+}
+
 async function getFileGeneration(req, res) {
   try {
     console.log("what is this");
@@ -376,4 +446,5 @@ module.exports = {
   getFileGenerationBasicDetails,
   updateFileGenerationAndLead,
   completeRegistration,
+  saveTechnicalFinalization,
 };

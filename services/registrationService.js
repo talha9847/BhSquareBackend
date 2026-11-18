@@ -14,6 +14,7 @@ const { Inventory } = require("../models/inventoryModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { Loan } = require("../models/loanModel");
 const { Dispatch } = require("../models/dispatchModel");
+const { registration } = require("../controllers/registrationController");
 
 // Replace the old Service Account Auth with this:
 const oauth2Client = new google.auth.OAuth2(
@@ -475,6 +476,208 @@ async function completeRegistration(
   } catch (error) {
     await t.rollback();
     console.error("❌ completeRegistration error:", error);
+    throw error;
+  }
+}
+
+async function technicalFinalization(leadId, customerId, data) {
+  let t;
+  try {
+    t = await sequelize.transaction();
+    let registrationId;
+    let isLoanRequired = data.loan_required == "yes";
+
+    const findCustomer = await Customer.findByPk(customerId, {
+      transaction: t,
+    });
+    if (!findCustomer) {
+      throw new Error("Customer not found");
+    }
+    if (findCustomer.lead_id !== leadId) {
+      await t.rollback();
+      throw new Error("Customer does not belong to this lead");
+    }
+
+    const lead = await Lead.findByPk(leadId, { transaction: t });
+
+    await lead.update(
+      {
+        loan_required: isLoanRequired,
+      },
+      {
+        transaction: t,
+      },
+    );
+
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    const customerDocs = await CustomerDocument.findOne({
+      where: {
+        customer_id: customerId,
+      },
+      transaction: t,
+    });
+
+    if (!customerDocs) {
+      throw new Error("Customer Registation info not found");
+    }
+
+    let registration = await CustomerRegistration.findOne({
+      where: {
+        customer_id: customerId,
+      },
+      transaction: t,
+    });
+
+    if (!registration) {
+      registration = await CustomerRegistration.create(
+        {
+          customer_id: customerId,
+          application_number: "",
+          registration_date: "2001-01-01",
+          agreement_date: "2001-01-01",
+          inverter_qty: lead.number_of_inverters,
+          panel_qty: lead.number_of_panels,
+          panel_brand_id: data.panel_brand_id,
+          inverter_brand_id: data.inverter_brand_id,
+        },
+        { transaction: t },
+      );
+    }
+
+    registrationId = registration.id;
+
+    let kitReady = await KitReady.findOne({
+      where: {
+        customer_id: customerId,
+      },
+      transaction: t,
+    });
+
+    if (!kitReady) {
+      kitReady = await KitReady.create(
+        {
+          customer_id: customerId,
+          loan_status: "not_applicable",
+          status: "pending",
+          file_gen: "pending",
+        },
+        { transaction: t },
+      );
+
+      const categoryItems = await Inventory.findAll({
+        where: { category_id: 2 },
+        attributes: ["id"],
+        transaction: t,
+      });
+
+      const bulkData = categoryItems.map((item) => ({
+        kit_id: kitReady.id,
+        inventory_id: item.id,
+        qty: 0,
+        status: "pending",
+      }));
+
+      if (bulkData.length > 0) {
+        await KitItems.bulkCreate(bulkData, {
+          transaction: t,
+          ignoreDuplicates: true,
+        });
+      }
+
+      await KitItems.create(
+        {
+          kit_id: kitReady.id,
+          inventory_id: data.panel_id,
+          qty: 0,
+          status: "allocated",
+        },
+        { transaction: t },
+      );
+
+      await KitItems.create(
+        {
+          kit_id: kitReady.id,
+          inventory_id: data.inverter_id,
+          qty: 0,
+          status: "allocated",
+        },
+        { transaction: t },
+      );
+    }
+
+    const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+    const oldFolderName = `${lead.customer_name}_${lead.contact_number}`;
+    const newFolderName = `${data.cs_no} ${lead.customer_name}`;
+
+    await renameCustomerFolder(oldFolderName, newFolderName, rootFolderId);
+
+    const fileGenerationData = {
+      registration_id: registrationId,
+      cs_no: data.cs_no,
+      panel_brand_id: data.panel_brand_id,
+      inverter_brand_id: data.inverter_brand_id,
+
+      consumer_number: customerDocs?.consumer_number || null,
+      geo_location: customerDocs?.geo_coordinate || null,
+      subdivision: customerDocs?.sub_division || null,
+
+      inverter_capacity: lead?.inverter_capacity
+        ? parseFloat(lead.inverter_capacity)
+        : null,
+      inverter_quantity: lead?.number_of_inverters || null,
+
+      beneficiary_name: lead?.customer_name || null,
+      beneficiary_address: lead?.address || null,
+      consumer_contact: lead?.contact_number || null,
+
+      panel_quantity: lead?.number_of_panels || null,
+      panel_capacity: lead?.panel_wattage || null,
+
+      application_number: registration?.application_number || null,
+      registration_date: registration?.registration_date || null,
+      agreement_date: registration?.agreement_date || null,
+    };
+
+    const existingFile = await FileGeneration.findOne({
+      where: { registration_id: registrationId },
+      transaction: t,
+    });
+
+    if (existingFile) {
+      await existingFile.update(fileGenerationData, {
+        transaction: t,
+      });
+    } else {
+      let talha = await FileGeneration.create(fileGenerationData, {
+        transaction: t,
+      });
+    }
+
+    await KitReady.update(
+      { file_gen: "done" },
+      {
+        where: { id: kitReady.id },
+        transaction: t,
+      },
+    );
+
+    await t.commit();
+
+    return {
+      success: true,
+      message: "Technical finalization completed successfully",
+      registration_id: registrationId,
+      customer_id: customerId,
+    };
+  } catch (error) {
+    console.log(error);
+    if (t && !t.finished) {
+      await t.rollback();
+    }
+
     throw error;
   }
 }
@@ -993,6 +1196,7 @@ module.exports = {
   getNumberOfPanelsByLeadId,
   createCustomerRegistrationWithPanels,
   markRegistrationAsDone,
+  technicalFinalization,
   getFileGenerationData,
   getCustomersByStatus,
   getInventoryByCategory,

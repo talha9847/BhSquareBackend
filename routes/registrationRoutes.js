@@ -19,6 +19,11 @@ router.post(
   registrationController.markRegistrationAsDone,
 );
 router.post(
+  "/saveTechFinalize",
+  middleware.authMiddleware(["admin"]),
+  registrationController.saveTechnicalFinalization,
+);
+router.post(
   "/completeRegistration",
   middleware.authMiddleware(["admin"]),
   registrationController.completeRegistration,

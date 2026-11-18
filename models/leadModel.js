@@ -81,6 +81,12 @@ const Lead = sequelize.define(
       defaultValue: false,
     },
 
+    loan_required: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

@@ -20,9 +20,11 @@ const CustomerRegistration = sequelize.define(
     },
     registration_date: {
       type: DataTypes.DATEONLY,
+      allowNull: true,
     },
     agreement_date: {
       type: DataTypes.DATEONLY,
+      allowNull: true,
     },
     inverter_qty: {
       type: DataTypes.INTEGER,
