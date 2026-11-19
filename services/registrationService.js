@@ -535,7 +535,7 @@ async function technicalFinalization(leadId, customerId, data) {
       registration = await CustomerRegistration.create(
         {
           customer_id: customerId,
-          application_number: "",
+          // application_number: "",
           registration_date: "2001-01-01",
           agreement_date: "2001-01-01",
           inverter_qty: lead.number_of_inverters,
@@ -592,7 +592,7 @@ async function technicalFinalization(leadId, customerId, data) {
           kit_id: kitReady.id,
           inventory_id: data.panel_id,
           qty: 0,
-          status: "allocated",
+          status: "pending",
         },
         { transaction: t },
       );
@@ -602,7 +602,7 @@ async function technicalFinalization(leadId, customerId, data) {
           kit_id: kitReady.id,
           inventory_id: data.inverter_id,
           qty: 0,
-          status: "allocated",
+          status: "pending",
         },
         { transaction: t },
       );
