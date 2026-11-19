@@ -861,7 +861,7 @@ async function updateKitItemQty(kitItemId, changeQty, customerId) {
     );
 
     if (inventory.category_id == 1) {
-      await lead.update({ number_of_panels: newKitQty }, { transaction: t });
+      // await lead.update({ number_of_panels: newKitQty }, { transaction: t });
       await file.update({ panel_quantity: newKitQty }, { transaction: t });
     }
     if (inventory.category_id == 3) {
