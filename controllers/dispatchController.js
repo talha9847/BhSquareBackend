@@ -400,7 +400,7 @@ async function deleteKitItem(req, res) {
 
 async function updateKitItemQty(req, res) {
   try {
-    const { kitItemId, qty } = req.body;
+    const { kitItemId, qty, customerId } = req.body;
 
     // 🔴 Validation
     if (!kitItemId || qty == null) {
@@ -416,7 +416,11 @@ async function updateKitItemQty(req, res) {
     }
 
     // 🔹 Call service
-    const result = await dispatchService.updateKitItemQty(kitItemId, qty);
+    const result = await dispatchService.updateKitItemQty(
+      kitItemId,
+      qty,
+      customerId,
+    );
 
     return res.status(200).json({
       message: result.message,

@@ -946,22 +946,178 @@ async function addItemToKit({
   }
 }
 
-async function allocateKitItem({ kit_item_id, qty }) {
+// async function allocateKitItem({ kit_item_id, qty, customerId }) {
+//   const t = await sequelize.transaction();
+//   console.log(customerId);
+//   try {
+//     const kitItem = await KitItems.findByPk(kit_item_id, {
+//       transaction: t,
+//     });
+//     const registration = await CustomerRegistration.findOne({
+//       where: { customer_id: customerId },
+//       transaction: t,
+//     });
+
+//     const customer = await Customer.findByPk(customerId, { transaction: t });
+//     const lead = await Lead.findByPk(customer.lead_id, { transaction: t });
+
+//     const file = await FileGeneration.findOne({
+//       where: {
+//         registration_id: registration.id,
+//       },
+//     });
+
+//     if (!kitItem) {
+//       throw new Error("Kit item not found");
+//     }
+
+//     const inventory = await Inventory.findByPk(kitItem.inventory_id, {
+//       transaction: t,
+//     });
+
+//     if (inventory.category_id == 1) {
+//       const update = await file.update(
+//         {
+//           panel_quantity: qty,
+//           panel_capacity: inventory.wattage,
+//         },
+//         { transaction: t },
+//       );
+
+//       await lead.update(
+//         { number_of_panels: qty, panel_wattage: inventory.wattage },
+//         { transaction: t },
+//       );
+//     }
+//     if (inventory.category_id == 3) {
+//       const update = await file.update(
+//         {
+//           inverter_quantity: qty,
+//           inverter_capacity: inventory.wattage,
+//         },
+//         { transaction: t },
+//       );
+
+//       await lead.update(
+//         { number_of_inverters: qty, inverter_capacity: inventory.wattage },
+//         { transaction: t },
+//       );
+//     }
+//     if (!inventory) {
+//       throw new Error("Inventory not found");
+//     }
+
+//     if (inventory.qty < qty) {
+//       throw new Error("Insufficient stock");
+//     }
+
+//     await Inventory.update(
+//       { qty: inventory.qty - qty },
+//       { where: { id: inventory.id }, transaction: t },
+//     );
+
+//     await KitItems.update(
+//       { qty, status: "allocated" },
+//       { where: { id: kit_item_id }, transaction: t },
+//     );
+//     await t.commit();
+
+//     return { success: true, message: "Allocated successfully" };
+//   } catch (error) {
+//     await t.rollback();
+//     throw error;
+//   }
+// }
+
+async function allocateKitItem({ kit_item_id, qty, customerId }) {
   const t = await sequelize.transaction();
 
   try {
-    const kitItem = await KitItems.findByPk(kit_item_id, { transaction: t });
+    const kitItem = await KitItems.findByPk(kit_item_id, {
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+        },
+      ],
+      transaction: t,
+    });
 
     if (!kitItem) {
       throw new Error("Kit item not found");
     }
 
-    const inventory = await Inventory.findByPk(kitItem.inventory_id, {
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      include: [
+        {
+          model: FileGeneration,
+          as: "file_generation",
+        },
+      ],
       transaction: t,
     });
 
-    if (!inventory) {
-      throw new Error("Inventory not found");
+    if (!registration) {
+      throw new Error("Customer registration not found");
+    }
+
+    const customer = await Customer.findByPk(customerId, {
+      include: [
+        {
+          model: Lead,
+          as: "lead",
+        },
+      ],
+      transaction: t,
+    });
+
+    if (!customer) {
+      throw new Error("Customer not found");
+    }
+
+    const lead = customer.lead;
+    const file = registration.file_generation;
+    const inventory = kitItem.inventory;
+
+    if (!lead) throw new Error("Lead not found");
+    if (!file) throw new Error("File generation record not found");
+    if (!inventory) throw new Error("Inventory not found");
+
+    if (inventory.category_id == 1) {
+      await file.update(
+        {
+          panel_quantity: qty,
+          panel_capacity: inventory.wattage,
+        },
+        { transaction: t },
+      );
+
+      await lead.update(
+        {
+          number_of_panels: qty,
+          panel_wattage: inventory.wattage,
+        },
+        { transaction: t },
+      );
+    }
+
+    if (inventory.category_id == 3) {
+      await file.update(
+        {
+          inverter_quantity: qty,
+          inverter_capacity: inventory.wattage,
+        },
+        { transaction: t },
+      );
+
+      await lead.update(
+        {
+          number_of_inverters: qty,
+          inverter_capacity: inventory.wattage,
+        },
+        { transaction: t },
+      );
     }
 
     if (inventory.qty < qty) {
@@ -970,17 +1126,29 @@ async function allocateKitItem({ kit_item_id, qty }) {
 
     await Inventory.update(
       { qty: inventory.qty - qty },
-      { where: { id: inventory.id }, transaction: t },
+      {
+        where: { id: inventory.id },
+        transaction: t,
+      },
     );
 
     await KitItems.update(
-      { qty, status: "allocated" },
-      { where: { id: kit_item_id }, transaction: t },
+      {
+        qty,
+        status: "allocated",
+      },
+      {
+        where: { id: kit_item_id },
+        transaction: t,
+      },
     );
 
     await t.commit();
 
-    return { success: true, message: "Allocated successfully" };
+    return {
+      success: true,
+      message: "Allocated successfully",
+    };
   } catch (error) {
     await t.rollback();
     throw error;

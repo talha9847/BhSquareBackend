@@ -389,7 +389,7 @@ async function completeRegistration(
         },
       );
     }
-
+    console.log(kit);
     if (!kit && loanRequired) {
       kit = await KitReady.create(
         {
@@ -411,6 +411,11 @@ async function completeRegistration(
         { transaction: t },
       );
     }
+
+    await kit.update(
+      { loan_status: "pending", file_gen: "partial" },
+      { transaction: t },
+    );
 
     if (loanRequired) {
       // 4️⃣ Update stage
@@ -476,6 +481,97 @@ async function completeRegistration(
   } catch (error) {
     await t.rollback();
     console.error("❌ completeRegistration error:", error);
+    throw error;
+  }
+}
+
+async function getTechsForDocCollection(customerId) {
+  try {
+    const data = await sequelize.transaction(async (t) => {
+      const customer = await Customer.findByPk(customerId, {
+        attributes: ["id", "lead_id"],
+        include: [
+          {
+            model: Lead,
+            as: "lead",
+            attributes: ["loan_required"],
+            required: false,
+          },
+          {
+            model: CustomerRegistration,
+            as: "registration",
+            attributes: ["id", "panel_brand_id", "inverter_brand_id"],
+            required: false,
+            include: [
+              {
+                model: FileGeneration,
+                as: "file_generation",
+                attributes: ["cs_no"],
+                required: false,
+              },
+            ],
+          },
+          {
+            model: KitReady,
+            as: "kit_ready",
+            attributes: ["id"],
+            required: false,
+            include: [
+              {
+                model: KitItems,
+                as: "items",
+                attributes: ["inventory_id"],
+                required: false,
+                include: [
+                  {
+                    model: Inventory,
+                    as: "inventory",
+                    attributes: ["id", "category_id"],
+                    where: {
+                      category_id: {
+                        [Op.in]: [1, 3],
+                      },
+                    },
+                    required: false,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        transaction: t,
+      });
+
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
+      const registration = customer.registration;
+      const kitItems = customer.kit_ready?.items || [];
+
+      const panel = kitItems.find(
+        (item) => item.inventory?.category_id === 1,
+      )?.inventory;
+
+      const inverter = kitItems.find(
+        (item) => item.inventory?.category_id === 3,
+      )?.inventory;
+
+      return {
+        loan_required: customer.lead?.loan_required ?? null,
+        panel_brand_id: registration?.panel_brand_id ?? null,
+        inverter_brand_id: registration?.inverter_brand_id ?? null,
+        panel_id: panel?.id ?? null,
+        inverter_Id: inverter?.id ?? null,
+        cs_no: registration?.file_generation?.cs_no ?? null,
+      };
+    });
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("getTechsForDocCollection error:", error);
     throw error;
   }
 }
@@ -1203,4 +1299,5 @@ module.exports = {
   getFileGenerationBasicDetails,
   updateFileGenerationAndLead,
   completeRegistration,
+  getTechsForDocCollection,
 };

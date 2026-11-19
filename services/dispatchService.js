@@ -11,6 +11,8 @@ const { Car } = require("../models/carModel");
 const { Driver } = require("../models/driverModel");
 const { KitItems } = require("../models/kitItemsModels");
 const { FabricatorCommission } = require("../models/fabricatorCommissionModel");
+const { CustomerRegistration } = require("../models/customerRegistrationModel");
+const { FileGeneration } = require("../models/fileGenerationModel");
 
 async function getAllDispatches() {
   try {
@@ -750,16 +752,17 @@ async function deleteKitItem(kitItemId) {
   }
 }
 
-async function updateKitItemQty(kitItemId, changeQty) {
+async function updateKitItemQty(kitItemId, changeQty, customerId) {
   const t = await sequelize.transaction();
-
   try {
     if (!kitItemId || changeQty == null) {
       throw new Error("kitItemId and qty are required");
     }
 
-    if (changeQty === 0) {
-      throw new Error("changeQty cannot be zero");
+    changeQty = Number(changeQty);
+
+    if (!Number.isInteger(changeQty) || changeQty === 0) {
+      throw new Error("changeQty must be a non-zero integer");
     }
 
     // 🔹 Fetch kit item
@@ -772,6 +775,28 @@ async function updateKitItemQty(kitItemId, changeQty) {
     if (!kitItem) {
       throw new Error("Kit item not found");
     }
+
+    const customer = await Customer.findByPk(customerId, {
+      include: [{ model: Lead, as: "lead" }],
+      transaction: t,
+    });
+
+    if (!customer || !customer.lead) {
+      throw new Error("Customer or lead not found");
+    }
+
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: customerId },
+      include: [{ model: FileGeneration, as: "file_generation" }],
+      transaction: t,
+    });
+
+    if (!registration || !registration.file_generation) {
+      throw new Error("Registration or file generation not found");
+    }
+
+    const file = registration.file_generation;
+    const lead = customer.lead;
 
     const { inventory_id, qty: currentQty } = kitItem;
 
@@ -835,6 +860,14 @@ async function updateKitItemQty(kitItemId, changeQty) {
       { transaction: t },
     );
 
+    if (inventory.category_id == 1) {
+      await lead.update({ number_of_panels: newKitQty }, { transaction: t });
+      await file.update({ panel_quantity: newKitQty }, { transaction: t });
+    }
+    if (inventory.category_id == 3) {
+      await lead.update({ number_of_inverters: newKitQty }, { transaction: t });
+      await file.update({ inverter_quantity: newKitQty }, { transaction: t });
+    }
     await t.commit();
 
     return {

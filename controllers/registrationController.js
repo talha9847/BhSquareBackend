@@ -136,6 +136,36 @@ async function markRegistrationAsDone(req, res) {
   }
 }
 
+async function getTechsForDocCollection(req, res) {
+  try {
+    const { customerId } = req.params;
+
+    if (!customerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer ID is required",
+      });
+    }
+
+    const result =
+      await registrationService.getTechsForDocCollection(customerId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Technical details fetched successfully",
+      data: result.data,
+    });
+  } catch (error) {
+    console.error("getTechsForDocCollection controller error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch technical details",
+      error: error.message,
+    });
+  }
+}
+
 async function saveTechnicalFinalization(req, res) {
   try {
     const { leadId, customerId, data } = req.body;
@@ -447,4 +477,5 @@ module.exports = {
   updateFileGenerationAndLead,
   completeRegistration,
   saveTechnicalFinalization,
+  getTechsForDocCollection,
 };

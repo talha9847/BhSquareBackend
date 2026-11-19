@@ -343,11 +343,12 @@ async function addItem(req, res) {
 
 async function allocateItem(req, res) {
   try {
-    const { kit_item_id, qty } = req.body;
+    const { kit_item_id, qty,customerId } = req.body;
 
     const result = await kitReadyService.allocateKitItem({
       kit_item_id,
       qty,
+      customerId
     });
 
     return res.status(200).json({

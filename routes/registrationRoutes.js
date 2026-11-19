@@ -23,6 +23,11 @@ router.post(
   middleware.authMiddleware(["admin"]),
   registrationController.saveTechnicalFinalization,
 );
+router.get(
+  "/getTechsForDocCollection/:customerId",
+  middleware.authMiddleware(["admin"]),
+  registrationController.getTechsForDocCollection,
+);
 router.post(
   "/completeRegistration",
   middleware.authMiddleware(["admin"]),
