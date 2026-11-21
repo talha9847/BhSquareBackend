@@ -1648,7 +1648,12 @@ async function getKitByCustomerId(customerId) {
       where: { customer_id: customerId },
     });
 
-    if (!wiring || wiring.inventory_status !== "pending") {
+    console.log(wiring.inventory_status);
+    if (
+      !wiring ||
+      (wiring.inventory_status !== "pending" &&
+        wiring.inventory_status !== "done")
+    ) {
       return null;
     }
 

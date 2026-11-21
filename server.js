@@ -76,7 +76,7 @@ app.use("/api/whatsapp-followups", whatsappFollowupRoutes);
 async function bootstrap() {
   try {
     // Start WhatsApp (restores from DB if creds exist, else shows QR)
-    const status = await startWhatsAppSession();
+    // const status = await startWhatsAppSession();
     const [result] = await sequelize.query(`
         SELECT
             current_database() AS database,
@@ -87,7 +87,7 @@ async function bootstrap() {
     `);
 
     console.log("NODE CONNECTION CHECK:", result);
-    console.log("WhatsApp initial status:", status);
+    // console.log("WhatsApp initial status:", status);
 
     const server = app.listen(3000, () => {
       console.log(`Server listening on http://localhost:3000`);

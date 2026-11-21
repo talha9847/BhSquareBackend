@@ -53,6 +53,7 @@ async function updateTechnician(id, { name }) {
     technician.name = name ?? technician.name;
 
     await technician.save({ transaction: t });
+
     await t.commit();
 
     return technician;
@@ -444,9 +445,11 @@ async function updateWiringTechnician(wiringId, technicianId) {
       }
     }
 
-    // 3️⃣ Update technician_id field
     wiring.technician_id = technicianId;
     await wiring.save({ transaction: t });
+    await updateWiringInventoryStatusWithTrans(wiringId, "done", t);
+
+    // 3️⃣ Update technician_id field
 
     await t.commit();
 
@@ -499,6 +502,8 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
     if (!validStatuses.includes(newStatus)) {
       throw new Error(`Invalid status`);
     }
+
+    console.log(newStatus);
 
     // ✅ NO transaction here
     const wiring = await Wiring.findByPk(wiringId);
@@ -557,14 +562,14 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
         throw new Error("Technician is not assigned");
       }
 
-      const wiringItemExists = await WiringItem.findOne({
-        where: { wiring_id: wiringId },
-        transaction: t,
-      });
+      // const wiringItemExists = await WiringItem.findOne({
+      //   where: { wiring_id: wiringId },
+      //   transaction: t,
+      // });
 
-      if (!wiringItemExists) {
-        throw new Error("No wiring items found");
-      }
+      // if (!wiringItemExists) {
+      //   throw new Error("No wiring items found");
+      // }
 
       // ✅ 2. Get registration + file generation
       const registration = await CustomerRegistration.findOne({
@@ -705,6 +710,8 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
     wiring.inventory_status = newStatus;
     await wiring.save({ transaction: t });
 
+    console.log("this is the thing before..... panellllllllllll");
+    return;
     await t.commit();
 
     return {
@@ -721,6 +728,234 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
       message: error.message || "Something went wrong",
     };
   }
+}
+
+async function updateWiringInventoryStatusWithTrans(wiringId, newStatus, t) {
+  if (!wiringId) {
+    throw new Error("wiringId is required");
+  }
+
+  if (!t) {
+    throw new Error("Transaction is required");
+  }
+
+  const validStatuses = ["pending", "done"];
+
+  if (!validStatuses.includes(newStatus)) {
+    throw new Error("Invalid status");
+  }
+
+  // 1. Get wiring using parent transaction
+  const wiring = await Wiring.findByPk(wiringId, {
+    transaction: t,
+  });
+
+  if (!wiring) {
+    throw new Error("Wiring record not found");
+  }
+
+  // 2. Get customer document
+  const customerDoc = await CustomerDocument.findOne({
+    where: { customer_id: wiring.customer_id },
+    transaction: t,
+  });
+
+  if (!customerDoc) {
+    throw new Error("Customer document not found");
+  }
+
+  // 3. Handle customer folder
+  if (!customerDoc.folder_id) {
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: wiring.customer_id },
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Registration not found");
+    }
+
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registration.id },
+      transaction: t,
+    });
+
+    if (!fileGen) {
+      throw new Error("File generation not found");
+    }
+
+    const folderName = `${fileGen.cs_no} ${fileGen.beneficiary_name} (${wiring.customer_id})`;
+
+    // External operation (not part of DB transaction)
+    const folderId = await getOrCreateCustomerFolder(folderName);
+
+    if (!folderId) {
+      throw new Error("Unable to create customer folder");
+    }
+
+    await customerDoc.update(
+      {
+        folder_id: folderId,
+        updated_at: new Date(),
+      },
+      { transaction: t },
+    );
+  }
+
+  // 4. Process inventory when marking as done
+  if (newStatus === "done") {
+    if (!wiring.technician_id) {
+      throw new Error("Technician is not assigned");
+    }
+
+    const registration = await CustomerRegistration.findOne({
+      where: { customer_id: wiring.customer_id },
+      transaction: t,
+    });
+
+    if (!registration) {
+      throw new Error("Registration not found");
+    }
+
+    const fileGen = await FileGeneration.findOne({
+      where: { registration_id: registration.id },
+      transaction: t,
+    });
+
+    if (!fileGen) {
+      throw new Error("File generation not found");
+    }
+
+    // 5. Calculate unused inventory quantities
+    const PANEL_CATEGORY = 1;
+    const INVERTER_CATEGORY = 3;
+
+    const unusedItems = await UnusedInventory.findAll({
+      where: {
+        customer_id: wiring.customer_id,
+        status: "pending",
+      },
+      include: [
+        {
+          model: Inventory,
+          as: "inventory",
+          attributes: ["id", "category_id"],
+        },
+      ],
+      transaction: t,
+    });
+
+    let unusedPanelQty = 0;
+    let unusedInverterQty = 0;
+
+    for (const item of unusedItems) {
+      const categoryId = Number(item.inventory?.category_id);
+      const unusedQty = Number(item.unused_qty);
+
+      if (categoryId === PANEL_CATEGORY) {
+        unusedPanelQty += unusedQty;
+      }
+
+      if (categoryId === INVERTER_CATEGORY) {
+        unusedInverterQty += unusedQty;
+      }
+    }
+
+    const panelQty = Number(fileGen.panel_quantity || 0) - unusedPanelQty;
+
+    const inverterQty =
+      Number(fileGen.inverter_quantity || 0) - unusedInverterQty;
+
+    if (panelQty < 0 || inverterQty < 0) {
+      throw new Error("Unused qty exceeds actual quantity");
+    }
+
+    if (panelQty === 0 && inverterQty === 0) {
+      throw new Error("Panel and inverter quantity is zero after adjustment");
+    }
+
+    // 6. Generate wiring documents
+    const docs = [];
+
+    for (let i = 1; i <= panelQty; i++) {
+      docs.push({
+        wiring_id: wiringId,
+        doc_name: `Panel ${i}`,
+      });
+    }
+
+    for (let i = 1; i <= inverterQty; i++) {
+      docs.push({
+        wiring_id: wiringId,
+        doc_name: `Inverter ${i}`,
+      });
+    }
+
+    docs.push(
+      { wiring_id: wiringId, doc_name: "Geo Tag" },
+      { wiring_id: wiringId, doc_name: "Site Photo" },
+      { wiring_id: wiringId, doc_name: "Wiring File" },
+      { wiring_id: wiringId, doc_name: "Combined Photo" },
+    );
+
+    await WiringDocs.bulkCreate(docs, {
+      transaction: t,
+      ignoreDuplicates: true,
+    });
+
+    // 7. Process unused inventory
+    for (const item of unusedItems) {
+      const kitItem = await KitItems.findByPk(item.kit_item_id, {
+        transaction: t,
+      });
+
+      const unusedQty = Number(item.unused_qty);
+
+      if (kitItem && unusedQty > Number(kitItem.qty)) {
+        throw new Error("Unused qty exceeds kit item qty");
+      }
+
+      // Add unused quantity back to inventory
+      await Inventory.increment("qty", {
+        by: unusedQty,
+        where: { id: item.inventory_id },
+        transaction: t,
+      });
+
+      // Reduce quantity from kit
+      if (kitItem) {
+        await kitItem.update(
+          {
+            qty: Number(kitItem.qty) - unusedQty,
+          },
+          { transaction: t },
+        );
+      }
+
+      // Mark unused inventory as processed
+      await item.update({ status: "done" }, { transaction: t });
+    }
+
+    // 8. Update file generation quantities
+    await fileGen.update(
+      {
+        panel_quantity: panelQty,
+        inverter_quantity: inverterQty,
+      },
+      { transaction: t },
+    );
+  }
+
+  // 9. Update wiring inventory status
+  wiring.inventory_status = newStatus;
+
+  await wiring.save({ transaction: t });
+
+  return {
+    success: true,
+    data: wiring,
+    message: "Inventory status updated successfully",
+  };
 }
 
 // Replace the old Service Account Auth with this:
@@ -2201,4 +2436,5 @@ module.exports = {
   updateFabricatorCommissionById,
   getFabricatorCommissionsByStatus,
   deleteWiringItem,
+  updateWiringInventoryStatusWithTrans,
 };
