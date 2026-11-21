@@ -710,8 +710,6 @@ async function updateWiringInventoryStatus(wiringId, newStatus) {
     wiring.inventory_status = newStatus;
     await wiring.save({ transaction: t });
 
-    console.log("this is the thing before..... panellllllllllll");
-    return;
     await t.commit();
 
     return {
