@@ -11,7 +11,7 @@ router.post(
 );
 router.get(
   "/fetchTechnicians",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.fetchTechnicians,
 );
 router.put(
@@ -21,7 +21,7 @@ router.put(
 );
 router.get(
   "/fetchWiringCustomerDetails",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.fetchWiringCustomerDetails,
 );
 
@@ -53,7 +53,7 @@ router.post(
 );
 router.put(
   "/updateTechni/:wiringId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin","site_supervisor"]),
   wiringController.updateTechni,
 );
 router.get(

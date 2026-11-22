@@ -792,7 +792,7 @@ async function addItemToKit({
   customer_id,
 }) {
   const t = await sequelize.transaction();
-
+  console.log(kit_id, inventory_id, brand_id, category_id, customer_id);
   try {
     if (!kit_id || !inventory_id || !brand_id || !category_id || !customer_id) {
       throw new Error(

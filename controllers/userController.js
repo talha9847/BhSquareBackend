@@ -5,7 +5,6 @@ async function login(req, res) {
   const { email, pass } = req.body;
 
   const isCorrect = await userService.login(email, pass);
-
   if (isCorrect.code == 0 || isCorrect.code == -1)
     return res.json({ message: "Invalid Credential", success: false });
 
@@ -72,14 +71,23 @@ async function me(req, res) {
 async function createUser(req, res) {
   try {
     const { email, password, role, role_id } = req.body;
+    let newRole = role;
+    if (role == "Site Supervisor") {
+      newRole = "site_supervisor";
+    }
 
-    if (!email || !password || !role || !role_id) {
+    if (!email || !password || !newRole || !role_id) {
       return res.status(400).json({
         message: "email, password and role are required",
       });
     }
 
-    const result = await userService.createUser(email, password, role, role_id);
+    const result = await userService.createUser(
+      email,
+      password,
+      newRole,
+      role_id,
+    );
 
     return res.status(201).json({
       message: result.message,

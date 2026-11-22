@@ -160,4 +160,28 @@ router.put(
   sourceController.completeFinalStage,
 );
 router.post("/addWebLead", sourceController.addWebLead);
+
+router.get(
+  "/fetchSiteSupervisor",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchSiteSupervisor,
+);
+
+router.get(
+  "/fetchAllSiteSupervisors",
+  middleware.authMiddleware(["admin"]),
+  sourceController.fetchAllSiteSupervisors,
+);
+
+router.post(
+  "/addSiteSupervisor",
+  middleware.authMiddleware(["admin"]),
+  sourceController.addSiteSupervisor,
+);
+
+router.put(
+  "/updateSiteSupervisor/:id",
+  middleware.authMiddleware(["admin"]),
+  sourceController.updateSiteSupervisor,
+);
 module.exports = router;

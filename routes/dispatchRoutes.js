@@ -5,12 +5,12 @@ const router = express.Router();
 
 router.get(
   "/fetchDispatches",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.fetchDispatches,
 );
 router.post(
   "/updateDispatch",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.updateDispatch,
 );
 router.post(
@@ -20,7 +20,7 @@ router.post(
 );
 router.get(
   "/fetchFabricators",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.fetchFabricators,
 );
 router.put(
@@ -30,17 +30,17 @@ router.put(
 );
 router.get(
   "/fetchFabrications",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.fetchFabrications,
 );
 router.put(
   "/updateFabrication",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.updateFabrication,
 );
 router.put(
   "/updateFabricatorViaId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.updateFabricatorViaId,
 );
 router.post(
@@ -55,12 +55,12 @@ router.post(
 );
 router.get(
   "/fetchDrivers",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.fetchDrivers,
 );
 router.get(
   "/fetchCars",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.fetchCars,
 );
 router.put(
@@ -80,12 +80,12 @@ router.get(
 );
 router.delete(
   "/deleteKitItem/:kitItemId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.deleteKitItem,
 );
 router.put(
   "/updateKitItemQty",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   dispatchController.updateKitItemQty,
 );
 router.get(

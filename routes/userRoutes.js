@@ -23,6 +23,7 @@ router.get(
     "fabricator",
     "source",
     "supervisor",
+    "site_supervisor",
   ]),
   userController.me,
 );

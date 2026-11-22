@@ -1104,7 +1104,7 @@ async function createCompletionByCustomerId(customerId, transaction = null) {
 
 async function getAllMasters() {
   try {
-    const [technicians, fabricators, leadSources, supervisor] =
+    const [technicians, fabricators, leadSources, supervisor, site_supervisor] =
       await Promise.all([
         Technician.findAll({
           attributes: ["id", "name"],
@@ -1124,6 +1124,10 @@ async function getAllMasters() {
           attributes: ["id", "name"],
           order: [["name", "ASC"]],
         }),
+        SiteSupervisor.findAll({
+          attributes: ["id", "name"],
+          order: [["name", "ASC"]],
+        }),
       ]);
 
     return {
@@ -1133,6 +1137,7 @@ async function getAllMasters() {
         fabricators,
         sources: leadSources,
         supervisor: supervisor,
+        site_supervisor: site_supervisor,
       },
     };
   } catch (error) {
@@ -1740,6 +1745,69 @@ async function completeFinalStage(finalStageId, customerId, leadId) {
   }
 }
 
+const { SiteSupervisor } = require("../models/siteSupervisorModel");
+
+// CREATE
+async function addSiteSupervisor(name) {
+  try {
+    if (!name) {
+      throw new Error("Site supervisor name is required");
+    }
+
+    return await SiteSupervisor.create({ name });
+  } catch (error) {
+    throw error;
+  }
+}
+
+// GET (ID + NAME)
+async function getSiteSupervisor() {
+  try {
+    return await SiteSupervisor.findAll({
+      attributes: ["id", "name"],
+      order: [["id", "ASC"]],
+    });
+  } catch (error) {
+    throw error;
+  }
+}
+
+// GET ALL
+async function getAllSiteSupervisors() {
+  try {
+    return await SiteSupervisor.findAll({
+      order: [["created_at", "DESC"]],
+    });
+  } catch (error) {
+    throw error;
+  }
+}
+
+// UPDATE
+async function updateSiteSupervisor(id, { name }) {
+  const t = await sequelize.transaction();
+
+  try {
+    const supervisor = await SiteSupervisor.findByPk(id, {
+      transaction: t,
+    });
+
+    if (!supervisor) {
+      throw new Error("Site supervisor not found");
+    }
+
+    supervisor.name = name ?? supervisor.name;
+
+    await supervisor.save({ transaction: t });
+    await t.commit();
+
+    return supervisor;
+  } catch (error) {
+    await t.rollback();
+    throw error;
+  }
+}
+
 module.exports = {
   getSources,
   addSource,
@@ -1772,4 +1840,8 @@ module.exports = {
   getFinalStageCustomersByStatus,
   getPaidCommissionByFabricatorId,
   getPaidCommissionBySupervisorId,
+  addSiteSupervisor,
+  getSiteSupervisor,
+  getAllSiteSupervisors,
+  updateSiteSupervisor,
 };

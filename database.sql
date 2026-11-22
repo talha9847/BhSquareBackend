@@ -868,3 +868,11 @@ CREATE TABLE IF NOT EXISTS whatsapp_followup_logs (
 );
 
 CREATE INDEX idx_log_followup ON whatsapp_followup_logs (followup_id, created_at);
+
+
+CREATE TABLE site_supervisor (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

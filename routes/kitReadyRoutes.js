@@ -4,7 +4,7 @@ const router = express.Router();
 const middleware = require("../middlewares/authMiddleware");
 router.get(
   "/fetchKitReadyCustomers",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.fetchKitReadyCustomers,
 );
 router.delete(
@@ -34,7 +34,7 @@ router.post(
 );
 router.get(
   "/getAllBrands",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.getAllBrands,
 );
 router.get(
@@ -64,39 +64,39 @@ router.put(
 );
 router.post(
   "/addKitItems",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.addKitItems,
 );
 
 router.get(
   "/fetchKitItems/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.fetchKitItems,
 );
 router.get(
   "/fetchAvailableProducts/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.fetchAvailableProducts,
 );
 
 router.post(
   "/addItem",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.addItem,
 );
 router.post(
   "/allocateItem",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.allocateItem,
 );
 router.get(
   "/getPanelAndInventer/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.getPanelAndInventer,
 );
 router.post(
   "/addCustomerSerials",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.addCustomerSerials,
 );
 
@@ -173,7 +173,7 @@ router.put(
 
 router.post(
   "/partialDispatch",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.partialDispatchKitItem,
 );
 

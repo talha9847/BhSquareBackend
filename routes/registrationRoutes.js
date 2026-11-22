@@ -45,12 +45,12 @@ router.get(
 );
 router.get(
   "/getInventoryByCategory",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   registrationController.getInventoryByCategory,
 );
 router.get(
   "/getInventoryByCategoryThree",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   registrationController.getInventoryByCategoryThree,
 );
 

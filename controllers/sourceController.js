@@ -752,6 +752,95 @@ async function getCompletionSummary(req, res) {
   }
 }
 
+const siteSupervisorService = require("../services/sourceService");
+
+async function addSiteSupervisor(req, res) {
+  try {
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "name is required",
+      });
+    }
+
+    const supervisor = await siteSupervisorService.addSiteSupervisor(name);
+
+    return res.status(201).json({
+      success: true,
+      message: "Site supervisor added successfully",
+      data: supervisor,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
+async function fetchSiteSupervisor(req, res) {
+  try {
+    const supervisor = await siteSupervisorService.getSiteSupervisor();
+
+    return res.status(200).json({
+      success: true,
+      data: supervisor,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+async function fetchAllSiteSupervisors(req, res) {
+  try {
+    const supervisors = await siteSupervisorService.getAllSiteSupervisors();
+
+    return res.status(200).json({
+      success: true,
+      data: supervisors,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Something went wrong",
+    });
+  }
+}
+
+async function updateSiteSupervisor(req, res) {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "name is required",
+      });
+    }
+
+    const supervisor = await siteSupervisorService.updateSiteSupervisor(id, {
+      name,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Site supervisor updated successfully",
+      data: supervisor,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   fetchSources,
   addSource,
@@ -784,4 +873,8 @@ module.exports = {
   getFinalStageCustomersByStatus,
   getPaidCommissionByFabricatorId,
   getPaidCommissionBySupervisorId,
+  addSiteSupervisor,
+  fetchSiteSupervisor,
+  fetchAllSiteSupervisors,
+  updateSiteSupervisor,
 };
