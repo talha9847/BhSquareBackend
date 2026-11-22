@@ -27,23 +27,23 @@ router.get(
 
 router.post(
   "/createWireInventory",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.createWireInventory,
 );
 router.get(
   "/fetchAllWireInventory",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.fetchAllWireInventory,
 );
 router.get(
   "/getAvailableWireInventory/:id",
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   wiringController.getAvailableWireInventory,
 );
 
 router.put(
   "/updateWireInventory/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.updateWireInventory,
 );
 router.post(
@@ -53,12 +53,12 @@ router.post(
 );
 router.put(
   "/updateTechni/:wiringId",
-  middleware.authMiddleware(["admin","site_supervisor"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   wiringController.updateTechni,
 );
 router.get(
   "/fetchIssuedWires/:id",
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   wiringController.fetchIssuedWires,
 );
 router.put(
@@ -69,13 +69,13 @@ router.put(
 router.post(
   "/uploadWiringDocs",
   upload.single("file"),
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   wiringController.uploadWiringDocController,
 );
 
 router.get(
   "/getWiringDocs/:id",
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   wiringController.getWiringDocs,
 );
 

@@ -29,7 +29,7 @@ router.post(
 );
 router.post(
   "/createInventory",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.createInventory,
 );
 router.get(
@@ -39,7 +39,7 @@ router.get(
 );
 router.get(
   "/getAllInventory",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.getAllInventory,
 );
 router.post(
@@ -59,7 +59,7 @@ router.delete(
 );
 router.put(
   "/updateInventory/:id",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.updateInventory,
 );
 router.post(
@@ -124,7 +124,7 @@ router.post(
 );
 router.get(
   "/getCategories",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.getCategories,
 );
 router.put(
@@ -141,12 +141,12 @@ router.put(
 
 router.get(
   "/fetchCustomerSerials/:customerId",
-  middleware.authMiddleware(["admin"]),
+  middleware.authMiddleware(["admin", "site_supervisor"]),
   kitReadyController.fetchCustomerSerials,
 );
 router.get(
   "/getKitByCustomerId/:customerId",
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   kitReadyController.getKitByCustomerId,
 );
 router.post(
@@ -157,7 +157,7 @@ router.post(
 
 router.get(
   "/getUnusedInventoryByCustomerId/:customerId",
-  middleware.authMiddleware(["admin", "technician"]),
+  middleware.authMiddleware(["admin", "technician", "site_supervisor"]),
   kitReadyController.getUnusedInventoryByCustomerId,
 );
 router.delete(
