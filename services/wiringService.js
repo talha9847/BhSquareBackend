@@ -467,23 +467,45 @@ async function updateWiringTechnician(wiringId, technicianId) {
 
 const ROOT_FOLDER_ID = "1VGCwKhFu_zY830etrGYmaAefKjklSAOv";
 
+function escapeDriveQueryValue(value = "") {
+  return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
 async function getOrCreateCustomerFolder(folderName) {
+  if (!folderName || typeof folderName !== "string") {
+    throw new Error("Invalid folderName provided to getOrCreateCustomerFolder");
+  }
+
+  const safeParentId = escapeDriveQueryValue(ROOT_FOLDER_ID);
+  const safeName = escapeDriveQueryValue(folderName.trim());
+
+  const query = [
+    `'${safeParentId}' in parents`,
+    `name = '${safeName}'`,
+    `mimeType = 'application/vnd.google-apps.folder'`,
+    `trashed = false`,
+  ].join(" and ");
+
   const existing = await drive.files.list({
-    q: `'${ROOT_FOLDER_ID}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+    q: query,
     fields: "files(id, name)",
+    pageSize: 10,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
-  if (existing.data.files.length > 0) {
+  if (existing.data.files && existing.data.files.length > 0) {
     return existing.data.files[0].id;
   }
 
   const folder = await drive.files.create({
     requestBody: {
-      name: folderName,
+      name: folderName.trim(),
       mimeType: "application/vnd.google-apps.folder",
-      parents: [ROOT_FOLDER_ID], // ✅ IMPORTANT: create inside root folder
+      parents: [ROOT_FOLDER_ID],
     },
     fields: "id",
+    supportsAllDrives: true,
   });
 
   return folder.data.id;
