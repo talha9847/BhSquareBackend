@@ -876,3 +876,136 @@ CREATE TABLE site_supervisor (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
+
+
+
+
+CREATE TABLE blog_categories (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(120) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+CREATE TABLE blog_posts (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category_id BIGINT REFERENCES blog_categories(id)
+        ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    author_name VARCHAR(150) NOT NULL,
+    author_role VARCHAR(150),
+    author_initials VARCHAR(10),
+    excerpt TEXT,
+    intro TEXT,
+    featured_image TEXT,
+    image_alt TEXT,
+    read_time INT DEFAULT 5,
+    is_featured BOOLEAN DEFAULT FALSE,
+    is_recommended BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'draft'
+        CHECK (status IN ('draft', 'published', 'archived')),
+    published_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE blog_sections (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    blog_id BIGINT NOT NULL REFERENCES blog_posts(id)
+        ON DELETE CASCADE,
+    heading VARCHAR(255) NOT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE blog_section_contents (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    section_id BIGINT NOT NULL REFERENCES blog_sections(id)
+        ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE blog_tags (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    slug VARCHAR(120) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+CREATE TABLE blog_post_tags (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    blog_id BIGINT NOT NULL REFERENCES blog_posts(id)
+        ON DELETE CASCADE,
+    tag_id BIGINT NOT NULL REFERENCES blog_tags(id)
+        ON DELETE CASCADE,
+    UNIQUE (blog_id, tag_id)
+);
+
+CREATE TABLE blog_takeaways (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    blog_id BIGINT NOT NULL REFERENCES blog_posts(id)
+        ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE blog_quotes (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    blog_id BIGINT NOT NULL UNIQUE REFERENCES blog_posts(id)
+        ON DELETE CASCADE,
+    quote_text TEXT NOT NULL,
+    quote_author VARCHAR(150),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Blog posts
+CREATE INDEX idx_blog_posts_category
+ON blog_posts(category_id);
+
+CREATE INDEX idx_blog_posts_status
+ON blog_posts(status);
+
+CREATE INDEX idx_blog_posts_published
+ON blog_posts(published_at DESC);
+
+CREATE INDEX idx_blog_posts_featured
+ON blog_posts(is_featured);
+
+CREATE INDEX idx_blog_posts_recommended
+ON blog_posts(is_recommended);
+
+-- Blog sections
+CREATE INDEX idx_blog_sections_blog
+ON blog_sections(blog_id, sort_order);
+
+-- Section contents
+CREATE INDEX idx_blog_contents_section
+ON blog_section_contents(section_id, sort_order);
+
+-- Tags
+CREATE INDEX idx_blog_post_tags_blog
+ON blog_post_tags(blog_id);
+
+CREATE INDEX idx_blog_post_tags_tag
+ON blog_post_tags(tag_id);
+
+-- Takeaways
+CREATE INDEX idx_blog_takeaways_blog
+ON blog_takeaways(blog_id, sort_order);
+

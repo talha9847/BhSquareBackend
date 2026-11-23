@@ -19,6 +19,7 @@ const wiringhRoutes = require("./routes/wiringRoutes");
 const estimationRoutes = require("./routes/estimationRoutes");
 const whatsappRoutes = require("./routes/whatsappRoutes");
 const whatsappFollowupRoutes = require("./routes/whatsappFollowupRoutes");
+const blogRoutes = require("./routes/blogRoutes");
 
 // ── NEW: WhatsApp follow-up worker ──
 const {
@@ -70,13 +71,14 @@ app.use("/api/wiring", wiringhRoutes);
 app.use("/api/estimation", estimationRoutes);
 app.use("/api/whatsapp", whatsappRoutes);
 app.use("/api/whatsapp-followups", whatsappFollowupRoutes);
+app.use("/api/blogs", blogRoutes);
 
 // NOTE: no app.listen() here — bootstrap() handles it
 
 async function bootstrap() {
   try {
     // Start WhatsApp (restores from DB if creds exist, else shows QR)
-    const status = await startWhatsAppSession();
+    // const status = await startWhatsAppSession();
     const [result] = await sequelize.query(`
         SELECT
             current_database() AS database,
@@ -87,7 +89,7 @@ async function bootstrap() {
     `);
 
     console.log("NODE CONNECTION CHECK:", result);
-    console.log("WhatsApp initial status:", status);
+    // console.log("WhatsApp initial status:", status);
 
     const server = app.listen(3000, () => {
       console.log(`Server listening on http://localhost:3000`);

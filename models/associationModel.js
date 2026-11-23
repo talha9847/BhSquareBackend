@@ -43,6 +43,14 @@ const { Estimation } = require("./estimationModel");
 const { Inverter } = require("./inverterModel");
 const { AgencyInventory } = require("./agencyInventoryModel");
 const { Agency } = require("./agencyModel");
+const { BlogCategory } = require("./blogCategoryModel");
+const { BlogPost } = require("./blogPostModel");
+const { BlogSection } = require("./blogSectionModel");
+const { BlogSectionContent } = require("./blogSectionContentModel");
+const { BlogTag } = require("./blogTagModel");
+const { BlogPostTag } = require("./blogPostTagModel");
+const { BlogTakeaway } = require("./blogTakeawayModel");
+const { BlogQuote } = require("./blogQuoteModel");
 
 // ----------------------
 // Customer → Lead
@@ -472,6 +480,71 @@ AgencyInventory.belongsTo(Inventory, {
   as: "inventory",
 });
 
+// ----------------------
+// Blog Associations
+// ----------------------
+BlogCategory.hasMany(BlogPost, {
+  foreignKey: "category_id",
+  as: "posts",
+});
+BlogPost.belongsTo(BlogCategory, {
+  foreignKey: "category_id",
+  as: "category",
+});
+
+BlogPost.hasMany(BlogSection, {
+  foreignKey: "blog_id",
+  as: "sections",
+  onDelete: "CASCADE",
+});
+BlogSection.belongsTo(BlogPost, {
+  foreignKey: "blog_id",
+  as: "blog",
+});
+
+BlogSection.hasMany(BlogSectionContent, {
+  foreignKey: "section_id",
+  as: "contents",
+  onDelete: "CASCADE",
+});
+BlogSectionContent.belongsTo(BlogSection, {
+  foreignKey: "section_id",
+  as: "section",
+});
+
+BlogPost.belongsToMany(BlogTag, {
+  through: BlogPostTag,
+  foreignKey: "blog_id",
+  otherKey: "tag_id",
+  as: "tags",
+});
+BlogTag.belongsToMany(BlogPost, {
+  through: BlogPostTag,
+  foreignKey: "tag_id",
+  otherKey: "blog_id",
+  as: "posts",
+});
+
+BlogPost.hasMany(BlogTakeaway, {
+  foreignKey: "blog_id",
+  as: "takeaways",
+  onDelete: "CASCADE",
+});
+BlogTakeaway.belongsTo(BlogPost, {
+  foreignKey: "blog_id",
+  as: "blog",
+});
+
+BlogPost.hasOne(BlogQuote, {
+  foreignKey: "blog_id",
+  as: "quote",
+  onDelete: "CASCADE",
+});
+BlogQuote.belongsTo(BlogPost, {
+  foreignKey: "blog_id",
+  as: "blog",
+});
+
 module.exports = {
   Customer,
   Lead,
@@ -511,4 +584,12 @@ module.exports = {
   Inverter,
   Agency,
   AgencyInventory,
+  BlogCategory,
+  BlogPost,
+  BlogSection,
+  BlogSectionContent,
+  BlogTag,
+  BlogPostTag,
+  BlogTakeaway,
+  BlogQuote,
 };
