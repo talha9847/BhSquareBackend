@@ -624,6 +624,37 @@ function getWhatsAppStatus(sessionId = SESSION_ID) {
 // SEND MESSAGE
 // =====================================================
 
+// async function sendMessage(number, message) {
+//   if (!message || typeof message !== "string" || !message.trim()) {
+//     throw new Error("Message is required");
+//   }
+
+//   const session = await getReadySession();
+//   const t0 = Date.now();
+
+//   const { jid, number: formattedNumber } = await resolveJid(
+//     session.socket,
+//     number,
+//   );
+
+//   const result = await withTimeout(
+//     session.socket.sendMessage(jid, { text: message.trim() }),
+//     SEND_TIMEOUT_MS,
+//     "sendMessage",
+//   );
+
+//   console.log(
+//     `WA text sent: ${jid} | id=${result?.key?.id} | ${Date.now() - t0}ms`,
+//   );
+
+//   return {
+//     success: true,
+//     number: formattedNumber,
+//     jid,
+//     messageId: result?.key?.id,
+//   };
+// }
+
 async function sendMessage(number, message) {
   if (!message || typeof message !== "string" || !message.trim()) {
     throw new Error("Message is required");
@@ -637,14 +668,36 @@ async function sendMessage(number, message) {
     number,
   );
 
+  const payload = {
+    text: message.trim(),
+    footer: "Please select an option",
+    buttons: [
+      {
+        buttonId: "interested",
+        buttonText: {
+          displayText: "Interested",
+        },
+        type: 1,
+      },
+      {
+        buttonId: "not_interested",
+        buttonText: {
+          displayText: "Not Interested",
+        },
+        type: 1,
+      },
+    ],
+    headerType: 1,
+  };
+
   const result = await withTimeout(
-    session.socket.sendMessage(jid, { text: message.trim() }),
+    session.socket.sendMessage(jid, payload),
     SEND_TIMEOUT_MS,
     "sendMessage",
   );
 
   console.log(
-    `WA text sent: ${jid} | id=${result?.key?.id} | ${Date.now() - t0}ms`,
+    `WA message sent: ${jid} | id=${result?.key?.id} | ${Date.now() - t0}ms`,
   );
 
   return {
