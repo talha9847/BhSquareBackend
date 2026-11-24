@@ -78,7 +78,9 @@ app.use("/api/blogs", blogRoutes);
 async function bootstrap() {
   try {
     // Start WhatsApp (restores from DB if creds exist, else shows QR)
-    // const status = await startWhatsAppSession();
+    if (process.env.NODE_ENV != "development") {
+      const status = await startWhatsAppSession();
+    }
     const [result] = await sequelize.query(`
         SELECT
             current_database() AS database,
